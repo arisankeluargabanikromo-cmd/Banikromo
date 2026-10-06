@@ -1,0 +1,11 @@
+.fform label,#loginForm label{display:block;font-size:11px;color:var(--muted);margin-top:12px}
+.fform input,.fform select,.fform textarea,#loginForm input{width:100%;margin-top:5px;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--text);font:inherit;font-size:13px;outline:none}
+.fform input:focus,.fform select:focus,#loginForm input:focus{border-color:var(--accent)}
+.fform .row{display:flex;gap:10px;margin-top:18px}.fform .row button{flex:1;padding:11px;border-radius:13px}.ghost{background:#f2f4f8;color:var(--text)}.danger{background:#fdeaec;color:#c4414a}
+.login{position:fixed;inset:0;z-index:100;background:linear-gradient(135deg,#101426,#29224d);display:none;align-items:center;justify-content:center;padding:20px}.login.show{display:flex}
+.btn-s{background:transparent;color:var(--accent);padding:4px 8px;font-size:12px}.btn-s.d{color:var(--danger)}
+.stage-pop{animation:pop .5s}@keyframes pop{0%{transform:scale(.8);opacity:.3}60%{transform:scale(1.1)}100%{transform:scale(1)}}
+.album{height:180px;padding:25px;display:grid;place-items:center;font-size:45px;text-align:center;position:relative}.album small{font-size:12px;display:block}.album .x{position:absolute;right:8px;top:8px}
+.proof{font-family:monospace;font-size:9px;color:var(--muted);word-break:break-all}
+body.dark .ghost{background:#20283a;color:#fff}body.dark .danger{background:#3a1f26}
+@media print{.sidebar,.topbar,.toolbar,.no-print{display:none!important}.main{margin:0;width:100%}}
