@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#6957ff">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>FamilyHub — Arisan & Family Network</title>
 <style>
 :root{
@@ -77,6 +82,7 @@ body.dark .tree .connector,body.dark .branch:before,.dark .branches:before{backg
 <div class="app">
 <aside class="sidebar">
   <div class="logo"><div class="logo-mark">FH</div><div><strong>FamilyHub</strong><small>Arisan & Family Network</small></div></div>
+  <div class="side-scroll">
   <div class="nav-title">Menu utama</div>
   <nav class="nav">
     <button class="active" onclick="showPage('dashboard',this)"><span class="nav-icon">⌂</span><span>Dashboard</span></button>
@@ -91,13 +97,15 @@ body.dark .tree .connector,body.dark .branch:before,.dark .branches:before{backg
   <div class="nav-title">Informasi</div>
   <nav class="nav">
     <button onclick="showPage('pengumuman',this)"><span class="nav-icon">◌</span><span>Pengumuman</span></button>
+    <button id="navUsers" style="display:none" onclick="showPage('pengguna',this)"><span class="nav-icon">⚙</span><span>Pengguna</span></button>
     <button onclick="showPage('laporan',this)"><span class="nav-icon">▤</span><span>Laporan</span></button>
   </nav>
+  </div>
   <div class="sidebar-bottom"><div class="mini-user"><div class="avatar">PS</div><div><b style="font-size:11px">Purwoko</b><small style="display:block;color:#858ca0;font-size:9px">Admin keluarga</small></div></div></div>
 </aside>
 
 <main class="main">
-<div class="topbar"><div class="breadcrumb">FamilyHub / <b id="pageTitle">Dashboard</b></div><div class="actions"><button class="icon-btn" onclick="toast('Tidak ada notifikasi baru')">♧<i class="dot"></i></button><button class="icon-btn" onclick="toggleTheme()">◐</button><button class="primary" onclick="quickAdd()">＋ Tambah</button></div></div>
+<div class="topbar"><div class="breadcrumb">FamilyHub / <b id="pageTitle">Dashboard</b></div><div class="actions"><button class="icon-btn" onclick="toast('Tidak ada notifikasi baru')">♧<i class="dot"></i></button><button class="icon-btn" onclick="toggleTheme()">◐</button><button class="icon-btn logout-top" title="Keluar" onclick="logout()">⎋</button><button class="primary" onclick="quickAdd()">＋ Tambah</button></div></div>
 
 <section id="dashboard" class="page active"></section>
 <section id="arisan" class="page"></section>
@@ -109,15 +117,17 @@ body.dark .tree .connector,body.dark .branch:before,.dark .branches:before{backg
 <section id="galeri" class="page"></section>
 <section id="pengumuman" class="page"></section>
 <section id="laporan" class="page"></section>
+<section id="pengguna" class="page"></section>
 </main>
 </div>
 <div class="modal" id="profileModal"><div class="modal-box" id="profileBox"></div></div>
 <div class="modal" id="formModal"><div class="modal-box"><div class="modal-top"><b id="fTitle"></b><button class="close" onclick="closeForm()">×</button></div><form id="fForm" class="fform"></form></div></div>
-<div class="login" id="loginBox"><form class="modal-box" id="loginForm"><div class="logo-mark" style="margin:0 auto 12px;color:#fff;width:52px;height:52px">FH</div><h2 style="text-align:center;margin:0 0 4px">FamilyHub</h2><p style="text-align:center;color:var(--muted);font-size:12px;margin:0 0 18px">Masuk untuk melanjutkan</p><label>Email<input name="username" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="primary" style="width:100%;margin-top:14px">Masuk</button><button type="button" id="signupBtn" class="ghost" style="width:100%;margin-top:8px;padding:11px;border-radius:13px">Daftar akun baru</button></form></div>
+<div class="login" id="loginBox"><form class="modal-box" id="loginForm"><div class="logo-mark" style="margin:0 auto 12px;color:#fff;width:52px;height:52px">FH</div><h2 style="text-align:center;margin:0 0 4px">FamilyHub</h2><p style="text-align:center;color:var(--muted);font-size:12px;margin:0 0 18px">Masuk untuk melanjutkan</p><label>Email<input name="username" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><div id="loginMsg" class="loginmsg"></div><button class="primary" id="loginBtn" style="width:100%;margin-top:14px">Masuk</button><button type="button" id="signupBtn" class="ghost" style="width:100%;margin-top:8px;padding:11px;border-radius:13px">Daftar akun baru</button></form></div>
 <div class="toast" id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/config.js"></script>
 <script src="/data.js"></script>
 <script src="/app.js"></script>
+<script src="/extras.js"></script>
 </body>
 </html>

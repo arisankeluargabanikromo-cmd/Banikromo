@@ -9,15 +9,20 @@ let ME = null, MEMBERS = [], page = 'dashboard';
 const isA = () => ME && ME.role === 'admin';
 const adm = h => isA() ? h : '';
 
-function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2400); }
+function toast(msg, ok) {
+  const lm = $('#loginMsg'); if (lm && $('#loginBox').classList.contains('show')) { lm.textContent = msg; lm.className = 'loginmsg show' + (ok ? ' ok' : ''); }
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2400); }
 const guard = f => async (...a) => { try { return await f(...a); } catch (e) { if (e) console.error(e); } };
 
 // ---------- Auth ----------
 function showLogin() { $('#loginBox').classList.add('show'); }
-$('#loginForm').onsubmit = guard(async e => {
-  e.preventDefault(); const f = Object.fromEntries(new FormData(e.target));
-  ME = await api('login', 'POST', f); $('#loginBox').classList.remove('show'); e.target.reset(); boot();
-});
+$('#loginForm').onsubmit = async e => {
+  e.preventDefault(); const f = Object.fromEntries(new FormData(e.target)), b = $('#loginBtn'); $('#loginMsg').className = 'loginmsg';
+  b.disabled = true; b.textContent = 'Memproses…';
+  try { ME = await api('login', 'POST', f); $('#loginBox').classList.remove('show'); e.target.reset(); boot(); }
+  catch (err) { if (err) { console.error(err); if (!$('#loginMsg').classList.contains('show')) toast('Gagal masuk: ' + (err.message || 'periksa koneksi & konfigurasi Supabase')); } }
+  finally { b.disabled = false; b.textContent = 'Masuk'; }
+};
 async function logout() { if (!confirm('Keluar dari FamilyHub?')) return; await api('logout', 'POST'); location.reload(); }
 
 // ---------- Navigasi ----------
@@ -66,9 +71,9 @@ let CACHE = {}; const edit = (c, k, id) => c.edit(CACHE[k].find(x => x.id === id
 async function openProfile(id) {
   if (!MEMBERS.length) MEMBERS = await api('members');
   const m = MEMBERS.find(x => x.id === id); if (!m) return; const p = MEMBERS.find(x => x.id === m.parent_id), kids = MEMBERS.filter(x => x.parent_id === id);
-  const pay = (await api('payments')).rows.find(r => r.member_id === id);
+  const pay = (await api('payments')).rows.find(r => r.member_id === id), hist = await api('history/' + id);
   $('#profileBox').innerHTML = `<div class="modal-top"><b>Profil Keluarga</b><button class="close" onclick="closeProfile()">×</button></div><div class="profile"><div class="avatar">${ini(m.name)}</div><h2>${esc(m.name)}</h2><p>${esc(m.relation || '')} • Generasi ${m.generation}${m.phone ? ' • ' + esc(m.phone) : ''}</p></div>
-  <div class="detail-grid"><div class="detail"><span>Status Arisan</span><b>${m.active ? '✓ Aktif' : 'Nonaktif'}</b></div><div class="detail"><span>Iuran Bulan Ini</span><b>${pay && pay.pid ? '✓ Lunas' : 'Belum bayar'}</b></div><div class="detail"><span>Orang Tua</span><b>${esc(p ? p.name : '—')}</b></div><div class="detail"><span>Anggota Sejak</span><b>${m.joined || '—'}</b></div><div class="detail" style="grid-column:span 2"><span>Anak</span><b>${kids.map(k => esc(k.name)).join(', ') || '—'}</b></div></div>
+  <div class="detail-grid"><div class="detail"><span>Status Arisan</span><b>${m.active ? '✓ Aktif' : 'Nonaktif'}</b></div><div class="detail"><span>Iuran Bulan Ini</span><b>${pay && pay.pid ? '✓ Lunas' : 'Belum bayar'}</b></div><div class="detail"><span>Orang Tua</span><b>${esc(p ? p.name : '—')}</b></div><div class="detail"><span>Anggota Sejak</span><b>${m.joined || '—'}</b></div><div class="detail" style="grid-column:span 2"><span>Anak</span><b>${kids.map(k => esc(k.name)).join(', ') || '—'}</b></div><div class="detail" style="grid-column:span 2"><span>Riwayat iuran (12 bulan)</span><b style="font-size:12px;line-height:1.8">${hist.pays.map(x => '✓ ' + MONTH(x.period).slice(0, 3) + ' ' + x.period.slice(2, 4)).join(' · ') || 'Belum ada'}</b></div><div class="detail" style="grid-column:span 2"><span>Menang arisan</span><b>${hist.wins.map(w => MONTH(w.period)).join(', ') || 'Belum pernah'}</b></div></div>
   ${adm(`<button class="primary" style="width:100%;margin-top:15px" onclick="editMember(${id})">Ubah data</button>`)}`;
   $('#profileModal').classList.add('show');
 }
@@ -90,9 +95,9 @@ R.dashboard = async () => {
   <div class="card members"><div class="card-head"><h3>Anggota terbaru</h3><span>${d.members} ANGGOTA</span></div>${d.recent.map(m => `<div class="member-row"><div class="avatar">${ini(m.name)}</div><div class="member-info"><b>${esc(m.name)}</b><span>${esc(m.relation || '')} • Generasi ${m.generation}</span></div></div>`).join('')}</div></div>`;
 };
 R.arisan = async () => {
-  const d = await api('payments'), paid = d.rows.filter(r => r.pid), tot = d.rows.length * d.iuran, got = paid.length * d.iuran;
+  const d = window._pay = await api('payments'), paid = d.rows.filter(r => r.pid), tot = d.rows.length * d.iuran, got = paid.length * d.iuran;
   $('#arisan').innerHTML = hero('Monitoring Arisan', 'Transparansi iuran, jadwal, penerima giliran, dan histori kegiatan.') + `
-  <div class="card" style="margin-bottom:20px"><div class="card-head"><h3>Arisan ${MONTH(d.period)} — iuran ${rp(d.iuran)}</h3>${adm('<button class="primary" onclick="setIuran(' + d.iuran + ')">Atur iuran</button>')}</div><table class="table"><thead><tr><th>Anggota</th><th>Iuran</th><th>Status</th><th>Waktu</th><th></th></tr></thead><tbody>${d.rows.map(r => `<tr><td><b>${esc(r.name)}</b></td><td class="money">${rp(d.iuran)}</td><td><span class="status ${r.pid ? '' : 'pending'}">${r.pid ? 'Lunas' : 'Belum'}</span></td><td>${r.pid ? ft(r.paid_at) : '—'}</td><td>${adm(r.pid ? `<button class="btn-s d" onclick="unpay(${r.pid})">Batalkan</button>` : `<button class="btn-s" onclick="pay(${r.member_id},'${d.period}')">Catat bayar</button>`)}</td></tr>`).join('')}</tbody></table></div>
+  <div class="card" style="margin-bottom:20px"><div class="card-head"><h3>Arisan ${MONTH(d.period)} — iuran ${rp(d.iuran)}</h3><span>${adm('<button class="primary" onclick="waGroup()">💬 Ingatkan grup</button> <button class="primary" onclick="setIuran(' + d.iuran + ')">Atur iuran</button>')}</span></div><table class="table"><thead><tr><th>Anggota</th><th>Iuran</th><th>Status</th><th>Waktu</th><th></th></tr></thead><tbody>${d.rows.map(r => `<tr><td><b>${esc(r.name)}</b></td><td class="money">${rp(d.iuran)}</td><td><span class="status ${r.pid ? '' : 'pending'}">${r.pid ? 'Lunas' : 'Belum'}</span></td><td>${r.pid ? ft(r.paid_at) : '—'}</td><td>${adm(r.pid ? `<button class="btn-s d" onclick="unpay(${r.pid})">Batalkan</button>` : `<button class="btn-s" onclick="pay(${r.member_id},'${d.period}')">Catat bayar</button>`)}${adm(r.pid ? '' : `<button class="btn-s" onclick="wa(${r.member_id})">💬 Ingatkan</button>`)}</td></tr>`).join('')}</tbody></table></div>
   <div class="grid4">${[['Target Iuran', tot], ['Sudah Masuk', got], ['Belum Masuk', tot - got]].map(s => `<div class="card stat"><span class="stat-label">${s[0]}</span><h2>${rp(s[1])}</h2></div>`).join('')}<div class="card stat"><span class="stat-label">Lunas</span><h2>${paid.length}/${d.rows.length}</h2></div></div>`;
 };
 const pay = guard(async (id, p) => { await api('payments', 'POST', { member_id: id, period: p }); toast('Pembayaran dicatat'); reload(); });
@@ -103,7 +108,7 @@ let drawing = false;
 R.pengocokan = async () => {
   const d = await api('draw'), done = d.history.some(h => h.period === d.period);
   $('#pengocokan').innerHTML = hero('Pengocokan Digital', 'Pengundian pemenang arisan secara transparan, teracak, dan dapat diaudit.', `<div class="hero-date"><strong>${MONTH(d.period).split(' ')[0]}</strong><span>SIKLUS ${d.cycle}</span></div>`) + `
-  <div class="content2"><div class="card"><div class="card-head"><div><h3>Pengundian Pemenang</h3><span>MODE TRANSPARAN</span></div><span class="status ${done ? '' : 'pending'}" id="drawStatus">${done ? 'Sudah diundi' : 'Siap diundi'}</span></div><div style="padding:10px 25px 25px"><div style="min-height:230px;border-radius:22px;background:linear-gradient(135deg,#11172a,#29224d);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#fff;padding:25px"><div style="font-size:12px;color:#aeb6cc;letter-spacing:1.5px">PEMENANG ARISAN</div><div id="drawName" style="font-size:32px;font-weight:800;margin:15px 0">${done ? esc(d.history[0].winner_name) : 'Siap Diundi'}</div><div id="drawSub" style="font-size:11px;color:#aeb6cc">${d.eligible.length} peserta memenuhi syarat${d.unpaid ? ` • ${d.unpaid} belum bayar` : ''}</div></div>
+  <div class="content2"><div class="card"><div class="card-head"><div><h3>Pengundian Pemenang</h3><span>MODE TRANSPARAN</span></div><span class="status ${done ? '' : 'pending'}" id="drawStatus">${done ? 'Sudah diundi' : 'Siap diundi'}</span></div><div style="padding:10px 25px 25px"><div class="draw-stage" style="min-height:230px;border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#fff;padding:25px"><div style="font-size:12px;color:#aeb6cc;letter-spacing:1.5px">PEMENANG ARISAN</div><div id="drawName" style="font-size:32px;font-weight:800;margin:15px 0">${done ? esc(d.history[0].winner_name) : 'Siap Diundi'}</div><div id="drawSub" style="font-size:11px;color:#aeb6cc">${d.eligible.length} peserta memenuhi syarat${d.unpaid ? ` • ${d.unpaid} belum bayar` : ''}</div></div>
   ${adm(`<div style="display:flex;gap:10px;margin-top:15px"><button class="primary" id="drawBtn" style="flex:1" ${done || !d.eligible.length ? 'disabled style="flex:1;opacity:.5"' : ''} onclick="startDraw()">⚡ Mulai Pengocokan</button><button class="icon-btn" title="Mulai siklus baru" onclick="newCycle()">↻</button></div>`)}</div></div>
   <div class="card"><div class="card-head"><h3>Aturan Pengundian</h3><span>TRANSPARANSI</span></div><div style="padding:5px 20px 20px">${[['Hanya anggota aktif', 'Peserta harus terdaftar sebagai anggota arisan.'], ['Sudah bayar iuran bulan ini', 'Yang belum lunas otomatis tidak ikut diundi.'], ['Satu kali menang per siklus', 'Pemenang sebelumnya tidak ikut sampai siklus baru dimulai.'], ['Acak aman & tercatat', 'Diundi di server (crypto random), disimpan beserta kode bukti.']].map(a => `<div class="activity-row"><div class="activity-icon">✓</div><div class="activity-text"><b>${a[0]}</b><span>${a[1]}</span></div></div>`).join('')}</div></div></div>
   <div class="card" style="margin-bottom:20px"><div class="card-head"><h3>Peserta Eligible</h3><span>${d.eligible.length} peserta</span></div><div style="padding:0 20px 20px;display:flex;flex-wrap:wrap;gap:8px">${d.eligible.map(e => `<span style="padding:8px 11px;border:1px solid var(--line);border-radius:20px;background:var(--panel2);font-size:10px">✓ ${esc(e.name)}</span>`).join('') || '<small>Belum ada peserta eligible.</small>'}</div></div>

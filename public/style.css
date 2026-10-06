@@ -9,3 +9,50 @@
 .proof{font-family:monospace;font-size:9px;color:var(--muted);word-break:break-all}
 body.dark .ghost{background:#20283a;color:#fff}body.dark .danger{background:#3a1f26}
 @media print{.sidebar,.topbar,.toolbar,.no-print{display:none!important}.main{margin:0;width:100%}}
+.toast{z-index:300!important}
+.loginmsg{display:none;margin-top:12px;padding:10px 12px;border-radius:12px;font-size:12px;line-height:1.5;background:#fdeaec;color:#c4414a}.loginmsg.show{display:block}.loginmsg.ok{background:#e4f8f1;color:#1d8a6f}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}.pthumb{aspect-ratio:1;border-radius:16px;overflow:hidden;cursor:pointer;background:var(--panel2);border:1px solid var(--line)}.pthumb img{width:100%;height:100%;object-fit:cover;transition:transform .25s}.pthumb:hover img{transform:scale(1.06)}
+.toolbar label.primary{display:inline-flex;align-items:center;gap:6px;padding:11px 16px;border-radius:13px;cursor:pointer;font-size:13px}
+.lb{position:fixed;inset:0;z-index:200;background:rgba(8,10,20,.93);display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px}.lb.show{display:flex}.lb img{max-width:100%;max-height:80vh;border-radius:14px;object-fit:contain}
+.lbbar{display:flex;gap:10px;align-items:center;margin-top:16px;color:#fff;font-size:13px}.lbbar button{background:#ffffff22;color:#fff;border-radius:12px;padding:9px 15px;font-size:14px}.lbbar .danger{background:#ef6b73}
+
+/* ================= TEMA & SIDEBAR (v2.2) ================= */
+:root{--sb-bg:#fff;--sb-line:#e7ebf2;--sb-text:#59647c;--sb-hover:#f1f3fb;--sb-active:#ece9ff;--sb-active-text:#5a48f0;--sb-title:#9aa3b8;--sb-card:#f8fafc;--sb-sub:#718096;--sb-shadow:8px 0 30px rgba(35,45,75,.05)}
+body.dark{--sb-bg:#101426;--sb-line:rgba(255,255,255,.08);--sb-text:#aeb5c7;--sb-hover:rgba(255,255,255,.07);--sb-active:rgba(255,255,255,.1);--sb-active-text:#fff;--sb-title:#697187;--sb-card:rgba(255,255,255,.04);--sb-sub:#858ca0;--sb-shadow:none}
+body,.card,.icon-btn,.search,.select,.node,.modal-box,.table td,.table th{transition:background-color .25s,color .25s,border-color .25s}
+
+/* Sidebar: kolom flex -> menu bisa di-scroll, kartu pengguna selalu di bawah & tidak menimpa menu */
+.sidebar{background:var(--sb-bg);color:var(--text);border-right:1px solid var(--sb-line);box-shadow:var(--sb-shadow);display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;transition:background-color .25s,color .25s,border-color .25s}
+.logo{flex:none}.logo small{color:var(--sb-sub)}
+.side-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;margin:0 -8px;padding:0 8px;scrollbar-width:thin;scrollbar-color:var(--sb-line) transparent}
+.side-scroll::-webkit-scrollbar{width:5px}.side-scroll::-webkit-scrollbar-thumb{background:var(--sb-line);border-radius:9px}
+.nav-title{color:var(--sb-title)}
+.nav button{color:var(--sb-text);font-weight:500;transition:background-color .15s,color .15s}
+.nav button:hover{background:var(--sb-hover);color:var(--text)}
+.nav button.active{background:var(--sb-active);color:var(--sb-active-text);font-weight:600}
+.nav button.active .nav-icon{color:var(--accent)}
+.sidebar-bottom{position:static;flex:none;margin-top:12px;background:var(--sb-card);border:1px solid var(--sb-line);cursor:pointer;transition:background-color .15s}
+.sidebar-bottom:hover{background:var(--sb-hover)}
+.sidebar-bottom b{color:var(--text)}.sidebar-bottom small{color:var(--sb-sub)!important}
+.logout-top{display:none}
+
+/* Mode terang: banner ikut cerah (mode gelap tetap memakai gaya aslinya) */
+body:not(.dark) .hero{background:linear-gradient(135deg,#6957ff 0%,#8573ff 55%,#3fcfb6 135%);box-shadow:0 20px 50px rgba(105,87,255,.22)}
+body:not(.dark) .hero p{color:rgba(255,255,255,.88)}
+
+@media(max-width:760px){.logout-top{display:inline-grid;place-items:center}.side-scroll{margin:0 -9px;padding:0 9px;scrollbar-width:none}.side-scroll::-webkit-scrollbar{display:none}}
+
+.logo-mark{color:#fff}
+body:not(.dark) .hero-date span{color:rgba(255,255,255,.92)}
+/* penanda "masih ada menu di bawah" saat daftar menu bisa di-scroll */
+.side-scroll.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 30px),transparent);mask-image:linear-gradient(#000 calc(100% - 30px),transparent)}
+/* layar pendek: rapatkan menu agar lebih banyak yang muat */
+@media(max-height:760px){.sidebar .logo{padding-bottom:14px}.nav button{padding:9px 12px;margin:2px 0}.nav-title{padding:10px 12px 6px}.sidebar-bottom{padding:10px}}
+/* panel undian & layar login ikut tema */
+.draw-stage{background:linear-gradient(135deg,#6957ff,#8d7cff 60%,#3fcfb6 140%)!important;box-shadow:0 16px 40px rgba(105,87,255,.25)}
+body.dark .draw-stage{background:linear-gradient(135deg,#11172a,#29224d)!important;box-shadow:none}
+body:not(.dark) .login{background:linear-gradient(135deg,#eef0ff,#e2f6f1)}
+.nav button.active{font-weight:500}.nav button>span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body:not(.dark) .draw-stage [style*="#aeb6cc"]{color:rgba(255,255,255,.88)!important}
+/* HP: sidebar hanya ikon -> pastikan ikon TETAP tampil (aturan lama ikut menyembunyikannya) */
+@media(max-width:760px){.nav button .nav-icon{display:inline-block;width:auto;font-size:19px}.nav button{padding:11px 0}.actions{margin-left:auto}.sidebar .logo{justify-content:center}}
