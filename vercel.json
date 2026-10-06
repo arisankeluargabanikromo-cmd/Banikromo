@@ -1,0 +1,1 @@
+{ "buildCommand": "node scripts/gen-config.js", "outputDirectory": "public", "cleanUrls": true }
