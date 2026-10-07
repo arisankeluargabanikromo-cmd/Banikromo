@@ -38,15 +38,28 @@ const reload = () => guard(R[page])();
 function quickAdd() { ({ anggota: addMember, keuangan: addTx, agenda: addEvent, pengumuman: addAnn, galeri: addAlbum, silsilah: addMember }[page] || (() => toast('Gunakan tombol tambah di halaman terkait')))(); }
 
 // ---------- Form modal generik ----------
+function pickInput(f, v) {   // kolom cari-dan-pilih (datalist) agar tetap nyaman untuk ratusan anggota
+  const cur = f.o.find(o => String(o[0]) === String(v));
+  return `<input name="${f.k}" list="dl_${f.k}" autocomplete="off" placeholder="Ketik nama untuk mencari…" value="${esc(cur ? cur[1] : '')}"><datalist id="dl_${f.k}">${f.o.map(o => `<option value="${esc(o[1])}">`).join('')}</datalist>`;
+}
+function readForm(form, fields) {
+  const o = Object.fromEntries(new FormData(form));
+  for (const f of fields) if (f.t === 'pick') {
+    const lab = (o[f.k] || '').trim(); if (!lab) { o[f.k] = ''; continue; }
+    const hit = f.o.find(x => x[1] === lab); if (!hit) { toast('Pilih "' + f.l + '" dari daftar yang muncul'); throw 0; }
+    o[f.k] = hit[0];
+  }
+  return o;
+}
 function openForm(title, fields, vals, onSave, onDel) {
   $('#fTitle').textContent = title;
   $('#fForm').innerHTML = fields.map(f => {
     const v = vals[f.k] ?? '', a = `name="${f.k}" ${f.req ? 'required' : ''}`;
-    const inp = f.t === 'select' ? `<select ${a}>${f.o.map(o => { const [ov, ol] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(ov)}" ${String(ov) === String(v) ? 'selected' : ''}>${esc(ol)}</option>`; }).join('')}</select>`
+    const inp = f.t === 'pick' ? pickInput(f, v) : f.t === 'select' ? `<select ${a}>${f.o.map(o => { const [ov, ol] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(ov)}" ${String(ov) === String(v) ? 'selected' : ''}>${esc(ol)}</option>`; }).join('')}</select>`
       : f.t === 'textarea' ? `<textarea ${a} rows="3">${esc(v)}</textarea>` : `<input type="${f.t || 'text'}" ${a} value="${esc(v)}" ${f.t === 'number' ? 'min="0"' : ''}>`;
-    return `<label>${f.l}${inp}</label>`;
+    return `<label${f.half ? ' class="half"' : ''}>${f.l}${inp}</label>`;
   }).join('') + `<div class="row"><button type="button" class="ghost" onclick="closeForm()">Batal</button>${onDel ? '<button type="button" class="danger" id="fDel">Hapus</button>' : ''}<button class="primary">Simpan</button></div>`;
-  $('#fForm').onsubmit = guard(async e => { e.preventDefault(); await onSave(Object.fromEntries(new FormData(e.target))); closeForm(); toast('Tersimpan'); reload(); });
+  $('#fForm').onsubmit = guard(async e => { e.preventDefault(); await onSave(readForm(e.target, fields)); closeForm(); toast('Tersimpan'); reload(); });
   if (onDel) $('#fDel').onclick = guard(async () => { if (confirm('Hapus data ini?')) { await onDel(); closeForm(); toast('Dihapus'); reload(); } });
   $('#formModal').classList.add('show');
 }
@@ -55,10 +68,6 @@ const crud = (t, fields, title) => ({
   add: () => openForm('Tambah ' + title, fields, {}, b => api(t, 'POST', b)),
   edit: o => openForm('Ubah ' + title, fields, o, b => api(`${t}/${o.id}`, 'PUT', b), () => api(`${t}/${o.id}`, 'DELETE')),
 });
-const mFields = () => [{ k: 'name', l: 'Nama lengkap', req: 1 }, { k: 'relation', l: 'Hubungan (mis. Cucu)' }, { k: 'generation', l: 'Generasi', t: 'select', o: [1, 2, 3, 4, 5] },
-  { k: 'parent_id', l: 'Orang tua', t: 'select', o: [['', '— Tidak ada —'], ...MEMBERS.map(m => [m.id, m.name])] }, { k: 'phone', l: 'No. HP / WhatsApp' }, { k: 'joined', l: 'Anggota sejak (tahun)', t: 'number' }, { k: 'active', l: 'Status arisan', t: 'select', o: [[1, 'Aktif'], [0, 'Nonaktif']] }];
-const M = crud('members', [], 'Anggota'), addMember = () => openForm('Tambah Anggota', mFields(), { generation: 1, active: 1, joined: new Date().getFullYear() }, b => api('members', 'POST', b));
-const editMember = id => { const o = MEMBERS.find(m => m.id === id); closeProfile(); openForm('Ubah Anggota', mFields(), o, b => api('members/' + id, 'PUT', b), () => api('members/' + id, 'DELETE')); };
 const TXF = [{ k: 'date', l: 'Tanggal', t: 'date', req: 1 }, { k: 'description', l: 'Keterangan', req: 1 }, { k: 'type', l: 'Jenis', t: 'select', o: [['masuk', 'Pemasukan'], ['keluar', 'Pengeluaran']] }, { k: 'amount', l: 'Nominal (Rp)', t: 'number', req: 1 }];
 const T = crud('transactions', TXF, 'Transaksi'), addTx = () => openForm('Tambah Transaksi', TXF, { date: new Date().toISOString().slice(0, 10) }, b => api('transactions', 'POST', b));
 const EVF = [{ k: 'date', l: 'Tanggal', t: 'date', req: 1 }, { k: 'time', l: 'Jam', t: 'time' }, { k: 'title', l: 'Kegiatan', req: 1 }, { k: 'location', l: 'Lokasi' }, { k: 'status', l: 'Status', t: 'select', o: ['Terjadwal', 'Selesai', 'Dibatalkan'] }];
@@ -68,15 +77,6 @@ const ALF = [{ k: 'title', l: 'Nama album', req: 1 }, { k: 'emoji', l: 'Emoji sa
 let CACHE = {}; const edit = (c, k, id) => c.edit(CACHE[k].find(x => x.id === id));
 
 // ---------- Profil ----------
-async function openProfile(id) {
-  if (!MEMBERS.length) MEMBERS = await api('members');
-  const m = MEMBERS.find(x => x.id === id); if (!m) return; const p = MEMBERS.find(x => x.id === m.parent_id), kids = MEMBERS.filter(x => x.parent_id === id);
-  const pay = (await api('payments')).rows.find(r => r.member_id === id), hist = await api('history/' + id);
-  $('#profileBox').innerHTML = `<div class="modal-top"><b>Profil Keluarga</b><button class="close" onclick="closeProfile()">×</button></div><div class="profile"><div class="avatar">${ini(m.name)}</div><h2>${esc(m.name)}</h2><p>${esc(m.relation || '')} • Generasi ${m.generation}${m.phone ? ' • ' + esc(m.phone) : ''}</p></div>
-  <div class="detail-grid"><div class="detail"><span>Status Arisan</span><b>${m.active ? '✓ Aktif' : 'Nonaktif'}</b></div><div class="detail"><span>Iuran Bulan Ini</span><b>${pay && pay.pid ? '✓ Lunas' : 'Belum bayar'}</b></div><div class="detail"><span>Orang Tua</span><b>${esc(p ? p.name : '—')}</b></div><div class="detail"><span>Anggota Sejak</span><b>${m.joined || '—'}</b></div><div class="detail" style="grid-column:span 2"><span>Anak</span><b>${kids.map(k => esc(k.name)).join(', ') || '—'}</b></div><div class="detail" style="grid-column:span 2"><span>Riwayat iuran (12 bulan)</span><b style="font-size:12px;line-height:1.8">${hist.pays.map(x => '✓ ' + MONTH(x.period).slice(0, 3) + ' ' + x.period.slice(2, 4)).join(' · ') || 'Belum ada'}</b></div><div class="detail" style="grid-column:span 2"><span>Menang arisan</span><b>${hist.wins.map(w => MONTH(w.period)).join(', ') || 'Belum pernah'}</b></div></div>
-  ${adm(`<button class="primary" style="width:100%;margin-top:15px" onclick="editMember(${id})">Ubah data</button>`)}`;
-  $('#profileModal').classList.add('show');
-}
 const closeProfile = () => $('#profileModal').classList.remove('show');
 $('#profileModal').addEventListener('click', e => { if (e.target.id === 'profileModal') closeProfile(); });
 $('#formModal').addEventListener('click', e => { if (e.target.id === 'formModal') closeForm(); });
@@ -123,22 +123,6 @@ const startDraw = guard(async () => {
 });
 const newCycle = guard(async () => { if (confirm('Mulai siklus arisan baru? Semua anggota bisa menang lagi.')) { await api('draw/new-cycle', 'POST'); reload(); } });
 
-R.silsilah = async () => {
-  MEMBERS = await api('members'); const kids = id => MEMBERS.filter(m => m.parent_id === id && m.id !== id);
-  const node = m => `<div class="node" onclick="openProfile(${m.id})"><div class="avatar">${ini(m.name)}</div><b>${esc(m.name.split(' ')[0] === 'H.' ? m.name : m.name.split(' ')[0])}</b><span>Generasi ${m.generation}</span></div>`;
-  const sub = m => { const k = kids(m.id); return node(m) + (k.length ? `<div class="connector"></div><div class="branches" style="gap:${m.generation > 1 ? 18 : 55}px">${k.map(c => `<div class="branch">${sub(c)}</div>`).join('')}</div>` : ''); };
-  const roots = MEMBERS.filter(m => !m.parent_id || !MEMBERS.some(p => p.id === m.parent_id));
-  $('#silsilah').innerHTML = hero('Silsilah Keluarga', 'Jelajahi hubungan keluarga dari generasi ke generasi.') + `<div class="card"><div class="card-head"><h3>Family Tree</h3><span>Klik anggota untuk melihat profil</span></div><div class="tree-wrap"><div class="tree"><div class="branches" style="gap:40px">${roots.map(r => `<div class="branch" style="padding-top:0">${sub(r)}</div>`).join('')}</div></div></div></div>`;
-};
-R.anggota = async () => {
-  MEMBERS = await api('members');
-  $('#anggota').innerHTML = hero('Anggota Keluarga', 'Direktori anggota, hubungan keluarga, dan status arisan.') + `<div class="toolbar"><input class="search" id="mq" placeholder="Cari nama anggota..." oninput="drawMembers()"><select class="select" id="mg" onchange="drawMembers()"><option value="">Semua generasi</option>${[1, 2, 3, 4, 5].map(g => `<option value="${g}">Generasi ${g}</option>`).join('')}</select>${adm('<button class="primary" onclick="addMember()">＋ Anggota</button>')}</div><div class="card"><table class="table"><thead><tr><th>Nama</th><th>Hubungan</th><th>Generasi</th><th>Arisan</th><th>Aksi</th></tr></thead><tbody id="memberTable"></tbody></table></div>`;
-  drawMembers();
-};
-function drawMembers() {
-  const q = $('#mq').value.toLowerCase(), g = $('#mg').value;
-  $('#memberTable').innerHTML = MEMBERS.filter(m => m.name.toLowerCase().includes(q) && (!g || m.generation == g)).map(m => `<tr><td><b>${esc(m.name)}</b></td><td>${esc(m.relation || '—')}</td><td>${m.generation}</td><td><span class="status ${m.active ? '' : 'pending'}">${m.active ? 'Aktif' : 'Nonaktif'}</span></td><td><button class="btn-s" onclick="openProfile(${m.id})">Detail</button></td></tr>`).join('') || '<tr><td colspan="5">Tidak ada data</td></tr>';
-}
 R.keuangan = async () => {
   const [d, tx] = await Promise.all([api('dashboard'), api('transactions')]); CACHE.tx = tx;
   $('#keuangan').innerHTML = hero('Keuangan Keluarga', 'Catatan pemasukan dan pengeluaran arisan secara transparan.') + `<div class="grid4">${[['Saldo', rp(d.saldo)], ['Pemasukan', rp(d.masuk)], ['Pengeluaran', rp(d.keluar)], ['Transaksi', d.n]].map(s => `<div class="card stat"><span class="stat-label">${s[0]}</span><h2>${s[1]}</h2></div>`).join('')}</div><div class="card"><div class="card-head"><h3>Transaksi terbaru</h3>${adm('<button class="primary" onclick="addTx()">＋ Transaksi</button>')}</div><table class="table"><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Jenis</th><th>Nominal</th><th></th></tr></thead><tbody>${tx.map(t => `<tr><td>${fd(t.date)}</td><td>${esc(t.description)}</td><td><span class="status ${t.type == 'keluar' ? 'pending' : ''}">${t.type == 'masuk' ? 'Masuk' : 'Keluar'}</span></td><td class="money">${t.type == 'masuk' ? '+' : '-'} ${rp(t.amount)}</td><td>${adm(t.payment_id ? '' : `<button class="btn-s" onclick="edit(T,'tx',${t.id})">Ubah</button>`)}</td></tr>`).join('')}</tbody></table></div>`;
