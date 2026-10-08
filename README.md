@@ -4,7 +4,7 @@ Frontend statis (HTML/CSS/JS) + **Supabase** (Postgres, Auth, RLS) · deploy via
 ```
 public/            index.html, app.js (tampilan), data.js (lapisan Supabase), config.js
 supabase/          schema.sql (wajib, sudah mencakup semua fitur), seed.sql (opsional),
-                   patch-001/002/003/004/005 (HANYA untuk yang sudah terlanjur memakai versi lama),
+                   patch-001/002/003/004/005/006 (HANYA untuk yang sudah terlanjur memakai versi lama),
                    demo-500-keluarga.sql (opsional, data uji 500 orang)
 scripts/           gen-config.js (isi config.js dari env var saat build Vercel)
 vercel.json        outputDirectory = public
@@ -18,7 +18,7 @@ vercel.json        outputDirectory = public
 5. **Project Settings → API**: salin **Project URL** dan **anon public key**.
 
 > **Sudah menjalankan versi sebelumnya?** Jangan jalankan ulang `schema.sql`. Cukup jalankan `supabase/patch-001-ensure-profile.sql`
-> (bila belum) lalu `patch-002-foto-pengguna.sql`, `patch-003-silsilah.sql`, `patch-004-foto-status.sql`, dan **`patch-005-pengocokan-ulang.sql`** (berurutan) di SQL Editor.
+> (bila belum) lalu `patch-002-foto-pengguna.sql`, `patch-003-silsilah.sql`, `patch-004-foto-status.sql`, dan **`patch-005-pengocokan-ulang.sql`**, lalu **`patch-006-keuangan.sql`** (berurutan) di SQL Editor.
 > Patch 001–004 aman diulang. Patch 005 cukup dijalankan sekali; data undian lama tetap aman (otomatis berstatus *sah*).
 
 ## 2) Jalankan lokal (opsional)
@@ -127,3 +127,36 @@ Halaman **Pengocokan Digital** kini punya *panggung* khusus untuk acara arisan (
 **Upgrade dari v2.4:** jalankan `supabase/patch-005-pengocokan-ulang.sql` sekali di SQL Editor, lalu deploy ulang. Instalasi baru cukup menjalankan `schema.sql` terbaru.
 
 **Pemenang sudah terlanjur disahkan tetapi tidak hadir?** Di halaman Pengocokan (atau di panggung) tekan **↩ Pemenang tidak hadir — Kocok ulang**. Pemenang dicatat tidak hadir (jejak tetap ada), tidak dihitung menang, dan pengocokan dibuka lagi. Gunakan `patch-005` yang terbaru agar fungsi `reopen_draw` tersedia.
+
+## Keuangan profesional: Iuran Arisan & Iuran Wajib, dua dana, laporan siap cetak (v2.6)
+
+### Konsep pembukuan
+| | **Iuran Arisan** | **Iuran Wajib** |
+|---|---|---|
+| Dibukukan ke | **Dana Arisan** (dana titipan) | **Kas Wajib** (milik bersama) |
+| Penggunaan | Dicairkan ke pemenang arisan | Operasional & sosial (konsumsi, santunan, acara) |
+| Syarat ikut kocok | Ya (bawaan) | Tidak (bawaan; bisa dijadikan syarat di *Atur iuran*) |
+| Tarif bawaan | sesuai pengaturan lama | Rp 50.000 — **ubah di Keuangan → Iuran → ⚙ Atur iuran** |
+
+Saldo kedua dana dibukukan **terpisah**, sehingga uang titipan arisan tidak tercampur dengan kas keluarga. Setiap pembayaran otomatis menjadi transaksi pada dana yang sesuai.
+
+### Fitur
+- **Keuangan** (4 tab): *Ringkasan* (saldo per dana, grafik arus kas, progres kedua iuran, pencairan tertunda) · *Iuran* (catat per anggota per jenis per periode) · *Buku Kas* (saldo berjalan, filter dana/tanggal/cari, transaksi manual berkategori) · *Tunggakan*.
+- **Kuitansi bernomor** (`ARISAN-2610-00012`, `WAJIB-2610-00031`) dengan terbilang, siap cetak. Metode bayar: Tunai / Transfer / Lainnya.
+- **Tunggakan** per anggota per bulan sejak iuran mulai berlaku; **lunasi beberapa bulan sekaligus**; pengingat WhatsApp pribadi/grup.
+- **Pencairan arisan**: setelah pemenang disahkan, tombol *Cairkan* mencatat pengeluaran Dana Arisan ke pemenang. Iuran susulan yang masuk belakangan muncul sebagai **pencairan susulan**. Iuran arisan yang sudah dicairkan tidak bisa dibatalkan sebelum pencairannya dibatalkan.
+- **Pembatalan pembayaran** wajib beralasan dan tercatat di log aktivitas. Mengubah tarif **tidak** mengubah pembayaran lama.
+- **Syarat kocok** mengikuti iuran yang ditandai *wajib lunas untuk ikut kocok* (otomatis dipakai halaman Pengocokan).
+- **Laporan** (menu Laporan): *Laporan Keuangan* (A. posisi kas per dana · B. rincian per kategori · C. realisasi & kepatuhan iuran · D. pencairan arisan · E. tunggakan), *Buku Kas*, *Rekap Kepatuhan Iuran* (matriks 12 bulan), *Daftar Tunggakan*. Periode: bulan ini/lalu, kuartal, tahun, atau tanggal bebas. Keluaran: **Cetak/PDF A4** (kop organisasi + tanda tangan Ketua & Bendahara), **Excel (.xlsx)** (angka numerik, satu lembar per tabel) dan **CSV**. Nama organisasi, Ketua, dan Bendahara diatur di *⚙ Identitas laporan*.
+- Dashboard menampilkan saldo per dana dan status kedua iuran.
+
+### Upgrade dari v2.5
+1. Jalankan `supabase/patch-006-keuangan.sql` **sekali** di SQL Editor (aman diulang), lalu deploy ulang. Instalasi baru cukup `schema.sql` terbaru.
+2. Data lama tetap utuh: semua pembayaran lama menjadi **Iuran Arisan**; transaksi manual lama masuk **Kas Wajib** — periksa di *Buku Kas → Ubah* bila ada yang seharusnya Dana Arisan (mis. pengeluaran pencairan yang dulu dicatat manual).
+3. Atur tarif & tanggal mulai di *Keuangan → Iuran → ⚙ Atur iuran*. Tunggakan dihitung sejak **tanggal mulai berlaku** tiap iuran (bawaan: bulan pertama pembayaran tercatat / bulan ini untuk Iuran Wajib).
+4. Pencairan arisan dilacak mulai periode saat patch dijalankan; periode sebelumnya dianggap sudah diselesaikan di luar sistem.
+
+### Catatan teknis
+- Target iuran pada laporan = jumlah anggota aktif × tarif berlaku; realisasi = seluruh pembayaran tercatat (termasuk susulan).
+- Ekspor Excel memuat pustaka SheetJS dari jsDelivr saat pertama dipakai; bila tidak ada koneksi, otomatis jatuh ke CSV (pemisah `;`, terbuka rapi di Excel berlokal Indonesia).
+- Performa teruji pada 500 anggota × 12 bulan × 2 iuran (±10 ribu pembayaran): seluruh fungsi laporan < 110 ms.
