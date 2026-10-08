@@ -34,13 +34,20 @@ async function api(p, m = 'GET', b = {}) {
   if (t === 'dashboard' || t === 'report') return rpc(t);
   if (t === 'payments') return m === 'POST' ? rpc('record_payment', { p_member: +b.member_id, p_period: b.period }) : m === 'DELETE' ? rpc('void_payment', { p_id: +id }) : rpc('get_payments', { p_period: null });
   if (t === 'users') return m === 'PUT' ? rpc('set_role', { p_id: id, p_role: b.role }) : rpc('list_users');
-  if (t === 'history') { const [a, w] = await Promise.all([sb.from('payments').select('period').eq('member_id', +id).order('period', { ascending: false }).limit(12), sb.from('draws').select('period').eq('winner_id', +id).order('period')]); return { pays: a.data || [], wins: w.data || [] }; }
+  if (t === 'history') { const [a, w] = await Promise.all([sb.from('payments').select('period').eq('member_id', +id).order('period', { ascending: false }).limit(12), sb.from('draws').select('period').eq('winner_id', +id).eq('status', 'sah').order('period')]); return { pays: a.data || [], wins: w.data || [] }; }
   if (t === 'members' && m === 'DELETE') { const { data } = await sb.from('members').select('photo_path').eq('id', +id).maybeSingle(); if (data && data.photo_path) await sb.storage.from('photos').remove([data.photo_path + '_s.jpg', data.photo_path + '_l.jpg']); }   // hapus berkas foto
   if (t === 'albums' && m === 'DELETE') { const { data } = await sb.from('photos').select('path').eq('album_id', +id); if (data && data.length) await sb.storage.from('photos').remove(data.map(x => x.path)); }  // bersihkan file foto
   if (t === 'fill') return rpc('fill_marital_status');
   if (t === 'import') return rpc('import_members', { p: b.rows });
   if (t === 'settings') return rpc('set_iuran', { p: +b.iuran });
-  if (t === 'draw') return id === 'new-cycle' ? rpc('new_cycle') : m === 'POST' ? rpc('run_draw') : rpc('draw_state');
+  if (t === 'draw') {   // pengocokan: kocok -> (sahkan | tidak hadir -> kocok ulang)
+    if (id === 'new-cycle') return rpc('new_cycle');
+    if (id === 'confirm') return rpc('confirm_draw', { p_id: +b.id });
+    if (id === 'absent') return rpc('absent_draw', { p_id: +b.id });
+    if (id === 'reopen') return rpc('reopen_draw');
+    if (id === 'recall') return rpc('recall_absent');
+    return m === 'POST' ? rpc('run_draw') : rpc('draw_state');
+  }
   const c = TB[t]; if (!c) throw new Error('Endpoint tidak dikenal: ' + p);
   if (m === 'GET') {   // ambil bertahap per 1000 baris (batas bawaan Supabase) agar data besar tidak terpotong
     let all = [], from = 0;
