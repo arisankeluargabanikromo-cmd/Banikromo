@@ -4,7 +4,7 @@ Frontend statis (HTML/CSS/JS) + **Supabase** (Postgres, Auth, RLS) · deploy via
 ```
 public/            index.html, app.js (tampilan), data.js (lapisan Supabase), config.js
 supabase/          schema.sql (wajib, sudah mencakup semua fitur), seed.sql (opsional),
-                   patch-001/002/003/004 (HANYA untuk yang sudah terlanjur memakai versi lama),
+                   patch-001/002/003/004/005 (HANYA untuk yang sudah terlanjur memakai versi lama),
                    demo-500-keluarga.sql (opsional, data uji 500 orang)
 scripts/           gen-config.js (isi config.js dari env var saat build Vercel)
 vercel.json        outputDirectory = public
@@ -18,7 +18,8 @@ vercel.json        outputDirectory = public
 5. **Project Settings → API**: salin **Project URL** dan **anon public key**.
 
 > **Sudah menjalankan versi sebelumnya?** Jangan jalankan ulang `schema.sql`. Cukup jalankan `supabase/patch-001-ensure-profile.sql`
-> (bila belum) lalu `patch-002-foto-pengguna.sql`, `patch-003-silsilah.sql`, dan `patch-004-foto-status.sql` (berurutan) di SQL Editor — semuanya aman diulang.
+> (bila belum) lalu `patch-002-foto-pengguna.sql`, `patch-003-silsilah.sql`, `patch-004-foto-status.sql`, dan **`patch-005-pengocokan-ulang.sql`** (berurutan) di SQL Editor.
+> Patch 001–004 aman diulang. Patch 005 cukup dijalankan sekali; data undian lama tetap aman (otomatis berstatus *sah*).
 
 ## 2) Jalankan lokal (opsional)
 Edit `public/config.js` dengan URL & anon key, lalu `npm run dev` → buka alamat yang ditampilkan.
@@ -109,3 +110,20 @@ Impor bersifat **atomik**: bila ada satu baris salah (mis. jenis kelamin tak dik
 - **Ringkasan cabang** saat Fokus cabang: jumlah orang, generasi, ♂/♀, wafat, belum menikah.
 - **Kartu lebih detail**: foto, usia, label status, tooltip lengkap (nama, usia, status, pasangan); nama depan dibaca tanpa gelar (H., Hj., Dr.).
 - **Profil lebih lengkap**: kedudukan ("Cicit dari Abdullah & Siti", "Istri dari Ilham"), Ayah/Ibu, "Anak ke-2 dari 5 bersaudara", **garis leluhur** yang bisa diklik, status pernikahan dengan keterangan (mis. "Menikah dengan almarhum …"), serta riwayat iuran.
+
+## Panggung Pengocokan layar penuh, STOP & kocok ulang (v2.5)
+Halaman **Pengocokan Digital** kini punya *panggung* khusus untuk acara arisan (ideal disambungkan ke proyektor/TV):
+
+- **Layar penuh** — tombol ⛶ di panggung (atau tombol *Layar Penuh* di halaman). Pintasan keyboard: `Spasi` Mulai/Stop · `F` layar penuh · `M` suara · `Esc` tutup. Layar tidak mati selama panggung terbuka (Wake Lock). Di iPhone yang tidak mendukung Fullscreen API, panggung tetap memenuhi layar.
+- **Tampilan atraktif** — latar aurora & sorot lampu, daftar nama berputar dengan efek *motion blur*, melambat lalu mendarat di nama pemenang, confetti, efek suara (bisa dimatikan), dan kartu pemenang dengan foto profil bila ada.
+- **MULAI → STOP** — reel berputar sampai admin menekan **STOP**. Saat STOP ditekan, *server* mengacak pemenang (crypto random) lalu animasi mendarat tepat di hasil itu; waktu menekan tombol tidak mempengaruhi hasil.
+- **Konfirmasi kehadiran** — pemenang tampil sebagai *pemenang sementara*. Admin memilih:
+  - **✓ Hadir — Sahkan** → pemenang disahkan, periode selesai.
+  - **✗ Tidak hadir — Kocok ulang** → dicatat *tidak hadir*, dilewati untuk periode ini, lalu dikocok ulang dari peserta yang tersisa. Peserta yang tidak hadir **tidak dihitung menang**, sehingga masih bisa menang di bulan berikutnya. Kedua tombol memakai *ketuk dua kali* agar tidak salah pencet.
+  - Bila semua peserta eligible sudah dilewati → tombol **Panggil ulang yang tidak hadir**.
+- **Aman & dapat diaudit** — setiap kocokan (termasuk yang tidak hadir) tersimpan beserta nomor kocokan, status, dan kode bukti; riwayat menampilkan semuanya. Pemenang sementara tersimpan di database, jadi refresh / tutup layar tidak menghilangkannya, dan kocokan baru tidak bisa dimulai sebelum pemenang sementara diputuskan (mencegah mengocok berulang sampai "cocok").
+- Pengguna *viewer* bisa membuka panggung untuk menonton, tetapi hanya admin yang bisa mengocok/konfirmasi.
+
+**Upgrade dari v2.4:** jalankan `supabase/patch-005-pengocokan-ulang.sql` sekali di SQL Editor, lalu deploy ulang. Instalasi baru cukup menjalankan `schema.sql` terbaru.
+
+**Pemenang sudah terlanjur disahkan tetapi tidak hadir?** Di halaman Pengocokan (atau di panggung) tekan **↩ Pemenang tidak hadir — Kocok ulang**. Pemenang dicatat tidak hadir (jejak tetap ada), tidak dihitung menang, dan pengocokan dibuka lagi. Gunakan `patch-005` yang terbaru agar fungsi `reopen_draw` tersedia.

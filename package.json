@@ -1,1 +1,1 @@
-{"name":"familyhub","version":"2.0.0","private":true,"scripts":{"dev":"npx serve public","build":"node scripts/gen-config.js"}}
+{"name":"familyhub","version":"2.5.0","private":true,"scripts":{"dev":"npx serve public","build":"node scripts/gen-config.js"}}
