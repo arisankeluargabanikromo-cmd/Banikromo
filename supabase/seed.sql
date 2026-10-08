@@ -16,3 +16,10 @@ insert into events(date,time,title,location) values (current_date+6,'16:00','Ari
 insert into announcements(title,body,author) values ('Arisan akan dilaksanakan pekan depan','Mohon hadir tepat waktu pukul 16:00 WIB.','Admin'),('Rekap iuran bulan lalu telah ditutup','','Admin');
 insert into albums(emoji,title) values ('📸','Arisan Bulan Lalu'),('🎉','Lebaran Keluarga'),('👨‍👩‍👧‍👦','Family Gathering'),('🌿','Liburan Keluarga');
 insert into draws(cycle,period,at,participants,winner_id,winner_name,proof) select 1,to_char(now() at time zone 'Asia/Jakarta' - interval '1 month','YYYY-MM'),now()-interval '30 days','[1,2,3,4,5,6,7]',id,name,'seed' from members where name='Rina Novitasari';
+
+-- v2.6: contoh Iuran Wajib bulan berjalan (sebagian anggota). Dana/kategori transaksi diisi otomatis oleh trigger.
+with ins as (
+  insert into payments(member_id,period,amount,fee_type_id,method)
+  select id,public.cur_period(),(select amount from fee_types where id=2),2,case when id%2=0 then 'Transfer' else 'Tunai' end from members where active=1 and id%3<>0 returning id,member_id,amount)
+insert into transactions(date,description,type,amount,payment_id)
+  select (now() at time zone 'Asia/Jakarta')::date,'Iuran Wajib '||public.cur_period()||' - '||m.name,'masuk',ins.amount,ins.id from ins join members m on m.id=ins.member_id;
