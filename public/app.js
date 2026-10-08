@@ -68,8 +68,6 @@ const crud = (t, fields, title) => ({
   add: () => openForm('Tambah ' + title, fields, {}, b => api(t, 'POST', b)),
   edit: o => openForm('Ubah ' + title, fields, o, b => api(`${t}/${o.id}`, 'PUT', b), () => api(`${t}/${o.id}`, 'DELETE')),
 });
-const TXF = [{ k: 'date', l: 'Tanggal', t: 'date', req: 1 }, { k: 'description', l: 'Keterangan', req: 1 }, { k: 'type', l: 'Jenis', t: 'select', o: [['masuk', 'Pemasukan'], ['keluar', 'Pengeluaran']] }, { k: 'amount', l: 'Nominal (Rp)', t: 'number', req: 1 }];
-const T = crud('transactions', TXF, 'Transaksi'), addTx = () => openForm('Tambah Transaksi', TXF, { date: new Date().toISOString().slice(0, 10) }, b => api('transactions', 'POST', b));
 const EVF = [{ k: 'date', l: 'Tanggal', t: 'date', req: 1 }, { k: 'time', l: 'Jam', t: 'time' }, { k: 'title', l: 'Kegiatan', req: 1 }, { k: 'location', l: 'Lokasi' }, { k: 'status', l: 'Status', t: 'select', o: ['Terjadwal', 'Selesai', 'Dibatalkan'] }];
 const E = crud('events', EVF, 'Agenda'), addEvent = () => E.add();
 const ANF = [{ k: 'title', l: 'Judul', req: 1 }, { k: 'body', l: 'Isi pengumuman', t: 'textarea' }], A = crud('announcements', ANF, 'Pengumuman'), addAnn = () => A.add();
@@ -87,27 +85,14 @@ R.dashboard = async () => {
   const pts = k => cf.map((c, i) => `${cf.length > 1 ? i * 700 / (cf.length - 1) : 350},${200 - c[k] / mx * 180}`);
   const line = k => 'M' + pts(k).join(' L'), n = d.next;
   $('#dashboard').innerHTML = hero(`Selamat datang, ${esc(ME.name)} 👋`, 'Satu tempat untuk menjaga silaturahmi, transparansi arisan, dan cerita keluarga.', `<div class="hero-date"><strong>${String(new Date().getDate()).padStart(2, '0')}</strong><span>${MONTH(d.period).toUpperCase()}</span></div>`) + `
-  <div class="grid4">${[['Saldo Kas', rp(d.saldo), '◆', `Pemasukan ${rp(d.masuk)}`], ['Anggota Aktif', d.members, '♙', 'terdaftar di arisan'], ['Iuran ' + MONTH(d.period).split(' ')[0], pct + '%', '✓', `${d.paid} dari ${d.members} lunas`], ['Arisan Berikutnya', n ? fd(n.date) : '—', '◷', n ? esc(n.title) : 'Belum ada agenda']]
+  <div class="grid4">${[['Saldo Kas', rp(d.saldo), '◆', d.funds ? `Arisan ${rp(d.funds.arisan)} • Wajib ${rp(d.funds.kas)}` : `Pemasukan ${rp(d.masuk)}`], ['Anggota Aktif', d.members, '♙', 'terdaftar di arisan'], ['Iuran ' + MONTH(d.period).split(' ')[0], pct + '%', '✓', `${d.paid} dari ${d.members} lunas arisan${(d.types || []).filter(x => x.code === 'wajib').map(x => ` • wajib ${x.paid}/${d.members}`).join('')}`], ['Arisan Berikutnya', n ? fd(n.date) : '—', '◷', n ? esc(n.title) : 'Belum ada agenda']]
       .map(s => `<div class="card stat"><div class="stat-top"><span class="stat-label">${s[0]}</span><div class="stat-icon">${s[2]}</div></div><h2>${s[1]}</h2><small>${s[3]}</small><div class="wave"></div></div>`).join('')}</div>
   <div class="content2"><div class="card chart-card"><div class="card-head"><h3>Arus Kas Arisan</h3><span>${cf.length} bulan terakhir</span></div><div class="chart">${cf.length ? `<svg viewBox="0 0 700 210" preserveAspectRatio="none"><path d="${line('masuk')}" fill="none" stroke="#6957ff" stroke-width="4"/><path d="${line('keluar')}" fill="none" stroke="#22c7a9" stroke-width="3" stroke-dasharray="7 6"/></svg>` : ''}</div><div class="legend"><span><i></i>Pemasukan</span><span><i class="g"></i>Pengeluaran</span></div></div>
   <div class="card next"><div class="card-head" style="padding:0 0 18px"><h3>Arisan berikutnya</h3></div>${n ? `<div class="event-date"><div class="datebox"><small>${fd(n.date, { month: 'short' }).toUpperCase()}</small><b>${n.date.slice(8)}</b></div><div><h4>${esc(n.title)}</h4><p>${esc(n.location || '')} • ${esc(n.time || '')}</p></div></div>` : '<p>Belum ada agenda mendatang.</p>'}<div class="progress"><span style="width:${pct}%"></span></div><div class="split"><span>${d.paid}/${d.members} iuran masuk</span><b style="color:#22a98f">${pct}%</b></div><button class="primary" style="width:100%;margin-top:18px" onclick="showPage('arisan')">Lihat detail arisan</button></div></div>
   <div class="content2"><div class="card activity"><div class="card-head"><h3>Aktivitas terbaru</h3></div>${d.activity.map(a => `<div class="activity-row"><div class="activity-icon">${esc(a.icon)}</div><div class="activity-text"><b>${esc(a.text)}</b><span>${esc(a.detail)} • ${ft(a.at)}</span></div></div>`).join('')}</div>
   <div class="card members"><div class="card-head"><h3>Anggota terbaru</h3><span>${d.members} ANGGOTA</span></div>${d.recent.map(m => `<div class="member-row"><div class="avatar">${ini(m.name)}</div><div class="member-info"><b>${esc(m.name)}</b><span>${esc(m.relation || '')} • Generasi ${m.generation}</span></div></div>`).join('')}</div></div>`;
 };
-R.arisan = async () => {
-  const d = window._pay = await api('payments'), paid = d.rows.filter(r => r.pid), tot = d.rows.length * d.iuran, got = paid.length * d.iuran;
-  $('#arisan').innerHTML = hero('Monitoring Arisan', 'Transparansi iuran, jadwal, penerima giliran, dan histori kegiatan.') + `
-  <div class="card" style="margin-bottom:20px"><div class="card-head"><h3>Arisan ${MONTH(d.period)} — iuran ${rp(d.iuran)}</h3><span>${adm('<button class="primary" onclick="waGroup()">💬 Ingatkan grup</button> <button class="primary" onclick="setIuran(' + d.iuran + ')">Atur iuran</button>')}</span></div><table class="table"><thead><tr><th>Anggota</th><th>Iuran</th><th>Status</th><th>Waktu</th><th></th></tr></thead><tbody>${d.rows.map(r => `<tr><td><b>${esc(r.name)}</b></td><td class="money">${rp(d.iuran)}</td><td><span class="status ${r.pid ? '' : 'pending'}">${r.pid ? 'Lunas' : 'Belum'}</span></td><td>${r.pid ? ft(r.paid_at) : '—'}</td><td>${adm(r.pid ? `<button class="btn-s d" onclick="unpay(${r.pid})">Batalkan</button>` : `<button class="btn-s" onclick="pay(${r.member_id},'${d.period}')">Catat bayar</button>`)}${adm(r.pid ? '' : `<button class="btn-s" onclick="wa(${r.member_id})">💬 Ingatkan</button>`)}</td></tr>`).join('')}</tbody></table></div>
-  <div class="grid4">${[['Target Iuran', tot], ['Sudah Masuk', got], ['Belum Masuk', tot - got]].map(s => `<div class="card stat"><span class="stat-label">${s[0]}</span><h2>${rp(s[1])}</h2></div>`).join('')}<div class="card stat"><span class="stat-label">Lunas</span><h2>${paid.length}/${d.rows.length}</h2></div></div>`;
-};
-const pay = guard(async (id, p) => { await api('payments', 'POST', { member_id: id, period: p }); toast('Pembayaran dicatat'); reload(); });
-const unpay = guard(async id => { if (confirm('Batalkan pembayaran ini?')) { await api('payments/' + id, 'DELETE'); reload(); } });
-const setIuran = v => openForm('Atur Iuran Bulanan', [{ k: 'iuran', l: 'Nominal per anggota (Rp)', t: 'number', req: 1 }], { iuran: v }, b => api('settings', 'PUT', b));
-
-R.keuangan = async () => {
-  const [d, tx] = await Promise.all([api('dashboard'), api('transactions')]); CACHE.tx = tx;
-  $('#keuangan').innerHTML = hero('Keuangan Keluarga', 'Catatan pemasukan dan pengeluaran arisan secara transparan.') + `<div class="grid4">${[['Saldo', rp(d.saldo)], ['Pemasukan', rp(d.masuk)], ['Pengeluaran', rp(d.keluar)], ['Transaksi', d.n]].map(s => `<div class="card stat"><span class="stat-label">${s[0]}</span><h2>${s[1]}</h2></div>`).join('')}</div><div class="card"><div class="card-head"><h3>Transaksi terbaru</h3>${adm('<button class="primary" onclick="addTx()">＋ Transaksi</button>')}</div><table class="table"><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Jenis</th><th>Nominal</th><th></th></tr></thead><tbody>${tx.map(t => `<tr><td>${fd(t.date)}</td><td>${esc(t.description)}</td><td><span class="status ${t.type == 'keluar' ? 'pending' : ''}">${t.type == 'masuk' ? 'Masuk' : 'Keluar'}</span></td><td class="money">${t.type == 'masuk' ? '+' : '-'} ${rp(t.amount)}</td><td>${adm(t.payment_id ? '' : `<button class="btn-s" onclick="edit(T,'tx',${t.id})">Ubah</button>`)}</td></tr>`).join('')}</tbody></table></div>`;
-};
+// R.arisan & R.keuangan ada di finance.js; R.laporan ada di report.js
 R.agenda = async () => {
   const ev = CACHE.ev = await api('events');
   $('#agenda').innerHTML = hero('Agenda Keluarga', 'Semua acara keluarga dalam satu kalender.') + `<div class="card"><div class="card-head"><h3>Daftar acara</h3>${adm('<button class="primary" onclick="addEvent()">＋ Agenda</button>')}</div><table class="table"><thead><tr><th>Tanggal</th><th>Kegiatan</th><th>Lokasi</th><th>Status</th><th></th></tr></thead><tbody>${ev.map(e => `<tr><td><b>${fd(e.date)}</b> ${esc(e.time || '')}</td><td>${esc(e.title)}</td><td>${esc(e.location || '—')}</td><td><span class="status ${e.status == 'Terjadwal' ? '' : 'pending'}">${esc(e.status)}</span></td><td>${adm(`<button class="btn-s" onclick="edit(E,'ev',${e.id})">Ubah</button>`)}</td></tr>`).join('')}</tbody></table></div>`;
@@ -120,14 +105,6 @@ R.pengumuman = async () => {
   const an = CACHE.an = await api('announcements');
   $('#pengumuman').innerHTML = hero('Pengumuman', 'Informasi penting untuk seluruh anggota keluarga.') + `${adm('<div class="toolbar"><button class="primary" onclick="addAnn()">＋ Pengumuman</button></div>')}<div class="card activity">${an.map(a => `<div class="activity-row"><div class="activity-icon">!</div><div class="activity-text" style="flex:1"><b>${esc(a.title)}</b>${a.body ? `<p style="margin:2px 0 4px">${esc(a.body)}</p>` : ''}<span>${esc(a.author)} • ${fd(a.date, { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>${adm(`<button class="btn-s" onclick="edit(A,'an',${a.id})">Ubah</button>`)}</div>`).join('') || '<div class="activity-row">Belum ada pengumuman.</div>'}</div>`;
 };
-R.laporan = async () => {
-  const r = CACHE.rep = await api('report');
-  $('#laporan').innerHTML = hero('Laporan', 'Ringkasan aktivitas arisan dan keuangan keluarga.') + `<div class="card"><div class="card-head"><h3>Periode laporan</h3><span class="no-print"><button class="primary" onclick="window.print()">⇩ Cetak / PDF</button> <button class="primary" onclick="csv()">CSV</button></span></div><table class="table"><thead><tr><th>Periode</th><th>Pemasukan</th><th>Pengeluaran</th><th>Saldo akhir</th></tr></thead><tbody>${r.map(x => `<tr><td>${MONTH(x.m)}</td><td>${rp(x.masuk)}</td><td>${rp(x.keluar)}</td><td class="money">${rp(x.saldo)}</td></tr>`).join('')}</tbody></table></div>`;
-};
-function csv() {
-  const t = 'Periode,Pemasukan,Pengeluaran,Saldo\n' + CACHE.rep.map(x => [x.m, x.masuk, x.keluar, x.saldo].join(',')).join('\n');
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([t], { type: 'text/csv' })); a.download = 'laporan-familyhub.csv'; a.click();
-}
 
 // ---------- Tema & boot ----------
 function toggleTheme() {

@@ -109,7 +109,7 @@ function relLabel(m) {                                      // kedudukan dalam k
 }
 async function openProfile(id) {
   await ensureMembers(); const m = FAM.byId.get(id); if (!m) return;
-  const hist = await api('history/' + id), cur = new Date().toISOString().slice(0, 7), paid = hist.pays.some(x => x.period === cur);
+  const hist = await api('history/' + id), cur = new Date().toISOString().slice(0, 7), paid = hist.pays.some(x => x.period === cur && x.fee_type_id === 1), paidW = hist.pays.some(x => x.period === cur && x.fee_type_id === 2), hl = t => hist.pays.filter(x => x.fee_type_id === t).slice(0, 12).map(x => '✓ ' + MONTH(x.period).slice(0, 3) + ' ' + x.period.slice(2, 4)).join(' · ') || 'Belum ada';
   const par = FAM.byId.get(m.parent_id), u = FAM.unitOf.get(id), sp = spousesOf(id), kids = childrenOf(id), sib = m.parent_id ? MEMBERS.filter(x => x.parent_id === m.parent_id && x.id !== id) : [], age = ageOf(m), stt = FAM.mar.get(id);
   const lab = x => x.gender === 'L' ? 'Ayah' : x.gender === 'P' ? 'Ibu' : 'Orang tua', pu = par && FAM.unitOf.get(par.id), other = pu && pu.members.length === 2 ? pu.members.find(x => x.id !== par.id) : null;
   const blood = m.parent_id && FAM.byId.has(m.parent_id) && FAM.unitOf.get(m.parent_id) !== u, nth = blood && u.pu ? `Anak ke-${u.pu.kids.indexOf(u) + 1} dari ${u.pu.kids.length} bersaudara` : '';
@@ -129,8 +129,8 @@ async function openProfile(id) {
     ${row('Pasangan' + (u && u.members.length > 2 ? ' (lebih dari satu)' : ''), more(sp, 6))}
     ${row('Orang tua', par ? chipL(par, lab(par)) + (other ? chipL(other, lab(other)) : '') : '')}${row(`Saudara (${sib.length})`, more(sib, 8))}${row(`Anak (${kids.length})`, more(kids, 10))}
     ${anc.length ? `<div class="detail" style="grid-column:span 2"><span>Garis leluhur</span><div class="rchips anc">${anc.map((x, i) => (i ? '<span class="rarr">›</span>' : '') + chip(x)).join('')}<span class="rarr">›</span><span class="rme">${esc(first(m.name))}</span></div></div>` : ''}
-    <div class="detail"><span>Status Arisan</span><b>${m.active ? '✓ Aktif' : 'Nonaktif'}</b></div><div class="detail"><span>Iuran Bulan Ini</span><b>${paid ? '✓ Lunas' : 'Belum bayar'}</b></div>
-    <div class="detail" style="grid-column:span 2"><span>Riwayat iuran (12 bulan)</span><b style="font-size:12px;line-height:1.8">${hist.pays.map(x => '✓ ' + MONTH(x.period).slice(0, 3) + ' ' + x.period.slice(2, 4)).join(' · ') || 'Belum ada'}</b></div>
+    <div class="detail"><span>Status Arisan</span><b>${m.active ? '✓ Aktif' : 'Nonaktif'}</b></div><div class="detail"><span>Iuran Bulan Ini</span><b style="font-size:12px">Arisan ${paid ? '✓' : '✗'} · Wajib ${paidW ? '✓' : '✗'}</b></div>
+    <div class="detail" style="grid-column:span 2"><span>Riwayat iuran</span><b style="font-size:12px;line-height:1.8">Arisan: ${hl(1)}<br>Wajib: ${hl(2)}</b></div>
     <div class="detail" style="grid-column:span 2"><span>Menang arisan</span><b>${hist.wins.map(w => MONTH(w.period)).join(', ') || 'Belum pernah'}</b></div></div>
   <div class="pbtns"><button class="primary" onclick="goTree(${id})">🌳 Lihat di pohon</button><button class="ghost" onclick="highlightLine(${id})">🧬 Sorot garis keturunan</button>${u && (u.kids.length || u.refs.length) ? `<button class="ghost" onclick="goBranch(${u.id})">⤢ Fokus cabang</button>` : ''}</div>
   ${adm(`<div class="pbtns"><button class="ghost" onclick="addChild(${id})">＋ Anak</button><button class="ghost" onclick="addSpouse(${id})">＋ Pasangan</button><button class="ghost" onclick="openPhotoEditor(${id})">📷 Foto</button><button class="ghost" onclick="editMember(${id})">✎ Ubah</button></div>`)}`;

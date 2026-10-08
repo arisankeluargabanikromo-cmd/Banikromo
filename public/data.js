@@ -32,9 +32,26 @@ async function api(p, m = 'GET', b = {}) {
   if (t === 'logout') { await sb.auth.signOut(); return {}; }
   if (t === 'me') { const { data: { session } } = await sb.auth.getSession(); if (!session) { showLogin(); throw 0; } return profile(session.user); }
   if (t === 'dashboard' || t === 'report') return rpc(t);
-  if (t === 'payments') return m === 'POST' ? rpc('record_payment', { p_member: +b.member_id, p_period: b.period }) : m === 'DELETE' ? rpc('void_payment', { p_id: +id }) : rpc('get_payments', { p_period: null });
+  if (t === 'payments') {   // iuran: tiap jenis (arisan/wajib) dicatat per anggota per periode
+    if (id === 'bulk') return rpc('record_payments', { p_member: +b.member_id, p_type: +b.type, p_periods: b.periods, p_method: b.method || 'Tunai' });
+    return m === 'POST' ? rpc('record_payment', { p_member: +b.member_id, p_period: b.period, p_type: +(b.type || 1), p_method: b.method || 'Tunai' })
+      : m === 'DELETE' ? rpc('void_payment', { p_id: +id, p_reason: b.reason || null }) : rpc('get_payments', { p_period: b.period || null });
+  }
+  if (t === 'fin') {        // keuangan & laporan
+    if (id === 'config') return rpc('fee_config');
+    if (id === 'dashboard') return rpc('finance_dashboard');
+    if (id === 'summary') return rpc('finance_summary', { p_from: b.from, p_to: b.to });
+    if (id === 'ledger') return rpc('finance_ledger', { p_from: b.from, p_to: b.to, p_fund: b.fund || null, p_category: b.category || null, p_limit: b.limit || 1000 });
+    if (id === 'recap') return rpc('iuran_recap', { p_from: b.from, p_to: b.to });
+    if (id === 'arrears') return rpc('iuran_arrears', { p_type: b.type ? +b.type : null, p_include_current: !!b.cur });
+    if (id === 'matrix') return rpc('compliance_matrix', { p_year: +b.year, p_type: +b.type });
+    if (id === 'feetype') return rpc('set_fee_type', { p_id: +b.id, p_name: b.name, p_amount: +b.amount, p_required: !!b.required, p_active: !!b.active, p_start: b.start });
+    if (id === 'meta') return rpc('set_report_meta', { p_org: b.org, p_treasurer: b.treasurer, p_chair: b.chair });
+    if (id === 'disburse') return rpc('disburse_arisan', { p_period: b.period || null });
+    if (id === 'undisburse') return rpc('cancel_disbursement', { p_id: +b.id });
+  }
   if (t === 'users') return m === 'PUT' ? rpc('set_role', { p_id: id, p_role: b.role }) : rpc('list_users');
-  if (t === 'history') { const [a, w] = await Promise.all([sb.from('payments').select('period').eq('member_id', +id).order('period', { ascending: false }).limit(12), sb.from('draws').select('period').eq('winner_id', +id).eq('status', 'sah').order('period')]); return { pays: a.data || [], wins: w.data || [] }; }
+  if (t === 'history') { const [a, w] = await Promise.all([sb.from('payments').select('period,fee_type_id').eq('member_id', +id).order('period', { ascending: false }).limit(36), sb.from('draws').select('period').eq('winner_id', +id).eq('status', 'sah').order('period')]); return { pays: a.data || [], wins: w.data || [] }; }
   if (t === 'members' && m === 'DELETE') { const { data } = await sb.from('members').select('photo_path').eq('id', +id).maybeSingle(); if (data && data.photo_path) await sb.storage.from('photos').remove([data.photo_path + '_s.jpg', data.photo_path + '_l.jpg']); }   // hapus berkas foto
   if (t === 'albums' && m === 'DELETE') { const { data } = await sb.from('photos').select('path').eq('album_id', +id); if (data && data.length) await sb.storage.from('photos').remove(data.map(x => x.path)); }  // bersihkan file foto
   if (t === 'fill') return rpc('fill_marital_status');

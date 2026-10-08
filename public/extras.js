@@ -55,15 +55,7 @@ const delPhoto = guard(async p => {
 
 // ---------- Pengingat WhatsApp ----------
 const waNum = p => { let n = String(p || '').replace(/\D/g, ''); if (n.startsWith('0')) n = '62' + n.slice(1); else if (n.startsWith('8')) n = '62' + n; return n.length >= 10 ? n : ''; };
-function wa(id) {
-  const d = window._pay, r = d.rows.find(x => x.member_id === id), n = waNum(r.phone);
-  if (!n) return toast('Nomor HP ' + r.name + ' belum diisi (menu Anggota → Ubah)');
-  window.open(`https://wa.me/${n}?text=` + encodeURIComponent(`Halo ${r.name}, pengingat iuran arisan ${MONTH(d.period)} sebesar ${rp(d.iuran)}. Terima kasih 🙏`), '_blank');
-}
-function waGroup() {
-  const d = window._pay, un = d.rows.filter(r => !r.pid); if (!un.length) return toast('Semua anggota sudah lunas 🎉');
-  window.open('https://wa.me/?text=' + encodeURIComponent(`Pengingat iuran arisan ${MONTH(d.period)} (${rp(d.iuran)}).\nBelum bayar:\n` + un.map((r, i) => `${i + 1}. ${r.name}`).join('\n') + '\nTerima kasih 🙏'), '_blank');
-}
+// wa() & waGroup() kini ada di finance.js (mendukung dua jenis iuran + tunggakan)
 
 // ---------- Manajemen pengguna (admin) ----------
 titles.pengguna = 'Pengguna';
