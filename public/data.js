@@ -56,6 +56,8 @@ async function api(p, m = 'GET', b = {}) {
   if (t === 'albums' && m === 'DELETE') { const { data } = await sb.from('photos').select('path').eq('album_id', +id); if (data && data.length) await sb.storage.from('photos').remove(data.map(x => x.path)); }  // bersihkan file foto
   if (t === 'fill') return rpc('fill_marital_status');
   if (t === 'import') return rpc('import_members', { p: b.rows });
+  if (t === 'lineage') return rpc('set_lineage_roots', { p_ids: b.ids || [] });          // leluhur utama garis keturunan asli
+  if (t === 'memactive') return rpc('set_members_active', { p_ids: b.ids || [], p_active: +b.active });
   if (t === 'settings') return rpc('set_iuran', { p: +b.iuran });
   if (t === 'draw') {   // pengocokan: kocok -> (sahkan | tidak hadir -> kocok ulang)
     if (id === 'new-cycle') return rpc('new_cycle');

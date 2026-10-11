@@ -14,12 +14,13 @@ function memberFields(self) {
     { k: 'name', l: 'Nama lengkap', req: 1 },
     { k: 'gender', l: 'Jenis kelamin', t: 'select', req: 1, half: 1, o: [['', '— Pilih —'], ['L', '♂ Laki-laki'], ['P', '♀ Perempuan']] },
     { k: 'marital_status', l: 'Status pernikahan', t: 'select', half: 1, o: [['', '— Pilih —'], ['belum_menikah', 'Belum menikah'], ['menikah', 'Menikah'], ['cerai', 'Cerai'], ['cerai_mati', 'Cerai mati (duda/janda)']] },
-    { k: 'parent_id', l: 'Orang tua (ayah atau ibu)', t: 'pick', o: MEMBERS.filter(m => !ex.has(m.id)).map(m => [m.id, label(m)]) },
+    { k: 'parent_id', l: 'Orang tua (ayah atau ibu) — untuk menantu, isi bila keluarga asalnya (besan) ingin dicatat', t: 'pick', o: MEMBERS.filter(m => !ex.has(m.id)).map(m => [m.id, label(m)]) },
     { k: 'spouse_id', l: 'Pasangan (suami / istri) — isi bila menikah / pernah menikah', t: 'pick', o: MEMBERS.filter(m => !self || m.id !== self.id).map(m => [m.id, label(m)]) },
     { k: 'relation', l: 'Hubungan / keterangan', half: 1 },
     { k: 'active', l: 'Status arisan', t: 'select', half: 1, o: [[1, 'Aktif'], [0, 'Nonaktif']] },
     { k: 'birth_year', l: 'Tahun lahir', t: 'number', half: 1 },
     { k: 'death_year', l: 'Tahun wafat (kosongkan jika masih hidup)', t: 'number', half: 1 },
+    ...(HAS_ADDR() ? [{ k: 'address', l: 'Alamat lengkap (jalan, RT/RW, desa/kelurahan, kota)', t: 'textarea' }] : []),
     { k: 'phone', l: 'No. HP / WhatsApp', half: 1 },
     { k: 'joined', l: 'Anggota sejak (tahun)', t: 'number', half: 1 },
   ];
@@ -102,39 +103,13 @@ const chipL = (m, l) => `<button class="rchip g-${gCls(m)}${m.death_year ? ' dea
 const chip = m => chipL(m);
 const REL = ['Leluhur', 'Anak', 'Cucu', 'Cicit'];
 function relLabel(m) {                                      // kedudukan dalam keluarga, mis. "Cucu dari H. Abdullah & Hj. Siti"
-  const u = FAM.unitOf.get(m.id); let top = u; while (top.pu) top = top.pu;
-  const blood = m.parent_id && FAM.byId.has(m.parent_id) && FAM.unitOf.get(m.parent_id) !== u;
-  if (u.pm && !blood) return `${m.gender === 'L' ? 'Suami' : m.gender === 'P' ? 'Istri' : 'Pasangan'} dari ${first(u.pm.name)}`;
-  if (!u.pu) return FAM.loose.includes(u) ? 'Belum terhubung ke pohon keluarga' : 'Leluhur keluarga'; return `${u.depth <= 3 ? REL[u.depth] : 'Keturunan ke-' + u.depth} dari ${unitLabel(top)}`;
-}
-async function openProfile(id) {
-  await ensureMembers(); const m = FAM.byId.get(id); if (!m) return;
-  const hist = await api('history/' + id), cur = new Date().toISOString().slice(0, 7), paid = hist.pays.some(x => x.period === cur && x.fee_type_id === 1), paidW = hist.pays.some(x => x.period === cur && x.fee_type_id === 2), hl = t => hist.pays.filter(x => x.fee_type_id === t).slice(0, 12).map(x => '✓ ' + MONTH(x.period).slice(0, 3) + ' ' + x.period.slice(2, 4)).join(' · ') || 'Belum ada';
-  const par = FAM.byId.get(m.parent_id), u = FAM.unitOf.get(id), sp = spousesOf(id), kids = childrenOf(id), sib = m.parent_id ? MEMBERS.filter(x => x.parent_id === m.parent_id && x.id !== id) : [], age = ageOf(m), stt = FAM.mar.get(id);
-  const lab = x => x.gender === 'L' ? 'Ayah' : x.gender === 'P' ? 'Ibu' : 'Orang tua', pu = par && FAM.unitOf.get(par.id), other = pu && pu.members.length === 2 ? pu.members.find(x => x.id !== par.id) : null;
-  const blood = m.parent_id && FAM.byId.has(m.parent_id) && FAM.unitOf.get(m.parent_id) !== u, nth = blood && u.pu ? `Anak ke-${u.pu.kids.indexOf(u) + 1} dari ${u.pu.kids.length} bersaudara` : '';
-  const anc = []; for (let x = par, g = 0; x && g < 12; x = FAM.byId.get(x.parent_id), g++) anc.unshift(x);
-  const more = (arr, n) => arr.slice(0, n).map(chip).join('') + (arr.length > n ? `<span class="rmore">+${arr.length - n} lagi</span>` : '');
-  const row = (l, h) => h ? `<div class="detail" style="grid-column:span 2"><span>${l}</span><div class="rchips">${h}</div></div>` : '';
-  const edges = sp.map(s => { const c = FAM.st.get(Math.min(id, s.id) + '-' + Math.max(id, s.id)) === 'cerai'; return c ? `Cerai dengan ${esc(s.name)}` : s.death_year ? `Menikah dengan almarhum ${esc(s.name)} (wafat ${s.death_year})` : `Menikah dengan ${esc(s.name)}`; });
-  const grad = m.gender === 'L' ? 'linear-gradient(135deg,#6f95ff,#4b7bff)' : m.gender === 'P' ? 'linear-gradient(135deg,#ff8fc0,#ec5f9a)' : 'linear-gradient(135deg,#9aa4b8,#7a8499)';
-  $('#profileBox').innerHTML = `<div class="modal-top"><b>Profil Keluarga</b><button class="close" onclick="closeProfile()">×</button></div>
-  <div class="profile"><div class="pavw"><div class="pav" style="background:${grad}"${m.photo_path ? ` data-pp="${esc(m.photo_path)}" data-sz="l"` : ''}>${esc(ini(m.name))}</div>${adm(`<button class="pcam" onclick="openPhotoEditor(${id})" title="${m.photo_path ? 'Ganti' : 'Tambah'} foto">📷</button>`)}</div>
-  <h2>${esc(m.name)}${m.death_year ? ' †' : ''}</h2>
-  <p class="prel">${esc(relLabel(m))}</p>
-  <p>${m.gender ? (m.gender === 'L' ? '♂ Laki-laki' : '♀ Perempuan') : 'Jenis kelamin belum diisi'} • Generasi ${FAM.gen.get(id)}${m.relation ? ' • ' + esc(m.relation) : ''}</p>
-  <p style="margin-top:4px">${m.death_year ? `Wafat ${m.death_year}${age != null ? ` • usia ${age} th` : ''}` : age != null ? `Lahir ${m.birth_year} • usia ${age} th` : ''}${nth ? ` • ${nth}` : ''}${m.phone && m.phone !== 'DEMO' ? ' • ' + esc(m.phone) : ''}</p></div>
-  <div class="detail-grid">
-    <div class="detail" style="grid-column:span 2"><span>Status pernikahan</span><b>${stt.t ? `<em class="st st-${stt.k || 'x'} big">${stt.t}</em>` : 'Belum diisi'}</b>${edges.length ? `<div class="rtxt">${edges.join(' · ')}</div>` : ''}</div>
-    ${row('Pasangan' + (u && u.members.length > 2 ? ' (lebih dari satu)' : ''), more(sp, 6))}
-    ${row('Orang tua', par ? chipL(par, lab(par)) + (other ? chipL(other, lab(other)) : '') : '')}${row(`Saudara (${sib.length})`, more(sib, 8))}${row(`Anak (${kids.length})`, more(kids, 10))}
-    ${anc.length ? `<div class="detail" style="grid-column:span 2"><span>Garis leluhur</span><div class="rchips anc">${anc.map((x, i) => (i ? '<span class="rarr">›</span>' : '') + chip(x)).join('')}<span class="rarr">›</span><span class="rme">${esc(first(m.name))}</span></div></div>` : ''}
-    <div class="detail"><span>Status Arisan</span><b>${m.active ? '✓ Aktif' : 'Nonaktif'}</b></div><div class="detail"><span>Iuran Bulan Ini</span><b style="font-size:12px">Arisan ${paid ? '✓' : '✗'} · Wajib ${paidW ? '✓' : '✗'}</b></div>
-    <div class="detail" style="grid-column:span 2"><span>Riwayat iuran</span><b style="font-size:12px;line-height:1.8">Arisan: ${hl(1)}<br>Wajib: ${hl(2)}</b></div>
-    <div class="detail" style="grid-column:span 2"><span>Menang arisan</span><b>${hist.wins.map(w => MONTH(w.period)).join(', ') || 'Belum pernah'}</b></div></div>
-  <div class="pbtns"><button class="primary" onclick="goTree(${id})">🌳 Lihat di pohon</button><button class="ghost" onclick="highlightLine(${id})">🧬 Sorot garis keturunan</button>${u && (u.kids.length || u.refs.length) ? `<button class="ghost" onclick="goBranch(${u.id})">⤢ Fokus cabang</button>` : ''}</div>
-  ${adm(`<div class="pbtns"><button class="ghost" onclick="addChild(${id})">＋ Anak</button><button class="ghost" onclick="addSpouse(${id})">＋ Pasangan</button><button class="ghost" onclick="openPhotoEditor(${id})">📷 Foto</button><button class="ghost" onclick="editMember(${id})">✎ Ubah</button></div>`)}`;
-  $('#profileModal').classList.add('show'); hydratePhotos($('#profileBox'));
+  const k = kinOf(m), u = FAM.unitOf.get(m.id);
+  if (k.k === 'pendiri') return 'Leluhur keluarga (pendiri garis keturunan asli)';
+  if (k.k === 'asli') { let top = u; while (top.pu) top = top.pu; return `${u.depth <= 3 ? REL[u.depth] : 'Keturunan ke-' + u.depth} dari ${unitLabel(top)}`; }
+  if (k.k === 'menantu') { const sp = asliSpouses(m); return `${m.gender === 'L' ? 'Suami' : m.gender === 'P' ? 'Istri' : 'Pasangan'} dari ${sp.map(x => first(x.name)).join(' & ') || '—'} (menantu)`; }
+  if (k.k === 'besan') { const A = k.anchors || [k.grp.anchors[0]], a = { name: A.map(x => first(x.name)).join(' & ') }, lab = { ortu: m.gender === 'L' ? 'Ayah' : m.gender === 'P' ? 'Ibu' : 'Orang tua', ipar: m.gender === 'L' ? 'Saudara laki-laki' : m.gender === 'P' ? 'Saudara perempuan' : 'Saudara', kerabat: 'Kerabat' }[k.role]; return `${lab} dari ${a.name} (menantu) · keluarga besan`; }
+  if (!u.pu) return FAM.loose.includes(u) ? 'Belum terhubung ke pohon keluarga' : 'Leluhur keluarga lain';
+  let top = u; while (top.pu) top = top.pu; return `${u.depth <= 3 ? REL[u.depth] : 'Keturunan ke-' + u.depth} dari ${unitLabel(top)}`;
 }
 function goMembers(g, st) { showPage('anggota'); setTimeout(() => { if (g) $('#mj').value = g; if (st) $('#ms').value = st; drawMembers(); }, 400); }
 const fillMarital = guard(async () => {
@@ -147,6 +122,7 @@ let MLIMIT = 100;
 R.anggota = async () => {
   MEMBERS = await api('members'); famOf(); MLIMIT = 100;
   $('#anggota').innerHTML = hero('Anggota Keluarga', `${MEMBERS.length} anggota — direktori, status pernikahan, pasangan, dan status arisan.`) + `<div class="toolbar"><input class="search" id="mq" placeholder="Cari nama anggota..." oninput="MLIMIT=100;drawMembers()">
+  <select class="select" id="mk" onchange="MLIMIT=100;drawMembers()"><option value="">Semua garis keluarga</option><option value="asli">🧬 Keturunan asli</option><option value="menantu">💍 Menantu</option>${FAM.stats.besan ? '<option value="besan">🏠 Keluarga besan</option>' : ''}${FAM.stats.luar ? '<option value="luar">Keluarga lain</option>' : ''}</select>
   <select class="select" id="mg" onchange="MLIMIT=100;drawMembers()"><option value="">Semua generasi</option>${Array.from({ length: FAM.stats.maxGen }, (_, i) => `<option value="${i + 1}">Generasi ${i + 1}</option>`).join('')}</select>
   <select class="select" id="mj" onchange="MLIMIT=100;drawMembers()"><option value="">Semua jenis kelamin</option><option value="L">♂ Laki-laki</option><option value="P">♀ Perempuan</option><option value="?">Belum diisi</option></select>
   <select class="select" id="ms" onchange="MLIMIT=100;drawMembers()"><option value="">Semua status nikah</option><option value="belum_menikah">Belum menikah</option><option value="menikah">Menikah</option><option value="cerai">Cerai</option><option value="cerai_mati">Duda / Janda</option><option value="-">Belum diisi</option></select>
@@ -155,19 +131,19 @@ R.anggota = async () => {
   drawMembers();
 };
 function drawMembers() {
-  const q = $('#mq').value.toLowerCase(), g = $('#mg').value, j = $('#mj').value, s = $('#ms').value;
-  const res = MEMBERS.filter(m => m.name.toLowerCase().includes(q) && (!g || FAM.gen.get(m.id) == g) && (!j || (j === '?' ? !m.gender : m.gender === j)) && (!s || (s === '-' ? !FAM.mar.get(m.id).k : FAM.mar.get(m.id).k === s)));
+  const q = $('#mq').value.toLowerCase(), kk = $('#mk').value, g = $('#mg').value, j = $('#mj').value, s = $('#ms').value;
+  const res = MEMBERS.filter(m => m.name.toLowerCase().includes(q) && (!g || FAM.gen.get(m.id) == g) && (!kk || (kk === 'asli' ? ['asli', 'pendiri'].includes(kinOf(m).k) : kinOf(m).k === kk)) && (!j || (j === '?' ? !m.gender : m.gender === j)) && (!s || (s === '-' ? !FAM.mar.get(m.id).k : FAM.mar.get(m.id).k === s)));
   $('#memberTable').innerHTML = res.slice(0, MLIMIT).map(m => {
     const sp = spousesOf(m.id), p = FAM.byId.get(m.parent_id), st = FAM.mar.get(m.id);
-    return `<tr><td><span class="mcell g-${gCls(m)}">${avHtml(m, 's', 'sm')}<span><b>${esc(m.name)}</b>${m.death_year ? ' †' : ''}<br><small class="muted">${esc(m.relation || '')}</small></span></span></td><td>${st.t ? `<em class="st st-${st.k} big">${st.t}</em>` : '<small class="muted">—</small>'}</td><td>${sp.map(x => `<a class="lnk" onclick="openProfile(${x.id})">${esc(x.name)}</a>`).join(', ') || '—'}</td><td>${p ? `<a class="lnk" onclick="openProfile(${p.id})">${esc(p.name)}</a>` : '—'}</td><td>${FAM.gen.get(m.id)}</td><td>${esc(yrs(m).replace('Lahir ', '') || '—')}</td><td><span class="status ${m.active ? '' : 'pending'}">${m.active ? 'Aktif' : 'Nonaktif'}</span></td><td><button class="btn-s" onclick="openProfile(${m.id})">Detail</button></td></tr>`;
+    return `<tr><td><span class="mcell g-${gCls(m)}">${avHtml(m, 's', 'sm')}<span><b>${esc(m.name)}</b>${m.death_year ? ' †' : ''} ${kinHtml(m)}<br><small class="muted">${esc(m.relation || '')}</small></span></span></td><td>${st.t ? `<em class="st st-${st.k} big">${st.t}</em>` : '<small class="muted">—</small>'}</td><td>${sp.map(x => `<a class="lnk" onclick="openProfile(${x.id})">${esc(x.name)}</a>`).join(', ') || '—'}</td><td>${p ? `<a class="lnk" onclick="openProfile(${p.id})">${esc(p.name)}</a>` : '—'}</td><td>${FAM.gen.get(m.id)}</td><td>${esc(yrs(m).replace('Lahir ', '') || '—')}</td><td><span class="status ${m.active ? '' : 'pending'}">${m.active ? 'Aktif' : 'Nonaktif'}</span></td><td><button class="btn-s" onclick="openProfile(${m.id})">Detail</button></td></tr>`;
   }).join('') || '<tr><td colspan="8">Tidak ada data</td></tr>';
   $('#mmore').innerHTML = res.length > MLIMIT ? `<button class="ghost" onclick="MLIMIT+=100;drawMembers()">Tampilkan 100 lagi (${res.length - MLIMIT} tersisa)</button>` : `<small class="muted">${res.length} anggota</small>`;
   hydratePhotos($('#memberTable'));
 }
 
 // ---------- Impor CSV ----------
-const TPL = 'kode;nama;jk;status_nikah;kode_ortu;kode_pasangan;status_pasangan;lahir;wafat;hubungan;telepon\nA1;H. Santoso;L;menikah;;A2;menikah;1938;2015;Kakek;\nA2;Hj. Aminah;P;menikah;;;;1942;;Nenek;\nA3;Budi Santoso;L;menikah;A1;A4;menikah;1965;;Anak;081234567890\nA4;Sri Wahyuni;P;menikah;;;;1968;;Menantu;\nA5;Andi Pratama;L;belum menikah;A3;;;1992;;Cucu;\n';
-const KEYS = { kode: 'kode', id: 'kode', nama: 'nama', name: 'nama', jk: 'gender', jenis_kelamin: 'gender', kelamin: 'gender', gender: 'gender', kode_ortu: 'kode_ortu', ortu: 'kode_ortu', orang_tua: 'kode_ortu', kode_orang_tua: 'kode_ortu', parent: 'kode_ortu', kode_pasangan: 'kode_pasangan', pasangan: 'kode_pasangan', spouse: 'kode_pasangan', status_pasangan: 'status_pasangan', status: 'status_pasangan', lahir: 'lahir', tahun_lahir: 'lahir', birth: 'lahir', wafat: 'wafat', tahun_wafat: 'wafat', meninggal: 'wafat', hubungan: 'hubungan', relation: 'hubungan', telepon: 'telepon', hp: 'telepon', no_hp: 'telepon', phone: 'telepon', status_nikah: 'marital', status_pernikahan: 'marital', pernikahan: 'marital', marital: 'marital' };
+const TPL = 'kode;nama;jk;status_nikah;kode_ortu;kode_pasangan;status_pasangan;lahir;wafat;hubungan;telepon;alamat\nA1;H. Santoso;L;menikah;;A2;menikah;1938;2015;Kakek;;\nA2;Hj. Aminah;P;menikah;;;;1942;;Nenek;;\nA3;Budi Santoso;L;menikah;A1;A4;menikah;1965;;Anak;081234567890;Jl. Mawar No. 5 RT 02/RW 03 Kediri\nA4;Sri Wahyuni;P;menikah;;;;1968;;Menantu;;Jl. Mawar No. 5 RT 02/RW 03 Kediri\nA5;Andi Pratama;L;belum menikah;A3;;;1992;;Cucu;;\n';
+const KEYS = { kode: 'kode', id: 'kode', nama: 'nama', name: 'nama', jk: 'gender', jenis_kelamin: 'gender', kelamin: 'gender', gender: 'gender', kode_ortu: 'kode_ortu', ortu: 'kode_ortu', orang_tua: 'kode_ortu', kode_orang_tua: 'kode_ortu', parent: 'kode_ortu', kode_pasangan: 'kode_pasangan', pasangan: 'kode_pasangan', spouse: 'kode_pasangan', status_pasangan: 'status_pasangan', status: 'status_pasangan', lahir: 'lahir', tahun_lahir: 'lahir', birth: 'lahir', wafat: 'wafat', tahun_wafat: 'wafat', meninggal: 'wafat', hubungan: 'hubungan', relation: 'hubungan', telepon: 'telepon', alamat: 'alamat', address: 'alamat', hp: 'telepon', no_hp: 'telepon', phone: 'telepon', status_nikah: 'marital', status_pernikahan: 'marital', pernikahan: 'marital', marital: 'marital' };
 function parseCsv(text) {
   text = text.replace(/^\uFEFF/, ''); const head = text.split(/\r?\n/)[0] || '', d = (head.match(/;/g) || []).length > (head.match(/,/g) || []).length ? ';' : ',';
   const rows = []; let r = [], c = '', q = false;

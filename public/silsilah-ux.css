@@ -1,0 +1,188 @@
+/* ================= SILSILAH v2.8 — lebih mudah dipahami =================
+   Prinsip: pohon tampil lebih dulu • kontrol dikelompokkan • istilah dijelaskan • hubungan dibaca dari sudut pandang "Saya" */
+
+/* ---- 1. Kepala halaman ringkas: statistik utama ada di dalam hero, pohon tampil lebih dulu ---- */
+#silsilah .hero{padding:16px 24px;margin-bottom:12px;border-radius:22px;gap:20px}
+#silsilah .hero h1{font-size:21px;margin:0 0 3px}
+#silsilah .hero p{font-size:12.5px;max-width:520px;line-height:1.5}
+.hero-stats{position:relative;z-index:1;display:flex;gap:6px 22px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.hs{text-align:center}.hs b{display:block;font-size:22px;line-height:1.1;color:#fff}.hs span{font-size:10.5px;color:rgba(255,255,255,.88);white-space:nowrap}
+.hs-more{background:rgba(255,255,255,.18);color:#fff;font-size:11.5px;font-weight:600;padding:7px 12px;border-radius:11px}.hs-more:hover{background:rgba(255,255,255,.28)}
+.fsall{margin-bottom:12px;padding:14px 16px}.fsall[hidden]{display:none}.fsall .fstats{margin:0}
+.fnotes{margin:0 0 14px}.fnotes .fnote,.fnotes .finfo{margin-bottom:8px}
+
+/* ---- 2. Toolbar dua baris, dikelompokkan (tidak ada tombol yatim di baris sendiri) ---- */
+.ftbar{display:block;padding:14px 16px 4px}
+.ftrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+.ftrow2{padding-top:10px;border-top:1px dashed var(--line)}
+.ftrow .ftgap{flex:1 1 8px}
+.ftrow .ftsearch{flex:1 1 220px;max-width:320px}
+.ftme.on{background:rgba(105,87,255,.12)!important;color:var(--accent)!important;box-shadow:inset 0 0 0 1.5px var(--accent)}
+.ftme b{font-weight:700}
+.ftsel{white-space:nowrap}
+.ftcard .seg button{white-space:nowrap}
+
+/* ---- 3. Baris keterangan di atas pohon ---- */
+.crumbrow{flex-wrap:wrap;gap:6px 12px}
+.lineline{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);padding-left:18px}
+.lineline b{color:var(--text)}.lineline small{color:var(--muted)}
+.crumbrow .crumb{padding:0 0 0 18px}
+.fthint2{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:2px 16px 10px;padding:10px 14px;border-radius:14px;background:rgba(105,87,255,.08);border:1px solid rgba(105,87,255,.28);font-size:13px}
+.fthint2>div{display:flex;gap:6px;align-items:center}.fthint2 .btn-s{background:var(--panel);box-shadow:0 0 0 1px var(--line);border-radius:10px;font-weight:600}
+.fthint2 .x{background:transparent;color:var(--muted);width:28px;height:28px;border-radius:8px}
+
+/* ---- 4. Area pohon lebih tinggi ---- */
+.ftview{height:clamp(480px,calc(100vh - 330px),920px)}
+.ftview .fthint2{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:8;margin:0;width:max-content;max-width:calc(100% - 28px);background:var(--panel);box-shadow:0 10px 28px rgba(20,28,60,.2)}
+.ftview:has(.fthint2) .fthint{display:none}
+.ftlist{max-height:calc(100vh - 280px)}
+
+/* ---- 5. Legenda ringkas ---- */
+.ftlegend{gap:8px 12px;max-width:min(470px,calc(100% - 28px));bottom:78px;left:14px}
+.ftlegend .lgmore{color:var(--accent);font-weight:700;cursor:pointer}
+@media(max-width:1100px){.ftlegend{display:flex}.ftlegend>span:nth-child(n+6){display:none}}
+@media(max-width:760px){.ftlegend{display:none}}
+
+/* ---- 6. Pita generasi lebih kecil & tidak menimpa kartu ---- */
+.gl{padding:3px 8px;border-radius:9px;opacity:.96}.gl b{font-size:10.5px}.gl small{font-size:8.5px}
+
+/* ---- 6b. Gen N kompak: tidak menutupi kartu ---- */
+.gl{left:6px;padding:2px 7px;align-items:center}.gl small{display:block}
+
+/* ---- 7. Sebutan kekerabatan ("Saya adalah …") ---- */
+:root{--rk-b:#0f8f78;--rk-bbg:#dff7f1;--rk-l:#6f4cc4;--rk-lbg:#ece6fb;--rk-me:#fff;--rk-mebg:#6957ff}
+body.dark{--rk-b:#5fe0bc;--rk-bbg:#12372f;--rk-l:#b79cff;--rk-lbg:#2c2347}
+.ftview.relon .pc{height:98px;padding-bottom:30px}
+.pc>.rk{position:absolute;left:0;right:0;bottom:0;height:22px;border-radius:0 0 14px 14px;display:flex;align-items:center;justify-content:center;padding:0 8px;font-size:10.5px;font-weight:700;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rk-blood{background:var(--rk-bbg);color:var(--rk-b)}
+.rk-law{background:var(--rk-lbg);color:var(--rk-l)}
+.rk-none{background:transparent;color:var(--muted);font-weight:400}
+.rk-me{background:var(--rk-mebg);color:var(--rk-me)}
+.pc.me{border-color:var(--rk-mebg);box-shadow:0 0 0 3px rgba(105,87,255,.35),0 8px 20px rgba(105,87,255,.28)}
+.lod2 .pc>.rk{display:none}
+.lod1 .ftview.relon .pc,.ftview.lod1.relon .pc{height:98px}
+em.rk-i{font-style:normal;display:inline-block;font-size:11px;font-weight:700;border-radius:9px;padding:1px 8px;margin-left:5px;align-self:center;white-space:nowrap}
+em.rk-i.rk-blood{background:var(--rk-bbg);color:var(--rk-b)}em.rk-i.rk-law{background:var(--rk-lbg);color:var(--rk-l)}em.rk-i.rk-me{background:var(--rk-mebg);color:#fff}
+.ol-p.me{box-shadow:0 0 0 2px var(--rk-mebg);background:rgba(105,87,255,.07)}
+
+/* ---- 8. Pemilih "Posisi saya" ---- */
+.modal-box.sm{width:min(540px,100%)}
+.sm-note{font-size:13px;color:var(--muted);line-height:1.65;margin:10px 0 12px}
+.sm-cur{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:rgba(105,87,255,.08);border-radius:12px;padding:8px 12px;margin-bottom:10px;font-size:13px}.sm-cur span{flex:1 1 auto}
+.sm-search{max-width:none!important;flex:none!important}
+.sm-res{margin:8px 0 12px;max-height:240px;overflow:auto;display:flex;flex-direction:column;gap:2px}
+.sm-res button{display:grid;grid-template-columns:28px 1fr auto;gap:0 10px;align-items:center;text-align:left;background:transparent;color:var(--text);padding:8px 10px;border-radius:12px}
+.sm-res button:hover{background:var(--panel2)}.sm-res b{font-size:13px}.sm-res small{font-size:11px;color:var(--muted)}
+.sm-opts{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:12px}
+.sm-opt{font-size:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sm-opt input{width:auto;margin:0;accent-color:var(--accent)}
+#smterm button{display:flex;flex-direction:column;align-items:flex-start;line-height:1.25;padding:7px 14px}#smterm small{font-size:10px;font-weight:500;opacity:.8}
+
+/* ---- 9. Panduan "Cara membaca silsilah" ---- */
+.modal-box.gd-box{width:min(700px,100%)}
+.gd h4{margin:20px 0 8px;font-size:13px;color:var(--accent);letter-spacing:.01em}
+.gd-row{display:grid;grid-template-columns:minmax(150px,300px) 1fr;gap:14px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.gd-row:last-of-type{border-bottom:0}
+.gd-s{display:flex;align-items:center;min-height:50px;padding:8px 6px}.gd-s .unit{box-shadow:0 4px 12px rgba(30,40,90,.08)}
+.gd-s .pc{cursor:default;pointer-events:none;transform:scale(.88);transform-origin:left center;margin-right:-14px}
+.gd-s .unit .pc{margin-right:0}
+.gd-t>b{display:block;font-size:13px;margin-bottom:2px}.gd-t>span{display:block;font-size:12.5px;color:var(--muted);line-height:1.55}.gd-t>span b{color:var(--text);font-weight:700}
+.gd-ic{display:inline-flex}.gd-ic .gl{box-shadow:none}
+.gd-ul{margin:0;padding-left:20px;font-size:13px;line-height:1.75;color:var(--muted)}.gd-ul b{color:var(--text)}
+.gd-p{font-size:13px;color:var(--muted);line-height:1.7;margin:0}
+.gd .row{display:flex;gap:10px;margin-top:18px}.gd .row button{flex:1;padding:12px;border-radius:13px}
+@media(max-width:620px){.gd-row{grid-template-columns:1fr;gap:6px}}
+
+/* ---- 10. Profil: tab Keluarga | Arisan & iuran ---- */
+.ptabs{display:flex;gap:4px;background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:3px;margin:4px 0 12px}
+.ptabs button{flex:1;padding:9px 10px;border-radius:10px;background:transparent;color:var(--muted);font-size:12.5px;font-weight:600}
+.ptabs button.on{background:var(--accent);color:#fff}
+.detail-grid[hidden]{display:none}
+.detail.relme{background:linear-gradient(135deg,rgba(105,87,255,.10),rgba(63,207,182,.10));border:1px solid rgba(105,87,255,.25)}
+.detail.relme.off{background:var(--panel2);border:1px dashed var(--line)}
+.detail.relme .relterm{display:block;margin-top:6px}.detail.relme .relterm em.rk-i{font-size:15px;padding:3px 13px;margin-left:0}.detail.relme .relterm small{display:inline;color:var(--muted);font-size:11px;margin-left:4px}
+.detail.relme>span small{display:inline;font-size:9px}
+.detail.relme .rtxt{margin-top:7px;line-height:1.6;font-size:12.5px;color:var(--text)}
+.detail.relme .btn-s{background:var(--panel);box-shadow:0 0 0 1px var(--line);border-radius:10px;margin:2px 4px 2px 0}
+.pbtns{flex-wrap:wrap}.pbtns button{white-space:normal;flex:1 1 30%}
+
+/* ---- 11. HP ---- */
+@media(max-width:760px){
+  #silsilah .hero{padding:16px 18px;margin-bottom:10px}#silsilah .hero p{font-size:12px}
+  #silsilah .hero{flex-direction:column;align-items:flex-start;gap:12px}.hero-stats{justify-content:flex-start;gap:6px 18px}.hs{text-align:left}.hs b{font-size:19px}.hs-more{padding:6px 10px}
+  .fsall .fstats{grid-template-columns:1fr 1fr}
+  .ftbar{padding:12px 12px 2px}
+  .ftrow{gap:8px}.ftrow .ftsearch{flex:1 1 100%;max-width:none}
+  .ftrow .ftgap{display:none}
+  .ftrow>.ftme,.ftrow>#ftguide{flex:1 1 0;white-space:nowrap}
+  .ftrow2{padding-top:8px}.ftrow2 .ghost{flex:1 1 auto}
+  .lineline{padding-left:12px;flex-wrap:wrap}.crumbrow .crumb{padding-left:12px}
+  .fthint2{margin:2px 10px 10px}
+  .ftlist{max-height:none;overflow:visible}
+  #silsilah .hero p{display:none}.hs b{font-size:17px}.hs span{font-size:10px}.fthint2 .hd{display:none}.fthint2{padding:8px 12px}
+  .gd-row{padding:10px 0}
+  .pbtns button{flex:1 1 100%}
+}
+
+/* ================= PROFIL KELUARGA ala Facebook (v2.9) ================= */
+#profileModal{padding:16px}
+.modal-box.fbp-box,body.dark .modal-box.fbp-box{width:min(1120px,100%);max-height:96vh;padding:0;border-radius:24px;overflow-y:auto;background:var(--bg);color:var(--text);font-size:14.5px}
+.fbp-cover{position:relative;height:190px;border-radius:24px 24px 0 0;overflow:hidden;background:linear-gradient(120deg,#8a94ab,#5d6b8a)}
+.fbp-cover.cv-m{background:linear-gradient(120deg,#3f6fff 0%,#7a6bff 55%,#3fcfb6 120%)}
+.fbp-cover.cv-f{background:linear-gradient(120deg,#ec5f9a 0%,#a366ff 60%,#ffb36b 125%)}
+.fbp-cover::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 85% 20%,rgba(255,255,255,.28),transparent 45%),radial-gradient(circle at 10% 110%,rgba(255,255,255,.18),transparent 45%)}
+.fbp-cover .cvbg{position:absolute;inset:-24px;background-size:cover;background-position:center;filter:blur(18px) saturate(1.15);opacity:.6}
+.fbp-cover::after{content:"";position:absolute;inset:auto 0 0 0;height:90px;background:linear-gradient(transparent,rgba(10,15,30,.28))}
+.fbp-cover .cvtag{position:absolute;left:22px;top:18px;z-index:2;background:rgba(255,255,255,.22);color:#fff;font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;backdrop-filter:blur(6px)}
+.fbp-x{position:absolute;right:16px;top:14px;z-index:3;width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.9)!important;color:#172033!important;font-size:20px;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.fbp-head{position:relative;background:var(--panel);padding:0 28px 14px;display:flex;gap:22px;align-items:flex-end;flex-wrap:wrap}
+.fbp-head .pavw{margin:-90px 0 0;width:172px;flex:none;position:relative;z-index:2}
+.fbp-head .pav{width:172px;height:172px;font-size:56px;border:5px solid var(--panel);box-shadow:0 10px 28px rgba(30,40,90,.28)}
+.fbp-head .pcam{right:6px;bottom:8px;width:38px;height:38px;font-size:17px}
+.fbp-id{flex:1 1 200px;padding-bottom:6px;min-width:0}
+.fbp-id h2{margin:12px 0 2px;font-size:30px;line-height:1.15}
+.fbp-id .prel{font-size:14.5px;margin:2px 0 4px}.fbp-sub{margin:0;color:var(--muted);font-size:13.5px}
+.fbp-act{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;padding-bottom:8px}
+.fbp-act button{padding:11px 16px;border-radius:12px;font-size:13px}
+.fbp-adm{background:var(--panel);display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:0 28px 12px;font-size:12px;color:var(--muted)}
+.fbp-adm .btn-s{background:var(--panel2);border-radius:10px;font-weight:600}
+.fbp-tabs{position:sticky;top:0;z-index:6;background:var(--panel);display:flex;gap:2px;padding:0 20px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);box-shadow:0 6px 16px rgba(20,28,60,.05)}
+.fbp-tabs button{background:transparent;color:var(--muted);padding:15px 18px 12px;font-size:14px;font-weight:600;border-bottom:3px solid transparent;border-radius:0}
+.fbp-tabs button:hover{color:var(--text)}.fbp-tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.fbp-body{display:grid;grid-template-columns:350px 1fr;gap:18px;padding:18px 20px 26px;align-items:start}
+.fbp-intro,.fbp-sec{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px 20px;box-shadow:var(--shadow)}
+.fbp-intro{position:sticky;top:64px}
+.fbp-intro h3,.fbp-sec h3{margin:0 0 10px;font-size:18px}.fbp-sec h3 small{font-size:13px;color:var(--muted);font-weight:600;margin-left:4px}
+.fbp-main>[data-pane]{display:flex;flex-direction:column;gap:14px}.fbp-main>[data-pane][hidden]{display:none}
+.irow{display:flex;gap:12px;padding:9px 0;line-height:1.5}
+.irow .ic{width:28px;text-align:center;font-size:19px;flex:none;line-height:1.3}
+.irow small{display:block;color:var(--muted);font-size:11.5px}.irow .sub{font-size:12.5px;color:var(--muted);margin-top:4px}
+.addr{white-space:pre-line}.maplink{color:var(--accent);font-weight:600;font-size:12.5px;text-decoration:none;white-space:nowrap}.maplink:hover{text-decoration:underline}
+.irow .btn-s{background:var(--panel2);border-radius:10px;font-weight:600;margin-top:4px}
+.istats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;padding-top:14px;border-top:1px solid var(--line);text-align:center}
+.istats b{display:block;font-size:22px}.istats span{font-size:11.5px;color:var(--muted)}
+.fbp-empty{color:var(--muted);font-size:13px;margin:0}
+.ftiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:14px}
+.ftile{display:flex;flex-direction:column;gap:6px;text-align:left;background:transparent;color:var(--text);padding:0;border-radius:14px}
+.ftile b{font-size:13.5px;line-height:1.25;word-break:break-word}.ftile small{color:var(--muted);font-size:11.5px;margin-top:-3px}
+.ftile .av.tl{width:100%;height:auto;aspect-ratio:1/1;border-radius:14px;font-size:28px;transition:box-shadow .15s}
+.ftile .av.tl i{right:7px;bottom:7px;width:20px;height:20px;font-size:13px;line-height:20px}
+.ftile:hover .av.tl{box-shadow:0 0 0 3px var(--accent)}.ftile.dead{filter:saturate(.55);opacity:.88}
+.fbp-dl{margin:0}.fbp-dl>div{display:grid;grid-template-columns:160px 1fr;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}.fbp-dl>div:last-child{border-bottom:0}
+.fbp-dl dt{color:var(--muted);font-size:13px}.fbp-dl dd{margin:0;font-size:14.5px}
+.fbp-sec .detail-grid{gap:10px}.fbp-sec .detail-grid:empty{display:none}
+.fbp-main>[data-pane]>.detail-grid:empty{display:none}
+@media(max-width:900px){
+  .fbp-body{grid-template-columns:1fr}.fbp-intro{position:static}
+  .fbp-head{justify-content:center;text-align:center;padding:0 18px 12px}
+  .fbp-head .pavw{margin:-72px auto 0}.fbp-head .pav{width:144px;height:144px;font-size:46px}
+  .fbp-id{flex:1 1 100%}.fbp-act{margin:0 auto;justify-content:center}
+}
+@media(max-width:760px){
+  #profileModal{padding:0}
+  .modal-box.fbp-box,body.dark .modal-box.fbp-box{width:100%;height:100%;max-height:100vh;border-radius:0}
+  .fbp-cover{height:150px;border-radius:0}.fbp-id h2{font-size:24px}
+  .fbp-tabs{padding:0 6px;overflow-x:auto}.fbp-tabs button{padding:13px 12px 10px;font-size:13px;white-space:nowrap}
+  .fbp-body{padding:12px 10px 20px}.fbp-dl>div{grid-template-columns:1fr;gap:2px}
+  .ftiles{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+}
