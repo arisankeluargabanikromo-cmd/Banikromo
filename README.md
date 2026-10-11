@@ -4,7 +4,7 @@ Frontend statis (HTML/CSS/JS) + **Supabase** (Postgres, Auth, RLS) · deploy via
 ```
 public/            index.html, app.js (tampilan), data.js (lapisan Supabase), config.js
 supabase/          schema.sql (wajib, sudah mencakup semua fitur), seed.sql (opsional),
-                   patch-001/002/003/004/005/006 (HANYA untuk yang sudah terlanjur memakai versi lama),
+                   patch-001/002/003/004/005/006/007/008 (HANYA untuk yang sudah terlanjur memakai versi lama),
                    demo-500-keluarga.sql (opsional, data uji 500 orang)
 scripts/           gen-config.js (isi config.js dari env var saat build Vercel)
 vercel.json        outputDirectory = public
@@ -18,7 +18,7 @@ vercel.json        outputDirectory = public
 5. **Project Settings → API**: salin **Project URL** dan **anon public key**.
 
 > **Sudah menjalankan versi sebelumnya?** Jangan jalankan ulang `schema.sql`. Cukup jalankan `supabase/patch-001-ensure-profile.sql`
-> (bila belum) lalu `patch-002-foto-pengguna.sql`, `patch-003-silsilah.sql`, `patch-004-foto-status.sql`, dan **`patch-005-pengocokan-ulang.sql`**, lalu **`patch-006-keuangan.sql`** (berurutan) di SQL Editor.
+> (bila belum) lalu `patch-002-foto-pengguna.sql`, `patch-003-silsilah.sql`, `patch-004-foto-status.sql`, dan **`patch-005-pengocokan-ulang.sql`**, lalu **`patch-006-keuangan.sql`**, dan **`patch-007-silsilah-asli.sql`** (berurutan) di SQL Editor.
 > Patch 001–004 aman diulang. Patch 005 cukup dijalankan sekali; data undian lama tetap aman (otomatis berstatus *sah*).
 
 ## 2) Jalankan lokal (opsional)
@@ -160,3 +160,56 @@ Saldo kedua dana dibukukan **terpisah**, sehingga uang titipan arisan tidak terc
 - Target iuran pada laporan = jumlah anggota aktif × tarif berlaku; realisasi = seluruh pembayaran tercatat (termasuk susulan).
 - Ekspor Excel memuat pustaka SheetJS dari jsDelivr saat pertama dipakai; bila tidak ada koneksi, otomatis jatuh ke CSV (pemisah `;`, terbuka rapi di Excel berlokal Indonesia).
 - Performa teruji pada 500 anggota × 12 bulan × 2 iuran (±10 ribu pembayaran): seluruh fungsi laporan < 110 ms.
+
+## Silsilah: keturunan asli, menantu, dan keluarga besan (v2.7)
+
+Ketika anak-cucu menikah dengan orang dari keluarga lain, keluarga pasangan (orang tua, ipar, kerabat) ikut dicatat. Dulu semuanya bercampur dan **arah pohon bergantung urutan input** (anggota ber-id terkecil menentukan di bawah siapa pasangan digantung), sehingga keluarga besan bisa menjadi "akar" pohon. Kini silsilah memahami **garis keturunan asli**:
+
+| Kelas | Arti | Tampilan |
+|---|---|---|
+| **Leluhur** | Pendiri garis keturunan asli | Label emas, Generasi 1 |
+| **Keturunan asli** | Anak-cucu leluhur, lewat ayah **maupun ibu** | Batang utama pohon, bernomor generasi |
+| **Menantu** | Pasangan yang masuk lewat pernikahan | Kartu bergaris putus-putus di samping pasangannya; sejajar generasi pasangan |
+| **Keluarga besan** | Keluarga asal menantu (*Besan* = orang tua, *Ipar* = saudara, *Kerabat besan*) | **Cabang terpisah** berwarna amber; tidak pernah menjadi leluhur pohon utama |
+| **Keluarga lain** | Tidak terhubung lewat pernikahan | Tersendiri |
+
+- **Pohon & Daftar**: pemilih *🧬 Keturunan asli · 🏠 Keluarga besan · Keluarga lain*. Penggaris generasi hanya untuk keturunan asli, sehingga nomor generasi tidak menyesatkan.
+- **Tertaut dua arah**: tombol **⌂** pada menantu membuka keluarga asalnya; di cabang besan, tombol **💍 Fitri · menikah dengan Edi ↪** kembali ke pohon utama.
+- **Profil** memuat blok *Hubungan dengan keturunan asli* (mis. "Istri dari Budi (menantu) • sejajar Generasi 2 • Keluarga asal: Pak Darmo & Bu Darmo"). Pencarian dan menu Anggota menampilkan label dan filter garis keluarga.
+- **Catat keluarga asal**: pada profil menantu tersedia **＋ Catat orang tua**.
+- **Otomatis, bukan input manual**: klasifikasi dihitung dari relasi yang sudah ada. Leluhur dideteksi otomatis (keluarga dengan keturunan terbanyak; keturunan hasil pernikahan antar-keluarga dibagi adil agar tidak dihitung ganda). Bila dua keluarga sebanding, muncul peringatan **Mohon konfirmasi**. Admin dapat menegaskan lewat **Atur** (pilih satu atau beberapa leluhur utama; kembali ke Otomatis kapan saja).
+- **Besan tidak ikut arisan secara tak sengaja**: bilah info menawarkan **Nonaktifkan dari arisan** untuk anggota besan yang masih aktif (agar tidak muncul di daftar iuran, tunggakan, dan kocokan). Data silsilah tidak dihapus.
+
+### Upgrade dari v2.6
+Jalankan `supabase/patch-007-silsilah-asli.sql` sekali (aman diulang), lalu deploy ulang. Tidak ada data yang diubah; kolom baru hanya penanda leluhur (`lineage_root`).
+
+### Catatan
+- Keturunan dihitung **bilateral** (anak dari jalur ayah maupun ibu sama-sama keturunan asli).
+- Pilih leluhur **puncak** keluarga. Bila leluhur punya orang tua yang dicatat, tetapkan yang paling atas.
+- Nama dengan sapaan (Pak, Bu, Mbah, H., Hj., dll.) dipersingkat tanpa sapaan di label.
+
+## Silsilah yang lebih mudah dipahami (v2.8)
+Tanpa perubahan database — cukup deploy ulang. File baru: `public/kinship.js`, `public/silsilah-ux.css`.
+
+**Pohon tampil lebih dulu**
+- Hero, statistik, dan toolbar diringkas: 4 angka utama ada di hero, **Statistik** membuka rincian lengkap. Di HP, daftar silsilah kini terlihat di layar pertama (sebelumnya harus menggulir 10 kartu statistik).
+- Toolbar dikelompokkan dua baris (cari · tampilan · kelompok · bantuan / kedalaman · buka-tutup · tombol admin). Catatan perapian admin dipindah ke bawah pohon; hanya peringatan yang memengaruhi kebenaran pohon yang tetap di atas.
+- **Pembukaan cabang bertahap**: pohon dibuka sedalam yang masih muat & terbaca dalam satu layar (skala ≥ 62%); sisanya ditandai badge **+N**. Tidak lagi terpotong di kiri-kanan saat pertama dibuka. Pita **Gen N** dipadatkan dan pohon disisakan lajur agar kartu tidak tertimpa.
+
+**📍 Posisi saya — sebutan kekerabatan**
+Pilih nama Anda sekali (tersimpan di perangkat), lalu setiap kartu pohon/daftar, hasil pencarian, dan profil menampilkan hubungan terhadap Anda: *Ayah, Kakek, Paman, Bibi, Kakak/Adik, Sepupu, Sepupu dua kali, Keponakan, Menantu, Mertua, Ipar, Pasangan sepupu, Mantan istri/suami* dst., lengkap dengan alasannya (mis. “Anak dari Budi, adik dari Ahmad (ayah Anda)”). Kartu Anda diberi cincin **Anda**; tampilan otomatis berpusat di sana.
+- Garis ayah **dan** ibu ditelusuri, termasuk anak yang tercatat di bawah ibu yang berasal dari keluarga besan.
+- Istilah dapat dipilih: **Umum** (Paman/Bibi, Kakek/Nenek) atau **Jawa** (Pakde/Bude bila lebih tua dari orang tua, Paklik/Bulik bila lebih muda, Mbah Kakung/Putri). Pakde/Paklik memerlukan tahun lahir; tanpa itu dipakai Paman/Bibi.
+- Batasan: model data hanya mencatat satu orang tua per anak, sehingga tiri/kandung tidak dibedakan; hubungan lewat dua pernikahan berantai ditampilkan sebagai “Kerabat lewat pernikahan”.
+
+**❓ Panduan “Cara membaca silsilah”** — tombol selalu tersedia (juga di HP) berisi contoh kartu nyata: pasangan, cerai, almarhum, leluhur, menantu, besan, arti **+N**, ⤢, ⌂, ↪, pita generasi, dan cara menjelajah. Pengguna baru melihat ajakan sekali (bisa ditutup).
+
+**Profil bertab**: *👪 Keluarga* (hubungan dengan Anda → orang tua → pasangan → anak → saudara → garis leluhur → status) dan *💰 Arisan & iuran*. Tombol dijelaskan lebih jelas (“Sorot leluhur & keturunan”, “Tampilkan cabang ini saja”).
+
+## Profil keluarga ala Facebook + alamat (v2.9)
+**Upgrade dari v2.8:** jalankan `supabase/patch-008-alamat.sql` **sekali** di SQL Editor (aman diulang, tidak mengubah data), lalu deploy ulang. Instalasi baru cukup `schema.sql` terbaru. Sebelum patch dijalankan, aplikasi tetap normal — hanya kolom alamat yang disembunyikan (admin diberi petunjuk di profil).
+
+- **Halaman profil besar** (hingga 1120 px, hampir layar penuh; layar penuh di HP): **sampul** berwarna (biru/merah muda sesuai jenis kelamin; bila ada foto, fotonya dikaburkan jadi latar sampul), **foto profil bulat besar** yang menimpa sampul, nama, kedudukan, dan tombol aksi.
+- **Kolom Intro** tetap terlihat di kiri: 🏠 alamat (+ tautan **Buka di peta**), 🎂 lahir & usia, 🕊 wafat, 💍 status pernikahan, 📞 HP (+ tautan **WhatsApp**), 👪 urutan anak, 🧬 kedudukan, jumlah anak/saudara/keturunan.
+- **Tab**: 👪 *Keluarga* (orang tua, pasangan, anak, saudara sebagai **kotak foto** seperti daftar teman — klik untuk berpindah profil; garis leluhur; sebutan hubungan dengan Anda) · ℹ️ *Tentang* (informasi dasar, kontak & alamat, pernikahan, posisi dalam silsilah) · 💰 *Arisan & iuran*.
+- **Alamat**: kolom baru di form **Tambah/Ubah Anggota** (teks bebas, boleh beberapa baris) dan di **Impor CSV** (kolom `alamat`; template diperbarui).
