@@ -213,3 +213,17 @@ Pilih nama Anda sekali (tersimpan di perangkat), lalu setiap kartu pohon/daftar,
 - **Kolom Intro** tetap terlihat di kiri: 🏠 alamat (+ tautan **Buka di peta**), 🎂 lahir & usia, 🕊 wafat, 💍 status pernikahan, 📞 HP (+ tautan **WhatsApp**), 👪 urutan anak, 🧬 kedudukan, jumlah anak/saudara/keturunan.
 - **Tab**: 👪 *Keluarga* (orang tua, pasangan, anak, saudara sebagai **kotak foto** seperti daftar teman — klik untuk berpindah profil; garis leluhur; sebutan hubungan dengan Anda) · ℹ️ *Tentang* (informasi dasar, kontak & alamat, pernikahan, posisi dalam silsilah) · 💰 *Arisan & iuran*.
 - **Alamat**: kolom baru di form **Tambah/Ubah Anggota** (teks bebas, boleh beberapa baris) dan di **Impor CSV** (kolom `alamat`; template diperbarui).
+
+## Pengocokan pindah ke Dashboard (v3.0)
+Tanpa perubahan database — cukup deploy ulang. Menu **Pengocokan Digital** di sidebar dihapus; fungsinya kini ada di **Dashboard**, tepat di bawah banner sambutan.
+- **Kartu pengocokan** (gaya panggung mini): periode & siklus, status (*Siap diundi · Menunggu konfirmasi · Sudah diundi · Belum ada peserta*), pemenang dengan foto & mahkota, serta tombol **Mulai / Lanjutkan / Lihat pemenang**, **⛶ Layar penuh** (untuk proyektor/TV), dan — khusus admin — **↻ Siklus baru** serta **↩ Batalkan & kocok ulang**. Viewer melihat tombol “Tonton pengocokan”.
+- **Samping**: peserta undian (chip berinisial, “+N lainnya” membuka daftar lengkap), peserta yang dilewati karena tidak hadir, 3 riwayat terbaru (**Lihat semua** = tabel lengkap beserta kode bukti), dan **Aturan pengundian**.
+- **Panggung layar penuh tidak berubah** (reel, suara, konfirmasi hadir/tidak hadir, kocok ulang). Setelah panggung ditutup, dashboard otomatis dimuat ulang sehingga kartu langsung menampilkan hasil terbaru.
+- Bila database belum menjalankan `patch-005`, kartu menampilkan petunjuk pembaruan, bukan galat.
+
+## Kartu Kalender, Agenda & Pengumuman di Dashboard (v3.1)
+Tanpa perubahan database — cukup deploy ulang. Tiga kartu baru tampil di bawah baris statistik dan memakai data serta form yang sama dengan halaman **Agenda** dan **Pengumuman** (tabel `events` & `announcements`).
+- **Kalender** — kalender bulanan (Senin–Minggu, Minggu merah), navigasi bulan & tombol *Hari ini*, hari ini ditandai, titik penanda per hari (ungu = terjadwal, hijau = selesai, merah = dibatalkan). Klik tanggal untuk melihat acara hari itu; admin dapat langsung **＋ Tambah agenda** pada tanggal kosong yang dipilih.
+- **Agenda Keluarga** — *Acara berikutnya* ditampilkan menonjol dengan hitung mundur (Hari ini / Besok / n hari lagi), diikuti daftar acara mendatang; tab **Terlewat** memuat acara selesai/dibatalkan. Klik acara → rincian lengkap + tombol **📅 Tambah ke Google Kalender** dan tautan peta lokasi.
+- **Pengumuman** — empat terbaru dengan penanda **Baru** (≤ 7 hari); klik untuk membaca isi lengkap. Admin: tombol ＋ dan **✎ Ubah** pada dialog.
+- Tampil rapi di HP (kartu bertumpuk), mode gelap, dan untuk viewer (tanpa tombol admin). Bila data tidak dapat dimuat, muncul pesan dengan tombol *Coba lagi* tanpa merusak dashboard.
