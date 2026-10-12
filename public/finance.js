@@ -29,7 +29,7 @@ function terbilang(n) {
 }
 async function receiptBody(r) {   // r: {no,name,jenis,period,amount,method,paid_at}
   const cfg = await getCfg(), d = new Date(r.paid_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-  return `<div class="rcp"><div class="rcp-h"><div><b>${esc(cfg.meta.org)}</b><small>KUITANSI PEMBAYARAN IURAN</small></div><div class="rcp-no">No. ${esc(r.no)}</div></div>
+  return `<div class="rcp"><div class="rcp-h"><div style="display:flex;gap:10px;align-items:center">${window.fhBrandImg ? fhBrandImg(40, 'flex:none') : ''}<div><b>${esc(cfg.meta.org)}</b><small>KUITANSI PEMBAYARAN IURAN</small></div></div><div class="rcp-no">No. ${esc(r.no)}</div></div>
   <table><tr><td>Telah terima dari</td><td>: <b>${esc(r.name)}</b></td></tr><tr><td>Untuk pembayaran</td><td>: ${esc(r.jenis)} — ${esc(MONTH(r.period))}</td></tr><tr><td>Metode</td><td>: ${esc(r.method)}</td></tr><tr><td>Terbilang</td><td>: <i>${esc(terbilang(r.amount))} rupiah</i></td></tr></table>
   <div class="rcp-amt">Rp ${num(r.amount)}</div><div class="rcp-sign">${esc(d)}<br>Penerima / Bendahara<div class="sp"></div><b>${esc(cfg.meta.treasurer || '(                         )')}</b></div><div class="rcp-clr"></div></div>`;
 }

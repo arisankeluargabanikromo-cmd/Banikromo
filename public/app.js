@@ -35,7 +35,6 @@ function showPage(id, btn) {
   $('#pageTitle').textContent = titles[id]; window.scrollTo({ top: 0 }); guard(R[id])();
 }
 const reload = () => guard(R[page])();
-function quickAdd() { ({ anggota: addMember, keuangan: addTx, agenda: addEvent, pengumuman: addAnn, galeri: addAlbum, silsilah: addMember }[page] || (() => toast('Gunakan tombol tambah di halaman terkait')))(); }
 
 // Tutup modal saat klik latar gelap, dengan dua pengaman:
 // 1) hanya jika tombol mouse ditekan DAN dilepas di latar (seret/sorot teks lalu lepas di luar tidak menutup);
@@ -125,11 +124,10 @@ R.pengumuman = async () => {
 // ---------- Tema & boot ----------
 function toggleTheme() {
   const d = document.body.classList.toggle('dark'); localStorage.setItem('familyhub-theme', d ? 'dark' : 'light');
-  document.querySelector('.actions .icon-btn:nth-child(2)').textContent = d ? '☀' : '◐'; toast(d ? 'Mode gelap aktif' : 'Mode terang aktif');
+  document.querySelector('#themeBtn').textContent = d ? '☀' : '◐'; toast(d ? 'Mode gelap aktif' : 'Mode terang aktif');
 }
-if (localStorage.getItem('familyhub-theme') === 'dark') { document.body.classList.add('dark'); document.querySelector('.actions .icon-btn:nth-child(2)').textContent = '☀'; }
+if (localStorage.getItem('familyhub-theme') === 'dark') { document.body.classList.add('dark'); document.querySelector('#themeBtn').textContent = '☀'; }
 function boot() {
-  const mu = $('.mini-user'); mu.innerHTML = `<div class="avatar">${ini(ME.name)}</div><div><b style="font-size:11px">${esc(ME.name)}</b><small style="display:block;color:#858ca0;font-size:9px">${isA() ? 'Admin keluarga' : 'Anggota (lihat saja)'} • keluar</small></div>`; mu.style.cursor = 'pointer'; mu.onclick = logout;
-  $('.actions .primary').style.display = isA() ? '' : 'none'; showPage(page);
+  showPage(page);
 }
 api('me').then(u => { ME = u; boot(); }).catch(() => { });

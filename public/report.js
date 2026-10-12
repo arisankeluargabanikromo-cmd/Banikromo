@@ -59,10 +59,12 @@ window.rptPrint = rptPrint;
 // ---------------- Render dokumen ----------------
 const FMT = { t: v => esc(v ?? ''), c: v => esc(v ?? ''), n: v => v === '' || v == null ? '' : num(v), rp: v => v === '' || v == null ? '' : v < 0 ? `<span class="neg">(${num(-v)})</span>` : num(v), pct: v => v === '' || v == null ? '' : Math.round(v * 100) + '%' };
 const CLS = { t: '', c: 'c', n: 'r', rp: 'r', pct: 'r' };
+const brandImg = (px, st = 'display:block;margin:0 auto 6px') => window.FH_BRAND && FH_BRAND.logo ? `<img src="${FH_BRAND.logo}" alt="" style="height:${px}px;width:${px}px;object-fit:contain;${st}">` : '';
+window.fhBrandImg = brandImg;
 function docHtml(rep) {
   const sec = rep.sections.map(s => `<h2>${esc(s.title)}</h2>${s.kpi ? `<div class="kpi">${s.kpi.map(k => `<div><small>${esc(k[0])}</small><b>${esc(k[1])}</b></div>`).join('')}</div>` : ''}${s.cols ? `<table><thead><tr>${s.cols.map(c => `<th class="${CLS[c.k]}">${esc(c.h)}</th>`).join('')}</tr></thead><tbody>${s.rows.map(r => `<tr class="${r._open ? 'open' : ''}">${s.cols.map((c, i) => `<td class="${CLS[c.k]}">${FMT[c.k](r[i])}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${s.cols.length}" class="c muted">${esc(s.empty || 'Tidak ada data')}</td></tr>`}${(s.foot || []).map(r => `<tr class="foot">${s.cols.map((c, i) => `<td class="${CLS[c.k]}">${FMT[c.k](r[i])}</td>`).join('')}</tr>`).join('')}</tbody></table>` : ''}${s.note ? `<p class="note">${esc(s.note)}</p>` : ''}`).join('');
   const dt = rep.printed.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-  return `<div class="rpt"><div class="rpt-kop"><div class="rpt-org">${esc(rep.org)}</div><div class="rpt-sub">Laporan keuangan • disusun dari pembukuan FamilyHub</div></div>
+  return `<div class="rpt"><div class="rpt-kop">${brandImg(54)}<div class="rpt-org">${esc(rep.org)}</div><div class="rpt-sub">Laporan keuangan • disusun dari pembukuan FamilyHub</div></div>
   <h1>${esc(rep.title)}</h1><div class="rpt-per">${esc(rep.subtitle)}</div>${sec}
   <div class="rpt-sign"><div>Mengetahui,<br>Ketua<div class="sp"></div><b>${esc(rep.chair || '(                              )')}</b></div><div>${esc(dt)}<br>Bendahara<div class="sp"></div><b>${esc(rep.treasurer || '(                              )')}</b></div></div>
   <div class="rpt-foot">Dicetak ${esc(dt)} oleh ${esc(rep.by)} • Dokumen ini dihasilkan otomatis dari data pembukuan dan sah tanpa tanda tangan basah bila telah diverifikasi pengurus.</div></div>`;

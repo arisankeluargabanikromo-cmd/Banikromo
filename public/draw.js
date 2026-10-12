@@ -12,7 +12,7 @@
 // Status "menunggu" tersimpan di database, jadi refresh/tutup layar tidak menghilangkan pemenang sementara.
 // ============================================================
 (() => {
-const VMAX = 26, IDLE = 1.3, ROWS = 9;           // baris/detik saat mengocok & saat siaga; jumlah baris reel
+const VMAX = 26, IDLE = 1.3, ROWS = 9, STEP = .4;           // baris/detik saat mengocok & saat siaga; jumlah baris reel
 const DS = { el: null, open: false, st: 'idle', d: null, ring: [], pos: 0, vel: 0, shift: 0, anim: null, raf: 0, last: 0,
   busy: false, mute: false, rh: 100, pend: null, spinAt: 0, rain: 0, wake: null };
 try { DS.mute = localStorage.getItem('fh-draw-mute') === '1'; } catch (_) {}
@@ -45,8 +45,9 @@ const snd = (() => {
 })();
 
 // ---------------- Efek: bintang & confetti (satu kanvas) ----------------
+const LIGHT = () => !document.body.classList.contains('dark');
 const FX = { cv: null, cx: null, W: 0, H: 0, stars: [], parts: [] };
-const COLORS = ['#ffd86b', '#ff6b9d', '#8d7cff', '#22c7a9', '#ffffff', '#ff9f43', '#5fb0ff'];
+const COLORS = ['#22d3ee', '#a78bfa', '#ff3da6', '#ffd86b', '#fb7185', '#5eead4', '#60a5fa'];
 function fxResize() {
   const c = FX.cv, dpr = Math.min(2, window.devicePixelRatio || 1);
   FX.W = innerWidth; FX.H = innerHeight; c.width = FX.W * dpr; c.height = FX.H * dpr; FX.cx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -61,7 +62,7 @@ function burst(x, y, n = 140) {
 function fxFrame(dt, t) {
   const c = FX.cx; c.clearRect(0, 0, FX.W, FX.H);
   const boost = 1 + Math.min(DS.vel, 30) * .12;
-  for (const s of FX.stars) { s.y += s.v * dt * boost; if (s.y > FX.H) { s.y = -4; s.x = Math.random() * FX.W; } c.globalAlpha = .25 + .45 * Math.abs(Math.sin(t / 900 + s.p)); c.fillStyle = '#fff'; c.beginPath(); c.arc(s.x, s.y, s.r, 0, 6.28); c.fill(); }
+  for (const s of FX.stars) { s.y += s.v * dt * boost; if (s.y > FX.H) { s.y = -4; s.x = Math.random() * FX.W; } c.globalAlpha = .25 + .45 * Math.abs(Math.sin(t / 900 + s.p)); c.fillStyle = LIGHT() ? '#7c8fd0' : '#bff3ff'; c.beginPath(); c.arc(s.x, s.y, s.r, 0, 6.28); c.fill(); }
   if (DS.rain > t && FX.parts.length < 700) for (let i = 0; i < 4; i++) FX.parts.push({ x: Math.random() * FX.W, y: -12, vx: (Math.random() - .5) * 160, vy: 160 + Math.random() * 280, w: 6 + Math.random() * 8, h: 4 + Math.random() * 6, rot: Math.random() * 6.28, vr: (Math.random() - .5) * 10, c: COLORS[rnd(COLORS.length)], round: Math.random() < .25 });
   for (let i = FX.parts.length - 1; i >= 0; i--) {
     const p = FX.parts[i]; p.vy += 900 * dt; p.vx *= 1 - Math.min(1, 1.1 * dt); p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
@@ -87,8 +88,9 @@ function drawReel() {
   for (let k = -4; k <= 4; k++) {
     const s = base + k, off = s - DS.pos, ab = Math.abs(off), r = rows[k + 4], nm = DS.ring[((s + DS.shift) % n + n) % n].name;
     if (r._n !== nm) { r.firstChild.textContent = nm; r._n = nm; }
-    r.style.transform = `translateY(${(off * DS.rh).toFixed(1)}px) scale(${(1 - Math.min(ab, 2.2) * .14).toFixed(3)})`;
-    r.style.opacity = Math.max(0, 1 - ab * .36).toFixed(2);
+    const th = off * STEP, R = DS.rh / STEP;                  // reel berbentuk silinder: baris melengkung menjauh ke atas/bawah
+    r.style.transform = `translate3d(0,${(R * Math.sin(th)).toFixed(1)}px,${(R * Math.cos(th) - R).toFixed(1)}px) rotateX(${(-th).toFixed(3)}rad)`;
+    r.style.opacity = Math.max(0, 1 - ab * .33).toFixed(2);
     r.classList.toggle('c', ab < .5);
   }
   if (base !== DS._f) { DS._f = base; if (Math.abs(DS.vel) > .8 && (DS.st === 'spin' || DS.st === 'stopping')) snd.tick(Math.abs(DS.vel)); }
@@ -116,7 +118,8 @@ function land(winner, done) {
 }
 
 // ---------------- Tampilan & status ----------------
-function setMode(m) { DS.st = m; DS.el.className = 'ds show ' + m + (fsEl() === DS.el ? ' fs' : ''); renderCtrl(); }
+const STATUS = { idle: 'SIAGA', spin: 'MENGOCOK', stopping: 'MEMILIH', reveal: 'KONFIRMASI', done: 'SELESAI', empty: 'STANDBY' };
+function setMode(m) { DS.st = m; DS.el.className = 'ds show ' + m + (fsEl() === DS.el ? ' fs' : ''); const l = q('#dsStat'); if (l) l.innerHTML = '<i></i>' + (STATUS[m] || ''); renderCtrl(); }
 function header() {
   const d = DS.d, w = d.winner, p = DS.pend || d.pending;
   q('#dsPeriod').textContent = `${MONTH(d.period)} · Siklus ${d.cycle}`;
@@ -134,8 +137,21 @@ function renderCtrl() {
   else if (st === 'empty') h = (A && d.absent.length ? `<button class="ds-btn go" id="dsRecall">↺ PANGGIL ULANG YANG TIDAK HADIR</button>` : '') + `<button class="ds-btn soft" id="dsEnd">Tutup</button>`;
   c.innerHTML = h;
 }
+let scr = 0;
+function decode(el, text) {     // nama "terdekode" dari karakter acak; teks akhir selalu = nama pemenang
+  const id = ++scr; el.textContent = text;
+  if (matchMedia('(prefers-reduced-motion:reduce)').matches || text.length > 60) return;
+  const G = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789#%&*+<>', ch = [...text], N = ch.length, t0 = performance.now(), T = 950;
+  const step = now => {
+    if (id !== scr) return; if (!DS.open) { el.textContent = text; return; }
+    const k = Math.min(1, (now - t0) / T), fixed = Math.floor(k * N);
+    el.textContent = k >= 1 ? text : ch.map((c, i) => c === ' ' || i < fixed ? c : G[rnd(G.length)]).join('');
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
 function showWinner(w, o) {   // w:{id,name}; o:{label,badge,ok,sub}
-  q('.ds-win .ds-name').textContent = w.name;
+  decode(q('.ds-win .ds-name'), w.name);
   q('#dsBadge').className = 'ds-badge ' + (o.ok ? 'ok' : 'wait'); q('#dsBadge').textContent = o.badge;
   q('#dsWSub').textContent = o.sub || ''; q('#dsLabel').innerHTML = o.label;
   const av = q('.ds-av'); av.classList.remove('has'); av.style.backgroundImage = ''; av.textContent = ini(w.name); delete av.dataset.pp; loadPhoto(w.id);
@@ -244,12 +260,13 @@ async function wakeLock() { try { if (navigator.wakeLock && DS.open) DS.wake = a
 function build() {
   if (DS.el) return;
   const el = DS.el = document.createElement('div'); el.id = 'dstage'; el.className = 'ds'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Panggung pengocokan arisan');
-  el.innerHTML = `<div class="ds-aurora"><i></i><i></i><i></i></div><div class="ds-beams"></div><div class="ds-vig"></div><canvas class="ds-fx"></canvas>
+  el.innerHTML = `<div class="ds-aurora"><i></i><i></i><i></i></div><div class="ds-grid"></div><div class="ds-beams"></div><div class="ds-vig"></div><canvas class="ds-fx"></canvas>
+  <i class="ds-corner tl"></i><i class="ds-corner tr"></i><i class="ds-corner bl"></i><i class="ds-corner br"></i>
   <header class="ds-top"><div class="ds-brand"><div class="lm">FH</div><div>ARISAN KELUARGA<small id="dsPeriod"></small></div></div>
-    <div class="ds-tools"><span class="ds-chip" id="dsAttempt"></span><button id="dsSound" title="Suara (M)" aria-label="Suara">${DS.mute ? '🔇' : '🔊'}</button><button id="dsFs" title="Layar penuh (F)" aria-label="Layar penuh">⛶</button><button id="dsClose" title="Tutup (Esc)" aria-label="Tutup">✕</button></div></header>
+    <div class="ds-tools"><span class="ds-chip led" id="dsStat"></span><span class="ds-chip" id="dsAttempt"></span><button id="dsSound" title="Suara (M)" aria-label="Suara">${DS.mute ? '🔇' : '🔊'}</button><button id="dsFs" title="Layar penuh (F)" aria-label="Layar penuh">⛶</button><button id="dsClose" title="Tutup (Esc)" aria-label="Tutup">✕</button></div></header>
   <main class="ds-mid"><div class="ds-label" id="dsLabel">PEMENANG <b>ARISAN</b></div>
     <div class="ds-reel"><div class="ds-rows">${'<div class="ds-row"><span></span></div>'.repeat(ROWS)}</div><div class="ds-frame"></div><i class="ds-arrow l">▶</i><i class="ds-arrow r">◀</i></div>
-    <div class="ds-win"><div class="ds-avw"><div class="ds-av"></div><span class="ds-crown">👑</span></div><div class="ds-name"></div><div class="ds-badge wait" id="dsBadge"></div><div class="ds-sub" id="dsWSub"></div></div>
+    <div class="ds-win"><div class="ds-avw"><i class="ds-orbit"></i><i class="ds-orbit o2"></i><div class="ds-av"></div><span class="ds-crown">👑</span></div><div class="ds-name"></div><div class="ds-badge wait" id="dsBadge"></div><div class="ds-sub" id="dsWSub"></div></div>
     <div class="ds-msg" id="dsMsg"></div></main>
   <footer class="ds-bot"><div class="ds-absent" id="dsAbsent"></div><div class="ds-ctrl" id="dsCtrl"></div>
     <div class="ds-hint"><kbd>Spasi</kbd> Mulai / Stop &nbsp;·&nbsp; <kbd>F</kbd> Layar penuh &nbsp;·&nbsp; <kbd>M</kbd> Suara &nbsp;·&nbsp; <kbd>Esc</kbd> Tutup</div></footer>`;

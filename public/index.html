@@ -83,6 +83,9 @@ body.dark .tree .connector,body.dark .branch:before,.dark .branches:before{backg
 <link rel="stylesheet" href="/silsilah-ux.css">
 <link rel="stylesheet" href="/dashdraw.css">
 <link rel="stylesheet" href="/dashcards.css">
+<link rel="stylesheet" href="/futuristic.css">
+<link rel="stylesheet" href="/settings.css">
+<link rel="stylesheet" href="/topbar.css">
 </head>
 <body>
 <div class="app">
@@ -104,13 +107,20 @@ body.dark .tree .connector,body.dark .branch:before,.dark .branches:before{backg
     <button onclick="showPage('pengumuman',this)"><span class="nav-icon">◌</span><span>Pengumuman</span></button>
     <button id="navUsers" style="display:none" onclick="showPage('pengguna',this)"><span class="nav-icon">⚙</span><span>Pengguna</span></button>
     <button onclick="showPage('laporan',this)"><span class="nav-icon">▤</span><span>Laporan</span></button>
+    <button id="navSettings" style="display:none" onclick="showPage('pengaturan',this)"><span class="nav-icon">✦</span><span>Pengaturan</span></button>
   </nav>
   </div>
-  <div class="sidebar-bottom"><div class="mini-user"><div class="avatar">PS</div><div><b style="font-size:11px">Purwoko</b><small style="display:block;color:#858ca0;font-size:9px">Admin keluarga</small></div></div></div>
-</aside>
+  </aside>
 
 <main class="main">
-<div class="topbar"><div class="breadcrumb">FamilyHub / <b id="pageTitle">Dashboard</b></div><div class="actions"><button class="icon-btn" onclick="toast('Tidak ada notifikasi baru')">♧<i class="dot"></i></button><button class="icon-btn" onclick="toggleTheme()">◐</button><button class="icon-btn logout-top" title="Keluar" onclick="logout()">⎋</button><button class="primary" onclick="quickAdd()">＋ Tambah</button></div></div>
+<div class="topbar"><div class="breadcrumb">FamilyHub / <b id="pageTitle">Dashboard</b></div>
+  <div class="actions">
+    <div class="tb-clock" id="tbClock" title="Waktu Jakarta (WIB)" aria-live="off"><b id="tbTime">--:--:--</b><small id="tbDate">&nbsp;</small></div>
+    <button class="tb-sync" id="tbSync" type="button" onclick="syncNow()" title="Sinkronkan data dengan server"><span class="tb-sync-ic" aria-hidden="true">⟳</span><span class="tb-sync-tx"><b>Sinkron</b><small id="tbSyncAt">belum</small></span><i class="tb-net" id="tbNet" aria-hidden="true"></i></button>
+    <button class="icon-btn" title="Notifikasi" onclick="toast('Tidak ada notifikasi baru')">♧<i class="dot"></i></button>
+    <button class="icon-btn" id="themeBtn" title="Ganti tema" onclick="toggleTheme()">◐</button>
+    <div class="tb-user" id="tbUser"></div>
+  </div></div>
 
 <section id="dashboard" class="page active"></section>
 <section id="arisan" class="page"></section>
@@ -122,6 +132,7 @@ body.dark .tree .connector,body.dark .branch:before,.dark .branches:before{backg
 <section id="pengumuman" class="page"></section>
 <section id="laporan" class="page"></section>
 <section id="pengguna" class="page"></section>
+<section id="pengaturan" class="page"></section>
 </main>
 </div>
 <div class="modal" id="profileModal"><div class="modal-box" id="profileBox"></div></div>
@@ -142,5 +153,7 @@ body.dark .tree .connector,body.dark .branch:before,.dark .branches:before{backg
 <script src="/dashcards.js"></script>
 <script src="/report.js"></script>
 <script src="/finance.js"></script>
+<script src="/settings.js"></script>
+<script src="/topbar.js"></script>
 </body>
 </html>
