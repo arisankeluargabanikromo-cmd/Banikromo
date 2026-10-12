@@ -217,3 +217,19 @@ em.st.big{font-size:12px;padding:3px 10px;border-radius:10px}
 .pe .imp-note{margin-top:10px}
 
 .pbtns button{font-size:11.5px;padding:10px 6px;white-space:nowrap}
+
+/* ---- Latar blur saat modal/kotak input terbuka: kotak tampil dominan ---- */
+.modal{
+  background:rgba(15,22,48,.45);
+  -webkit-backdrop-filter:blur(10px) saturate(115%);
+  backdrop-filter:blur(10px) saturate(115%);
+}
+.modal.show{animation:modalFade .18s ease-out}
+.modal.show>.modal-box{
+  animation:modalPop .22s cubic-bezier(.2,.8,.25,1);
+  box-shadow:0 0 0 1px rgba(255,255,255,.35),0 30px 90px rgba(0,0,0,.45);
+}
+body.dark .modal{background:rgba(0,0,0,.55)}
+@keyframes modalFade{from{opacity:0}to{opacity:1}}
+@keyframes modalPop{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.modal.show,.modal.show>.modal-box{animation:none}}

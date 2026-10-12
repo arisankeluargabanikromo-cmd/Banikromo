@@ -13,7 +13,7 @@ const todayStr = () => new Date().toISOString().slice(0, 10);
 
 // ---------------- Modal ----------------
 function finModal(html, cls = '') {
-  let m = $('#finModal'); if (!m) { m = document.createElement('div'); m.id = 'finModal'; m.className = 'modal'; m.innerHTML = '<div class="modal-box fin-box" id="finBox"></div>'; document.body.appendChild(m); m.addEventListener('click', e => { if (e.target === m) finClose(); }); }
+  let m = $('#finModal'); if (!m) { m = document.createElement('div'); m.id = 'finModal'; m.className = 'modal'; m.innerHTML = '<div class="modal-box fin-box" id="finBox"></div>'; document.body.appendChild(m); backdropClose(m, finClose); }
   $('#finBox').className = 'modal-box fin-box ' + cls; $('#finBox').innerHTML = html; m.classList.add('show');
 }
 const finClose = () => { const m = $('#finModal'); if (m) m.classList.remove('show'); };

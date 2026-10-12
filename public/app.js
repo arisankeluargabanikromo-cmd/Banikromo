@@ -26,7 +26,7 @@ $('#loginForm').onsubmit = async e => {
 async function logout() { if (!confirm('Keluar dari FamilyHub?')) return; await api('logout', 'POST'); location.reload(); }
 
 // ---------- Navigasi ----------
-const titles = { dashboard: 'Dashboard', arisan: 'Arisan', pengocokan: 'Pengocokan Digital', silsilah: 'Silsilah Keluarga', anggota: 'Anggota', keuangan: 'Keuangan', agenda: 'Agenda', galeri: 'Dokumentasi', pengumuman: 'Pengumuman', laporan: 'Laporan' };
+const titles = { dashboard: 'Dashboard', arisan: 'Arisan', silsilah: 'Silsilah Keluarga', anggota: 'Anggota', keuangan: 'Keuangan', agenda: 'Agenda', galeri: 'Dokumentasi', pengumuman: 'Pengumuman', laporan: 'Laporan' };
 const R = {};
 function showPage(id, btn) {
   page = id; document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === id));
@@ -36,6 +36,22 @@ function showPage(id, btn) {
 }
 const reload = () => guard(R[page])();
 function quickAdd() { ({ anggota: addMember, keuangan: addTx, agenda: addEvent, pengumuman: addAnn, galeri: addAlbum, silsilah: addMember }[page] || (() => toast('Gunakan tombol tambah di halaman terkait')))(); }
+
+// Tutup modal saat klik latar gelap, dengan dua pengaman:
+// 1) hanya jika tombol mouse ditekan DAN dilepas di latar (seret/sorot teks lalu lepas di luar tidak menutup);
+// 2) modal yang berisi kolom isian (input/textarea/select) TIDAK pernah ditutup lewat klik latar,
+//    supaya data yang sedang diketik tidak hilang. Tutup lewat tombol × / Batal / Esc.
+function backdropClose(el, fn) {
+  let down = false;
+  el.addEventListener('pointerdown', e => { down = e.target === el; });
+  el.addEventListener('click', e => {
+    const ok = down && e.target === el; down = false;
+    if (!ok || el.querySelector('input:not([type=hidden]),textarea,select')) return;
+    fn();
+  });
+}
+// Esc menutup modal form yang sedang terbuka
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { const m = document.querySelector('#formModal.show'); if (m) closeForm(); } });
 
 // ---------- Form modal generik ----------
 function pickInput(f, v) {   // kolom cari-dan-pilih (datalist) agar tetap nyaman untuk ratusan anggota
@@ -76,8 +92,8 @@ let CACHE = {}; const edit = (c, k, id) => c.edit(CACHE[k].find(x => x.id === id
 
 // ---------- Profil ----------
 const closeProfile = () => $('#profileModal').classList.remove('show');
-$('#profileModal').addEventListener('click', e => { if (e.target.id === 'profileModal') closeProfile(); });
-$('#formModal').addEventListener('click', e => { if (e.target.id === 'formModal') closeForm(); });
+backdropClose($('#profileModal'), closeProfile);
+backdropClose($('#formModal'), closeForm);
 
 // ---------- Halaman ----------
 R.dashboard = async () => {

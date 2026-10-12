@@ -151,7 +151,7 @@ function setSelf(id, quiet) {
 }
 const syncSelfBtn = () => { const b = $('#ftme'); if (!b) return; const n = SELF_ID && FAM && FAM.byId.get(SELF_ID); b.classList.toggle('on', !!n); b.innerHTML = n ? `📍 Saya: <b>${esc(first(n.name))}</b>` : '📍 Posisi saya'; const v = viewEl && viewEl(); if (v) v.classList.toggle('relon', !!(n && REL_ON)); };
 function modal2(id, html, cls = '') {                      // dialog ringan, memakai gaya .modal bawaan
-  let m = document.getElementById(id); if (!m) { m = document.createElement('div'); m.className = 'modal'; m.id = id; m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); }); document.body.appendChild(m); }
+  let m = document.getElementById(id); if (!m) { m = document.createElement('div'); m.className = 'modal'; m.id = id; backdropClose(m, () => m.classList.remove('show')); document.body.appendChild(m); }
   m.innerHTML = `<div class="modal-box ${cls}">${html}</div>`; m.classList.add('show'); return m;
 }
 const closeModal2 = id => { const m = document.getElementById(id); if (m) m.classList.remove('show'); };
