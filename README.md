@@ -4,7 +4,7 @@ Frontend statis (HTML/CSS/JS) + **Supabase** (Postgres, Auth, RLS) · deploy via
 ```
 public/            index.html, app.js (tampilan), data.js (lapisan Supabase), config.js
 supabase/          schema.sql (wajib, sudah mencakup semua fitur), seed.sql (opsional),
-                   patch-001/002/003/004/005/006/007/008 (HANYA untuk yang sudah terlanjur memakai versi lama),
+                   patch-001/002/003/004/005/006/007/008/009 (HANYA untuk yang sudah terlanjur memakai versi lama),
                    demo-500-keluarga.sql (opsional, data uji 500 orang)
 scripts/           gen-config.js (isi config.js dari env var saat build Vercel)
 vercel.json        outputDirectory = public
@@ -227,3 +227,24 @@ Tanpa perubahan database — cukup deploy ulang. Tiga kartu baru tampil di bawah
 - **Agenda Keluarga** — *Acara berikutnya* ditampilkan menonjol dengan hitung mundur (Hari ini / Besok / n hari lagi), diikuti daftar acara mendatang; tab **Terlewat** memuat acara selesai/dibatalkan. Klik acara → rincian lengkap + tombol **📅 Tambah ke Google Kalender** dan tautan peta lokasi.
 - **Pengumuman** — empat terbaru dengan penanda **Baru** (≤ 7 hari); klik untuk membaca isi lengkap. Admin: tombol ＋ dan **✎ Ubah** pada dialog.
 - Tampil rapi di HP (kartu bertumpuk), mode gelap, dan untuk viewer (tanpa tombol admin). Bila data tidak dapat dimuat, muncul pesan dengan tombol *Coba lagi* tanpa merusak dashboard.
+
+## Halaman Pengaturan: Logo, Backup, Impor, Ekspor, Reset (v3.2)
+**Upgrade dari v3.1:** jalankan `supabase/patch-009-pengaturan.sql` **sekali** di SQL Editor (aman diulang, tidak mengubah data), lalu deploy ulang. Instalasi baru cukup `schema.sql` terbaru. Menu **✦ Pengaturan** hanya tampil untuk admin. Sebelum patch dijalankan, halaman menampilkan peringatan; Ekspor dan Unduh Backup tetap berfungsi.
+
+| Tab | Fungsi |
+|---|---|
+| **Umum & Logo** | Unggah logo (PNG/JPG/WebP/SVG → otomatis diperkecil), pilih bentuk (kotak membulat / bulat / asli), ubah nama & tagline aplikasi, pratinjau langsung. Logo tampil di sidebar, halaman masuk, favicon, kop laporan, dan kuitansi. Juga: identitas laporan (organisasi, bendahara, ketua) dan informasi sistem. |
+| **Backup & Pemulihan** | Satu berkas `.json` berisi seluruh data + pengaturan + logo + tarif iuran, dengan checksum SHA-256. Pemulihan memvalidasi berkas, menampilkan perbandingan data, meminta ketik `PULIHKAN`, menawarkan backup otomatis data saat ini, dan berjalan **atomik** (gagal = data lama utuh). Titik kuning pada menu mengingatkan bila backup > 30 hari. |
+| **Impor Data** | Anggota, Transaksi Kas, Agenda, Pengumuman dari **CSV atau Excel**. Template, panduan kolom, pratinjau, validasi per baris (tanggal `20/01/2026` atau `2026-01-20`, nominal `Rp 1.350.000`), deteksi duplikat, dan impor atomik. |
+| **Ekspor Data** | Per kelompok (Excel/CSV) atau seluruhnya dalam satu berkas Excel multi-lembar. Ekspor Anggota, Kas, Agenda, Pengumuman berformat sama dengan template impor. CSV aman dari *formula injection*. |
+| **Reset Data** | Per kelompok (keuangan, pengocokan, agenda, pengumuman, dokumentasi, log, anggota) atau seluruhnya. Wajib mengetik `RESET`, ada backup otomatis, berkas foto di Storage ikut dibersihkan. Akun pengguna **tidak pernah** dihapus. |
+
+**Catatan:** backup memuat data, bukan berkas gambar di Storage maupun akun login. Semua operasi berbahaya diperiksa ulang di database (`need_admin()`), bukan hanya disembunyikan di tampilan.
+
+## Top bar baru (v3.3)
+Tanpa perubahan database — cukup deploy ulang.
+- Tombol **＋ Tambah** dihapus (tiap halaman sudah punya tombol tambah sendiri).
+- **Menu user** pindah dari sidebar ke pojok kanan atas: foto/inisial, nama, peran; klik untuk membuka menu (Pengaturan, Pengguna & hak akses, Mode gelap/terang, Sinkronkan data, Keluar). Bisa dipakai dengan keyboard (↑ ↓ Esc).
+- **Jam & tanggal** zona waktu Jakarta (WIB), berjalan per detik.
+- **Sinkron**: memuat ulang data halaman aktif dari server, sekaligus memeriksa sesi dan perubahan peran. Menampilkan waktu sinkron terakhir (kuning bila > 10 menit, merah bila gagal) dan titik status koneksi (hijau online / merah offline).
+
