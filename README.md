@@ -285,7 +285,7 @@ Setiap menu kini punya alamat sendiri, sehingga tombol **Back/Forward** browser,
 
 | Menu | URL | Menu | URL |
 |---|---|---|---|
-| Dashboard | `/dashboard` | Pengumuman | `/pengumuman` |
+| Dashboard | `/` | Pengumuman | `/pengumuman` |
 | Arisan | `/arisan` | Laporan | `/laporan` |
 | Silsilah Keluarga | `/silsilah` | Pengguna (admin) | `/pengguna` |
 | Anggota | `/anggota` | Pengaturan (admin) | `/pengaturan` |
