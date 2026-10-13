@@ -4,7 +4,7 @@ Frontend statis (HTML/CSS/JS) + **Supabase** (Postgres, Auth, RLS) · deploy via
 ```
 public/            index.html, app.js (tampilan), data.js (lapisan Supabase), config.js
 supabase/          schema.sql (wajib, sudah mencakup semua fitur), seed.sql (opsional),
-                   patch-001/002/003/004/005/006/007/008/009 (HANYA untuk yang sudah terlanjur memakai versi lama),
+                   patch-001/002/003/004/005/006/007/008/009/010 (HANYA untuk yang sudah terlanjur memakai versi lama),
                    demo-500-keluarga.sql (opsional, data uji 500 orang)
 scripts/           gen-config.js (isi config.js dari env var saat build Vercel)
 vercel.json        outputDirectory = public
@@ -247,4 +247,54 @@ Tanpa perubahan database — cukup deploy ulang.
 - **Menu user** pindah dari sidebar ke pojok kanan atas: foto/inisial, nama, peran; klik untuk membuka menu (Pengaturan, Pengguna & hak akses, Mode gelap/terang, Sinkronkan data, Keluar). Bisa dipakai dengan keyboard (↑ ↓ Esc).
 - **Jam & tanggal** zona waktu Jakarta (WIB), berjalan per detik.
 - **Sinkron**: memuat ulang data halaman aktif dari server, sekaligus memeriksa sesi dan perubahan peran. Menampilkan waktu sinkron terakhir (kuning bila > 10 menit, merah bila gagal) dan titik status koneksi (hijau online / merah offline).
+
+
+## Cetak Silsilah — poster untuk ruang keluarga (v3.4)
+Tanpa perubahan database. Buka **Silsilah → 🖨 Cetak** (tersedia untuk semua pengguna) untuk membuka *Studio Cetak* dengan pratinjau langsung.
+
+- **Vektor sungguhan**: poster dibuat sebagai SVG berukuran milimeter, tetap tajam dari A4 sampai A0 / 60×90 cm.
+- **Otomatis memilih yang terbaik**: sistem mencoba tata letak *Atas→Bawah* dan *Kiri→Kanan* pada orientasi potret/lanskap, lalu memakai yang hurufnya paling besar. Indikator **ukuran huruf nama (pt)** memberi tahu apakah nyaman dibaca (≥ 9 pt) atau perlu kertas lebih besar / cakupan lebih kecil.
+- **Isi**: seluruh keluarga atau satu cabang, batas generasi (ada penanda “+N” untuk yang tersembunyi), pasangan/menantu, tanda almarhum, foto, tahun lahir/wafat, nama lengkap atau singkat.
+- **Gaya**: 5 tema (Klasik Krem, Modern Putih, Elegan Gelap, Hijau Alam, Hitam Putih hemat tinta), judul/subjudul/pesan bawah bisa diubah, logo keluarga, bingkai berornamen, pita & nomor generasi, keterangan simbol.
+- **Kertas**: A4–A0 dan ukuran bingkai 30×40 / 40×60 / 50×70 / 60×90 cm.
+- **Keluaran**: *Cetak / Simpan PDF* (dialog cetak browser: pilih ukuran kertas yang sama, skala 100%, margin “Tidak ada”), **SVG** (terbaik untuk percetakan), **PNG** (≈150 dpi), atau **poster tempel** dari banyak lembar A4/A3/Letter dengan tanda potong, area tumpuk 10 mm, dan peta nomor lembar.
+- Pengaturan terakhir diingat di perangkat Anda.
+
+## Dashboard: kartu Pengocokan sekeluarga dengan Agenda (v3.5)
+Tanpa perubahan database. Kartu Pengocokan kini satu keluarga dengan Kalender, Agenda Keluarga, dan Pengumuman: kepala (judul + keterangan kecil), kartu hero bergradien, tab segmen **Peserta / Riwayat**, baris daftar, dan tombol "Lihat semua". Ikon ↻ (siklus baru, admin) dan ℹ (aturan & transparansi) ada di kepala kartu. Tema neon khusus panel dashboard dihapus; **panggung pengocokan layar penuh (proyektor/TV) tidak berubah**.
+
+## Peran baru: Pengelola Silsilah (v3.6)
+**Upgrade dari v3.5:** jalankan `supabase/patch-010-pengelola.sql` **sekali** di SQL Editor (aman diulang, tidak mengubah data), lalu deploy ulang. Instalasi baru cukup `schema.sql` terbaru. Atur peran di menu **Pengguna** (khusus admin).
+
+| | Admin | Pengelola Silsilah | Viewer |
+|---|:--:|:--:|:--:|
+| Melihat semua data | ✓ | ✓ | ✓ |
+| Tambah/ubah anggota, orang tua, pasangan, foto profil | ✓ | ✓ | – |
+| Impor CSV anggota, tetapkan leluhur, lengkapi jenis kelamin/status nikah | ✓ | ✓ | – |
+| Cetak silsilah | ✓ | ✓ | ✓ |
+| Status arisan anggota (aktif/nonaktif) | ✓ | – | – |
+| Hapus anggota yang punya catatan iuran/kas/pengocokan | ✓ | – | – |
+| Keuangan, arisan & pengocokan, agenda, pengumuman, album | ✓ | – | – |
+| Pengaturan, backup/restore/reset, pengguna & peran | ✓ | – | – |
+
+Semua batas dipaksakan **di database** (kebijakan RLS, pemeriksaan fungsi, trigger), bukan hanya disembunyikan di tampilan. Dua pengaman khusus: anggota baru dari pengelola otomatis **nonaktif arisan** (tercatat untuk silsilah saja, admin yang mengaktifkan), dan foto Storage pengelola dibatasi ke folder `profile/` (foto album tetap khusus admin).
+
+## Navigasi berbasis URL ala website profesional (v3.7)
+
+Setiap menu kini punya alamat sendiri, sehingga tombol **Back/Forward** browser, **refresh (F5)**, dan **bagikan link** berfungsi normal:
+
+| Menu | URL | Menu | URL |
+|---|---|---|---|
+| Dashboard | `/dashboard` | Pengumuman | `/pengumuman` |
+| Arisan | `/arisan` | Laporan | `/laporan` |
+| Silsilah Keluarga | `/silsilah` | Pengguna (admin) | `/pengguna` |
+| Anggota | `/anggota` | Pengaturan (admin) | `/pengaturan` |
+| Keuangan | `/keuangan` | Agenda · Dokumentasi | `/agenda` · `/galeri` |
+
+- **Back/Forward**: kembali ke menu sebelumnya tanpa memuat ulang seluruh aplikasi. Modal yang sedang terbuka ditutup otomatis.
+- **Refresh otomatis**: setiap pindah menu, data diambil ulang dari server (dengan bilah progres tipis di atas layar). Tab yang ditinggal >5 menit juga disegarkan saat dibuka kembali.
+- **Refresh browser (F5)** tetap di halaman yang sama; URL tidak dikenal diarahkan ke `/dashboard`; `/pengguna` otomatis dialihkan ke Dashboard bagi non-admin.
+- Judul tab ikut berubah, misalnya *Arisan · FamilyHub*.
+- **File baru**: `public/router.js`. **Diubah**: `vercel.json` (rewrite ke `index.html`), `index.html` (memuat router.js), `topbar.css` (bilah progres), `package.json` (`npm run dev` memakai `serve -s`), serta `public/_redirects` (cadangan untuk Netlify).
+- **Upgrade dari v3.6**: cukup timpa file lalu deploy ulang. Tidak ada perubahan database.
 
