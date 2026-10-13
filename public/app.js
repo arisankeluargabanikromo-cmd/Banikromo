@@ -26,7 +26,7 @@ $('#loginForm').onsubmit = async e => {
   catch (err) { if (err) { console.error(err); if (!$('#loginMsg').classList.contains('show')) toast('Gagal masuk: ' + (err.message || 'periksa koneksi & konfigurasi Supabase')); } }
   finally { b.disabled = false; b.textContent = 'Masuk'; }
 };
-async function logout() { if (!confirm('Keluar dari FamilyHub?')) return; await api('logout', 'POST'); location.reload(); }
+async function logout() { if (!confirm('Keluar dari FamilyHub?')) return; await api('logout', 'POST'); location.replace('/'); }
 
 // ---------- Navigasi ----------
 const titles = { dashboard: 'Dashboard', arisan: 'Arisan', silsilah: 'Silsilah Keluarga', anggota: 'Anggota', keuangan: 'Keuangan', agenda: 'Agenda', galeri: 'Dokumentasi', pengumuman: 'Pengumuman', laporan: 'Laporan' };

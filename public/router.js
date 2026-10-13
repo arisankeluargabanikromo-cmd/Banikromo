@@ -1,5 +1,5 @@
 // ===== Router (v3.7): URL berbeda per halaman, tombol Back/Forward, dan data selalu segar =====
-// Contoh: /dashboard, /arisan, /silsilah, /anggota, /keuangan, /agenda, /galeri, /pengumuman,
+// Contoh: / (Dashboard), /arisan, /silsilah, /anggota, /keuangan, /agenda, /galeri, /pengumuman,
 //         /laporan, /pengguna, /pengaturan
 // Dimuat paling akhir agar bisa membungkus showPage() dan R[...] yang didefinisikan file lain.
 (() => {
@@ -7,9 +7,10 @@ const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const toId = p => {                                   // '/arisan/' → 'arisan' ; selain itu → null
   let s = ''; try { s = decodeURIComponent(p || ''); } catch (_) { }
   s = s.replace(/^\/+|\/+$/g, '').split('/')[0].toLowerCase();
+  if (s === '' || s === 'dashboard') return 'dashboard';   // alamat utama "/" = Dashboard
   return has(titles, s) ? s : null;
 };
-const pathOf = id => '/' + id;
+const pathOf = id => id === 'dashboard' ? '/' : '/' + id;
 const ADMIN_ONLY = ['pengguna'];                      // halaman yang tidak boleh dibuka non-admin
 
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
