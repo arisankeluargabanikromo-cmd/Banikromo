@@ -287,14 +287,36 @@ Setiap menu kini punya alamat sendiri, sehingga tombol **Back/Forward** browser,
 |---|---|---|---|
 | Dashboard | `/` | Pengumuman | `/pengumuman` |
 | Arisan | `/arisan` | Laporan | `/laporan` |
-| Silsilah Keluarga | `/silsilah` | Pengguna (admin) | `/pengguna` |
+| Silsilah Keluarga | `/silsilah` | Akun & Pengguna | `/pengguna` |
 | Anggota | `/anggota` | Pengaturan (admin) | `/pengaturan` |
 | Keuangan | `/keuangan` | Agenda · Dokumentasi | `/agenda` · `/galeri` |
 
 - **Back/Forward**: kembali ke menu sebelumnya tanpa memuat ulang seluruh aplikasi. Modal yang sedang terbuka ditutup otomatis.
 - **Refresh otomatis**: setiap pindah menu, data diambil ulang dari server (dengan bilah progres tipis di atas layar). Tab yang ditinggal >5 menit juga disegarkan saat dibuka kembali.
-- **Refresh browser (F5)** tetap di halaman yang sama; URL tidak dikenal diarahkan ke `/dashboard`; `/pengguna` otomatis dialihkan ke Dashboard bagi non-admin.
+- **Refresh browser (F5)** tetap di halaman yang sama; URL tidak dikenal diarahkan ke `/dashboard`; `/pengguna/kelola` otomatis menjadi `/pengguna` bagi non-admin.
 - Judul tab ikut berubah, misalnya *Arisan · FamilyHub*.
 - **File baru**: `public/router.js`. **Diubah**: `vercel.json` (rewrite ke `index.html`), `index.html` (memuat router.js), `topbar.css` (bilah progres), `package.json` (`npm run dev` memakai `serve -s`), serta `public/_redirects` (cadangan untuk Netlify).
 - **Upgrade dari v3.6**: cukup timpa file lalu deploy ulang. Tidak ada perubahan database.
+
+## Akun & Pengguna — ganti password dalam satu halaman (v3.9)
+
+Halaman **Akun & Pengguna** (`/pengguna`) kini dibuka oleh **semua peran**, dengan tab:
+
+| Tab | URL | Untuk | Isi |
+|---|---|---|---|
+| **Akun Saya** | `/pengguna` | semua peran | profil, peran & hak akses Anda, **form ganti password** |
+| **Kelola Pengguna** | `/pengguna/kelola` | admin | daftar pengguna & pengaturan peran (seperti sebelumnya) |
+
+- Anggota biasa hanya melihat halaman **Akun Saya** (tanpa tab); menu sidebar berlabel *Akun Saya*, untuk admin *Akun & Pengguna*.
+- Menu profil di pojok kanan atas: **Akun saya & ganti password** dan (admin) **Kelola pengguna & hak akses**.
+- Ganti password: wajib mengisi password saat ini (diverifikasi lewat login ulang), password baru (min. 8 karakter), dan konfirmasi. Ada tombol tampil/sembunyikan dan pengukur kekuatan. Setelah berhasil, sesi di perangkat lain berakhir.
+- Alamat lama `/password` otomatis diarahkan ke `/pengguna`. `/pengguna/kelola` bagi non-admin otomatis menjadi `/pengguna`.
+- Password pengguna lain tidak bisa dilihat/diubah dari aplikasi. Bila ada yang lupa password, admin mengatur ulang lewat Supabase → Authentication → Users.
+- Tampilan memakai komponen yang sama dengan halaman Pengaturan (tab, kartu, judul kartu, chip, tombol) sehingga seragam, termasuk mode gelap dan layar HP.
+- Tanpa perubahan database. File baru: `public/account.js` (menggantikan `password.js` v3.8).
+
+## Perbaikan Cetak Silsilah (v3.9.1)
+
+- **Masalah:** di Studio Cetak, tombol **⬇ SVG**, **⬇ PNG**, dan **🖨 Cetak / PDF** tidak bereaksi sama sekali. Penyebabnya, `print.js` memanggil `stBusy()` (kotak "Menyiapkan…") yang hanya ada di dalam `settings.js` sehingga terjadi `ReferenceError` yang tertelan diam-diam.
+- **Perbaikan:** `settings.js` kini mengekspos `window.stBusy`. Tidak ada perubahan database.
 
