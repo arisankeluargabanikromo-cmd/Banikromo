@@ -384,7 +384,7 @@ R.silsilah = async () => {
   if (SCOPE !== 'asli' && !scopeRoots().some(u => EXP.has(u.id))) autoExpand();
   FOCUS = FOCUS ? (FAM.uById.get(FOCUS.id) || null) : null;
   const chip = (i, n, l) => `<div class="fchip"><span class="fi">${i}</span><div><b>${n}</b><small>${l}</small></div></div>`;
-  const notes = [S.unk && isA() ? `<div class="fnote">⚠ ${S.unk} anggota belum diisi jenis kelamin. <button class="btn-s" onclick="goMembers('?')">Lengkapi sekarang →</button></div>` : '', S.nomar && isA() ? `<div class="fnote">ℹ ${S.nomar} anggota belum diisi status pernikahan. <button class="btn-s" onclick="fillMarital()">Isi otomatis “Belum menikah” untuk yang tanpa pasangan</button> <button class="btn-s" onclick="goMembers('', '-')">Lihat daftarnya</button></div>` : '', linNotesHtml()].filter(Boolean).join('');
+  const notes = [S.unk && isM() ? `<div class="fnote">⚠ ${S.unk} anggota belum diisi jenis kelamin. <button class="btn-s" onclick="goMembers('?')">Lengkapi sekarang →</button></div>` : '', S.nomar && isM() ? `<div class="fnote">ℹ ${S.nomar} anggota belum diisi status pernikahan. <button class="btn-s" onclick="fillMarital()">Isi otomatis “Belum menikah” untuk yang tanpa pasangan</button> <button class="btn-s" onclick="goMembers('', '-')">Lihat daftarnya</button></div>` : '', linNotesHtml()].filter(Boolean).join('');
   const hs = (n, l) => `<div class="hs"><b>${n}</b><span>${l}</span></div>`;
   $('#silsilah').innerHTML = hero('Silsilah Keluarga', `Telusuri ${S.total} anggota dalam ${S.maxGen} generasi — cari nama, buka cabang, atau pilih “Posisi saya” untuk melihat sebutan hubungan.`,
     `<div class="hero-stats">${hs(S.total, 'anggota')}${hs(S.asli, 'keturunan asli')}${hs(S.maxGen, 'generasi')}${S.besan ? hs(S.besan, 'keluarga besan') : ''}<button class="hs-more" id="fsMore" aria-expanded="false" title="Statistik lengkap">Statistik ▾</button></div>`) + `
@@ -400,7 +400,7 @@ R.silsilah = async () => {
     <div class="ftrow ftrow2">
       <label class="ftsel">Tampilkan s/d generasi <select id="ftgen">${Array.from({ length: S.maxGen }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}</select></label>
       <button class="ghost" id="ftAll">Buka semua cabang</button><button class="ghost" id="ftNone">Tutup semua</button><span class="ftgap"></span>
-      ${adm('<button class="primary" onclick="addMember()">＋ Anggota</button><button class="ghost" onclick="openImport()">⇪ Impor CSV</button>')}
+      ${mgr('<button class="primary" onclick="addMember()">＋ Anggota</button><button class="ghost" onclick="openImport()">⇪ Impor CSV</button>')}
     </div>
   </div>${VIEW === 'tree' ? '' : hintHtml()}
   <div class="crumbrow"><div class="lineline">${linLineHtml()}</div><div id="ftcrumb" class="crumb" style="display:none"></div><span class="ftvis" id="ftvis"></span></div><div id="ftsum" class="ftsum" style="display:none"></div>

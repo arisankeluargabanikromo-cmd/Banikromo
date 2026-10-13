@@ -16,13 +16,14 @@ function memberFields(self) {
     { k: 'marital_status', l: 'Status pernikahan', t: 'select', half: 1, o: [['', '— Pilih —'], ['belum_menikah', 'Belum menikah'], ['menikah', 'Menikah'], ['cerai', 'Cerai'], ['cerai_mati', 'Cerai mati (duda/janda)']] },
     { k: 'parent_id', l: 'Orang tua (ayah atau ibu) — untuk menantu, isi bila keluarga asalnya (besan) ingin dicatat', t: 'pick', o: MEMBERS.filter(m => !ex.has(m.id)).map(m => [m.id, label(m)]) },
     { k: 'spouse_id', l: 'Pasangan (suami / istri) — isi bila menikah / pernah menikah', t: 'pick', o: MEMBERS.filter(m => !self || m.id !== self.id).map(m => [m.id, label(m)]) },
-    { k: 'relation', l: 'Hubungan / keterangan', half: 1 },
-    { k: 'active', l: 'Status arisan', t: 'select', half: 1, o: [[1, 'Aktif'], [0, 'Nonaktif']] },
+    { k: 'relation', l: 'Hubungan / keterangan', half: isA() ? 1 : 0 },
+    ...(isA() ? [{ k: 'active', l: 'Status arisan', t: 'select', half: 1, o: [[1, 'Aktif'], [0, 'Nonaktif']] }] : []),
     { k: 'birth_year', l: 'Tahun lahir', t: 'number', half: 1 },
     { k: 'death_year', l: 'Tahun wafat (kosongkan jika masih hidup)', t: 'number', half: 1 },
     ...(HAS_ADDR() ? [{ k: 'address', l: 'Alamat lengkap (jalan, RT/RW, desa/kelurahan, kota)', t: 'textarea' }] : []),
     { k: 'phone', l: 'No. HP / WhatsApp', half: 1 },
     { k: 'joined', l: 'Anggota sejak (tahun)', t: 'number', half: 1 },
+    ...(isA() ? [] : [{ t: 'note', l: '🔒 <b>Status arisan</b> diatur admin. Anggota baru yang Anda tambahkan tercatat untuk silsilah saja (nonaktif arisan) sampai admin mengaktifkannya.' }]),
   ];
 }
 async function saveMember(id, b) {
@@ -126,7 +127,7 @@ R.anggota = async () => {
   <select class="select" id="mg" onchange="MLIMIT=100;drawMembers()"><option value="">Semua generasi</option>${Array.from({ length: FAM.stats.maxGen }, (_, i) => `<option value="${i + 1}">Generasi ${i + 1}</option>`).join('')}</select>
   <select class="select" id="mj" onchange="MLIMIT=100;drawMembers()"><option value="">Semua jenis kelamin</option><option value="L">♂ Laki-laki</option><option value="P">♀ Perempuan</option><option value="?">Belum diisi</option></select>
   <select class="select" id="ms" onchange="MLIMIT=100;drawMembers()"><option value="">Semua status nikah</option><option value="belum_menikah">Belum menikah</option><option value="menikah">Menikah</option><option value="cerai">Cerai</option><option value="cerai_mati">Duda / Janda</option><option value="-">Belum diisi</option></select>
-  ${adm('<button class="primary" onclick="addMember()">＋ Anggota</button><button class="ghost" onclick="openImport()">⇪ Impor CSV</button>')}</div>
+  ${mgr('<button class="primary" onclick="addMember()">＋ Anggota</button><button class="ghost" onclick="openImport()">⇪ Impor CSV</button>')}</div>
   <div class="card"><div class="tscroll"><table class="table"><thead><tr><th>Nama</th><th>Status</th><th>Pasangan</th><th>Orang tua</th><th>Gen</th><th>Tahun</th><th>Arisan</th><th></th></tr></thead><tbody id="memberTable"></tbody></table></div><div id="mmore" class="mmore"></div></div>`;
   drawMembers();
 };

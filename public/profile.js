@@ -28,8 +28,8 @@ async function openProfile(id) {
   const spLbl = x => { const ex = FAM.st.get(Math.min(id, x.id) + '-' + Math.max(id, x.id)) === 'cerai'; return (ex ? 'Mantan ' : '') + (x.gender === 'L' ? 'suami' : x.gender === 'P' ? 'istri' : 'pasangan'); };
   const kidLbl = x => x.birth_year ? `Lahir ${x.birth_year}` : 'Anak';
   const addrHtml = addr ? `<span class="addr">${esc(addr)}</span> <a class="maplink" href="${mapLink(addr)}" target="_blank" rel="noopener">🗺 Buka di peta ↗</a>`
-    : canAddr ? `<span class="fbp-empty">Alamat belum diisi</span> ${adm(`<button class="btn-s" onclick="editMember(${id})">＋ Tambah alamat</button>`)}`
-      : adm('<span class="fbp-empty">Fitur alamat belum aktif — jalankan <b>supabase/patch-008-alamat.sql</b> di SQL Editor.</span>');
+    : canAddr ? `<span class="fbp-empty">Alamat belum diisi</span> ${mgr(`<button class="btn-s" onclick="editMember(${id})">＋ Tambah alamat</button>`)}`
+      : mgr('<span class="fbp-empty">Fitur alamat belum aktif — jalankan <b>supabase/patch-008-alamat.sql</b> di SQL Editor.</span>');
   const sideStat = (n, l) => `<div><b>${n}</b><span>${l}</span></div>`;
 
   const intro = `<aside class="fbp-intro"><h3>Intro</h3>
@@ -53,7 +53,7 @@ async function openProfile(id) {
 
   const aboutPane = `<div data-pane="abt" hidden>
     <section class="fbp-sec"><h3>Informasi dasar</h3>${dl([['Nama lengkap', esc(m.name) + (m.death_year ? ' †' : '')], ['Jenis kelamin', m.gender === 'L' ? '♂ Laki-laki' : m.gender === 'P' ? '♀ Perempuan' : ''], ['Tahun lahir', m.birth_year || ''], ['Tahun wafat', m.death_year || ''], ['Usia', age != null ? age + ' tahun' + (m.death_year ? ' (saat wafat)' : '') : ''], ['Generasi', gid || ''], ['Keterangan', esc(m.relation || '')], ['Anggota sejak', m.joined || '']])}</section>
-    <section class="fbp-sec"><h3>Kontak &amp; alamat</h3>${dl([['HP / WhatsApp', hasPhone ? esc(m.phone) + (wa ? ` <a class="maplink" href="${wa}" target="_blank" rel="noopener">💬 WhatsApp ↗</a>` : '') : ''], ['Alamat', addr ? `<span class="addr">${esc(addr)}</span> <a class="maplink" href="${mapLink(addr)}" target="_blank" rel="noopener">🗺 Buka di peta ↗</a>` : '']])}${!hasPhone && !addr ? `<p class="fbp-empty">Belum ada kontak atau alamat. ${adm(`<button class="btn-s" onclick="editMember(${id})">✎ Lengkapi data</button>`)}</p>` : ''}</section>
+    <section class="fbp-sec"><h3>Kontak &amp; alamat</h3>${dl([['HP / WhatsApp', hasPhone ? esc(m.phone) + (wa ? ` <a class="maplink" href="${wa}" target="_blank" rel="noopener">💬 WhatsApp ↗</a>` : '') : ''], ['Alamat', addr ? `<span class="addr">${esc(addr)}</span> <a class="maplink" href="${mapLink(addr)}" target="_blank" rel="noopener">🗺 Buka di peta ↗</a>` : '']])}${!hasPhone && !addr ? `<p class="fbp-empty">Belum ada kontak atau alamat. ${mgr(`<button class="btn-s" onclick="editMember(${id})">✎ Lengkapi data</button>`)}</p>` : ''}</section>
     <section class="fbp-sec"><h3>Pernikahan &amp; posisi dalam silsilah</h3><div class="detail-grid"><div class="detail" style="grid-column:span 2"><span>Status pernikahan</span><b>${stt.t ? `<em class="st st-${stt.k || 'x'} big">${stt.t}</em>` : 'Belum diisi'}</b>${edges.length ? `<div class="rtxt">${edges.join(' · ')}</div>` : ''}</div>${kinBlock(m)}</div></section></div>`;
 
   const arsPane = `<div data-pane="ars" hidden><section class="fbp-sec"><h3>Arisan &amp; iuran</h3><div class="detail-grid">
@@ -63,11 +63,11 @@ async function openProfile(id) {
 
   $('#profileBox').className = 'modal-box fbp-box';
   $('#profileBox').innerHTML = `<div class="fbp-cover cv-${gCls(m)}"><div class="cvbg"${m.photo_path ? ` data-pp="${esc(m.photo_path)}" data-sz="l"` : ''}></div><div class="cvtag">Profil Keluarga</div><button class="close fbp-x" onclick="closeProfile()" aria-label="Tutup">×</button></div>
-  <div class="fbp-head"><div class="pavw"><div class="pav" style="background:${grad}"${m.photo_path ? ` data-pp="${esc(m.photo_path)}" data-sz="l"` : ''}>${esc(ini(m.name))}</div>${adm(`<button class="pcam" onclick="openPhotoEditor(${id})" title="${m.photo_path ? 'Ganti' : 'Tambah'} foto">📷</button>`)}</div>
+  <div class="fbp-head"><div class="pavw"><div class="pav" style="background:${grad}"${m.photo_path ? ` data-pp="${esc(m.photo_path)}" data-sz="l"` : ''}>${esc(ini(m.name))}</div>${mgr(`<button class="pcam" onclick="openPhotoEditor(${id})" title="${m.photo_path ? 'Ganti' : 'Tambah'} foto">📷</button>`)}</div>
     <div class="fbp-id"><h2>${esc(m.name)}${m.death_year ? ' †' : ''}</h2><p class="prel">${esc(relLabel(m))}</p>
       <p class="fbp-sub">${m.gender ? (m.gender === 'L' ? '♂ Laki-laki' : '♀ Perempuan') : 'Jenis kelamin belum diisi'}${gid ? ' · Generasi ' + gid : ''}${m.death_year ? ` · Wafat ${m.death_year}` : age != null ? ` · ${age} tahun` : ''}${m.relation ? ' · ' + esc(m.relation) : ''}</p></div>
-    <div class="fbp-act"><button class="primary" onclick="goTree(${id})">🌳 Lihat di pohon</button><button class="ghost" onclick="highlightLine(${id})">🧬 Sorot leluhur &amp; keturunan</button>${u && (u.kids.length || u.refs.length) ? `<button class="ghost" onclick="goBranch(${u.id})">⤢ Cabang ini</button>` : ''}${adm(`<button class="ghost" onclick="editMember(${id})">✎ Ubah</button>`)}</div></div>
-  ${adm(`<div class="fbp-adm"><span>Tambah cepat:</span><button class="btn-s" onclick="addChild(${id})">＋ Anak</button><button class="btn-s" onclick="addSpouse(${id})">＋ Pasangan</button>${!m.parent_id ? `<button class="btn-s" onclick="addParent(${id})">＋ Orang tua</button>` : ''}<button class="btn-s" onclick="openPhotoEditor(${id})">📷 Foto</button></div>`)}
+    <div class="fbp-act"><button class="primary" onclick="goTree(${id})">🌳 Lihat di pohon</button><button class="ghost" onclick="highlightLine(${id})">🧬 Sorot leluhur &amp; keturunan</button>${u && (u.kids.length || u.refs.length) ? `<button class="ghost" onclick="goBranch(${u.id})">⤢ Cabang ini</button>` : ''}${mgr(`<button class="ghost" onclick="editMember(${id})">✎ Ubah</button>`)}</div></div>
+  ${mgr(`<div class="fbp-adm"><span>Tambah cepat:</span><button class="btn-s" onclick="addChild(${id})">＋ Anak</button><button class="btn-s" onclick="addSpouse(${id})">＋ Pasangan</button>${!m.parent_id ? `<button class="btn-s" onclick="addParent(${id})">＋ Orang tua</button>` : ''}<button class="btn-s" onclick="openPhotoEditor(${id})">📷 Foto</button></div>`)}
   <div class="fbp-tabs" role="tablist"><button class="on" data-pt="fam" role="tab">👪 Keluarga</button><button data-pt="abt" role="tab">ℹ️ Tentang</button><button data-pt="ars" role="tab">💰 Arisan &amp; iuran</button></div>
   <div class="fbp-body">${intro}<main class="fbp-main">${famPane}${aboutPane}${arsPane}</main></div>`;
   $('#profileBox').scrollTop = 0; $('#profileModal').classList.add('show'); hydratePhotos($('#profileBox'));

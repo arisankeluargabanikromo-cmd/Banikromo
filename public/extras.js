@@ -60,8 +60,14 @@ const waNum = p => { let n = String(p || '').replace(/\D/g, ''); if (n.startsWit
 // ---------- Manajemen pengguna (admin) ----------
 titles.pengguna = 'Pengguna';
 R.pengguna = async () => {
-  const us = await api('users');
-  $('#pengguna').innerHTML = hero('Pengguna & Hak Akses', 'Admin dapat mengubah data; viewer hanya melihat. Anggota baru mendaftar lewat halaman login.') + `<div class="card"><table class="table"><thead><tr><th>Nama</th><th>Email</th><th>Peran</th></tr></thead><tbody>${us.map(u => `<tr><td><b>${esc(u.name)}</b></td><td>${esc(u.email)}</td><td><select class="select" onchange="setRole('${u.id}',this.value)"><option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option><option value="viewer" ${u.role === 'viewer' ? 'selected' : ''}>Viewer</option></select></td></tr>`).join('')}</tbody></table></div>`;
+  const us = await api('users'), cnt = r => us.filter(u => u.role === r).length;
+  const RC = [['admin', '👑', 'Admin', 'Akses penuh: keuangan, arisan & pengocokan, agenda, pengumuman, album, pengaturan, pengguna, serta anggota & silsilah.'],
+    ['pengelola', '🌳', 'Pengelola Silsilah', 'Mengelola <b>anggota & silsilah</b>: tambah/ubah anggota, hubungan keluarga, foto profil, impor CSV, dan leluhur. Juga bisa melihat semua data. Tidak menyentuh keuangan, arisan, atau pengaturan.'],
+    ['viewer', '👁', 'Viewer', 'Hanya melihat seluruh data keluarga. Peran awal setiap pendaftar baru.']];
+  const opt = (u, v, l) => `<option value="${v}" ${u.role === v ? 'selected' : ''}>${l}</option>`;
+  $('#pengguna').innerHTML = hero('Pengguna & Hak Akses', 'Atur siapa yang boleh mengubah data. Anggota baru mendaftar lewat halaman login dan otomatis menjadi Viewer.') +
+    `<div class="roles">${RC.map(([k, ic, t, d]) => `<div class="card role-card r-${k}"><div class="rc-h"><span class="rc-i">${ic}</span><div><b>${t}</b><small>${cnt(k)} pengguna</small></div></div><p>${d}</p></div>`).join('')}</div>
+    <div class="card"><table class="table"><thead><tr><th>Nama</th><th>Email</th><th>Peran</th></tr></thead><tbody>${us.map(u => `<tr><td><b>${esc(u.name)}</b></td><td>${esc(u.email)}</td><td><select class="select" onchange="setRole('${u.id}',this.value)">${opt(u, 'admin', 'Admin')}${opt(u, 'pengelola', 'Pengelola Silsilah')}${opt(u, 'viewer', 'Viewer')}</select></td></tr>`).join('')}</tbody></table></div>`;
 };
 const setRole = async (id, role) => { try { await api('users/' + id, 'PUT', { role }); toast('Peran diperbarui'); } catch (e) { } reload(); };
 // Sinkronkan warna bilah browser (mobile) dengan tema + beri tooltip menu saat sidebar hanya ikon

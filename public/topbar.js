@@ -45,7 +45,7 @@ addEventListener('offline', () => { paintSync(); toast('Anda sedang offline'); }
 // ---------- Menu user ----------
 function renderUser() {
   const box = E('tbUser'); if (!box || !ME) return;
-  const role = isA() ? 'Admin keluarga' : 'Anggota (lihat saja)', dark = document.body.classList.contains('dark');
+  const role = ROLE_LBL[ME.role] || ROLE_LBL.viewer, dark = document.body.classList.contains('dark');
   box.innerHTML = `<button class="tb-user-btn" id="tbUserBtn" type="button" aria-haspopup="menu" aria-expanded="false" title="${esc(ME.name)}"><div class="avatar">${esc(ini(ME.name))}</div><span class="tb-uname"><b>${esc(ME.name)}</b><small>${role}</small></span><i class="tb-chev">▾</i></button>
   <div class="tb-menu" id="tbMenu" role="menu" hidden>
     <div class="tb-mh"><div class="avatar">${esc(ini(ME.name))}</div><div><b>${esc(ME.name)}</b><small>${esc(ME.username || '')}</small><span class="role">${role}</span></div></div>

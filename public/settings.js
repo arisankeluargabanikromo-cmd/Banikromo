@@ -571,7 +571,7 @@ const ACT = {
 titles.pengaturan = 'Pengaturan';
 R.pengaturan = async () => {
   const root = E('pengaturan');
-  if (!isA()) { root.innerHTML = hero('Pengaturan', 'Halaman ini khusus admin.') + '<div class="card st-card">Anda masuk sebagai anggota (lihat saja). Hubungi admin keluarga untuk mengubah pengaturan.</div>'; return; }
+  if (!isA()) { root.innerHTML = hero('Pengaturan', 'Halaman ini khusus admin.') + `<div class="card st-card">Anda masuk sebagai <b>${esc(ROLE_LBL[ME.role] || ROLE_LBL.viewer)}</b>. Pengaturan aplikasi hanya dapat diubah oleh admin keluarga.</div>`; return; }
   if (ST.ready === null) { const r = await sb.rpc('pengaturan_ready'); ST.ready = !r.error && r.data === true; }
   ST.pend = { ...ST.brand }; ST.rst = null; ST.imp.res = null; draw();
 };

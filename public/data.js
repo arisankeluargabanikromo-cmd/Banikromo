@@ -52,7 +52,12 @@ async function api(p, m = 'GET', b = {}) {
   }
   if (t === 'users') return m === 'PUT' ? rpc('set_role', { p_id: id, p_role: b.role }) : rpc('list_users');
   if (t === 'history') { const [a, w] = await Promise.all([sb.from('payments').select('period,fee_type_id').eq('member_id', +id).order('period', { ascending: false }).limit(36), sb.from('draws').select('period').eq('winner_id', +id).eq('status', 'sah').order('period')]); return { pays: a.data || [], wins: w.data || [] }; }
-  if (t === 'members' && m === 'DELETE') { const { data } = await sb.from('members').select('photo_path').eq('id', +id).maybeSingle(); if (data && data.photo_path) await sb.storage.from('photos').remove([data.photo_path + '_s.jpg', data.photo_path + '_l.jpg']); }   // hapus berkas foto
+  if (t === 'members' && m === 'DELETE') {      // hapus baris dulu; berkas foto baru dibersihkan bila berhasil (penghapusan bisa ditolak pagar database)
+    const { data } = await sb.from('members').select('photo_path').eq('id', +id).maybeSingle(), r = await sb.from('members').delete().eq('id', +id);
+    if (r.error) return fail(r.error);
+    if (data && data.photo_path) await sb.storage.from('photos').remove([data.photo_path + '_s.jpg', data.photo_path + '_l.jpg']);
+    return {};
+  }
   if (t === 'albums' && m === 'DELETE') { const { data } = await sb.from('photos').select('path').eq('album_id', +id); if (data && data.length) await sb.storage.from('photos').remove(data.map(x => x.path)); }  // bersihkan file foto
   if (t === 'fill') return rpc('fill_marital_status');
   if (t === 'import') return rpc('import_members', { p: b.rows });

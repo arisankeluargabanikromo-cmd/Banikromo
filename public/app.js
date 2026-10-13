@@ -8,6 +8,9 @@ const hero = (t, p, extra = '') => `<div class="hero"><div><h1>${t}</h1><p>${p}<
 let ME = null, MEMBERS = [], page = 'dashboard';
 const isA = () => ME && ME.role === 'admin';
 const adm = h => isA() ? h : '';
+const isM = () => ME && (ME.role === 'admin' || ME.role === 'pengelola');       // boleh mengelola anggota & silsilah
+const mgr = h => isM() ? h : '';
+const ROLE_LBL = { admin: 'Admin keluarga', pengelola: 'Pengelola Silsilah', viewer: 'Anggota (lihat saja)' };
 
 function toast(msg, ok) {
   const lm = $('#loginMsg'); if (lm && $('#loginBox').classList.contains('show')) { lm.textContent = msg; lm.className = 'loginmsg show' + (ok ? ' ok' : ''); }
@@ -69,6 +72,7 @@ function readForm(form, fields) {
 function openForm(title, fields, vals, onSave, onDel) {
   $('#fTitle').textContent = title;
   $('#fForm').innerHTML = fields.map(f => {
+    if (f.t === 'note') return `<p class="fnote2">${f.l}</p>`;
     const v = vals[f.k] ?? '', a = `name="${f.k}" ${f.req ? 'required' : ''}`;
     const inp = f.t === 'pick' ? pickInput(f, v) : f.t === 'select' ? `<select ${a}>${f.o.map(o => { const [ov, ol] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(ov)}" ${String(ov) === String(v) ? 'selected' : ''}>${esc(ol)}</option>`; }).join('')}</select>`
       : f.t === 'textarea' ? `<textarea ${a} rows="3">${esc(v)}</textarea>` : `<input type="${f.t || 'text'}" ${a} value="${esc(v)}" ${f.t === 'number' ? 'min="0"' : ''}>`;

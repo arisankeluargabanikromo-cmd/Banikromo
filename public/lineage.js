@@ -16,11 +16,11 @@ const besanActive = () => FAM.src.filter(m => kinOf(m).k === 'besan' && +m.activ
 function linLineHtml() {                                    // satu baris ringkas di atas pohon
   const L = FAM.lin, S = FAM.stats; if (!L.roots.length || L.mode === 'none') return '';
   const how = L.mode === 'manual' ? 'ditetapkan admin' : 'terdeteksi otomatis';
-  return `<span class="ll" title="Keturunan asli ${how}. Menantu dan keluarga besan ditampilkan terpisah.">🧬 Keturunan dari <b>${esc(L.roots.map(unitLabel).join(' · '))}</b> <small>· ${S.asli} orang</small></span>${adm('<button class="btn-s" onclick="openLineage()">Atur</button>')}`;
+  return `<span class="ll" title="Keturunan asli ${how}. Menantu dan keluarga besan ditampilkan terpisah.">🧬 Keturunan dari <b>${esc(L.roots.map(unitLabel).join(' · '))}</b> <small>· ${S.asli} orang</small></span>${mgr('<button class="btn-s" onclick="openLineage()">Atur</button>')}`;
 }
 function linWarnHtml() {                                    // peringatan yang memengaruhi kebenaran pohon: tetap di atas
   const L = FAM.lin; if (!L.roots.length || L.mode === 'none' || !L.ambiguous) return '';
-  return `<div class="finfo warn"><span>⚠ Ada keluarga lain yang ukurannya sebanding, sehingga garis keturunan asli belum pasti. ${isA() ? '<b>Mohon konfirmasi</b> agar pohon tidak keliru.' : 'Admin belum menegaskannya.'}</span>${adm('<button class="btn-s" onclick="openLineage()">Konfirmasi</button>')}</div>`;
+  return `<div class="finfo warn"><span>⚠ Ada keluarga lain yang ukurannya sebanding, sehingga garis keturunan asli belum pasti. ${isM() ? '<b>Mohon konfirmasi</b> agar pohon tidak keliru.' : 'Admin atau pengelola belum menegaskannya.'}</span>${mgr('<button class="btn-s" onclick="openLineage()">Konfirmasi</button>')}</div>`;
 }
 function linNotesHtml() {                                   // tugas perapian untuk admin: dipindah ke bawah pohon
   const act = isA() ? besanActive() : []; if (!act.length) return '';
@@ -89,7 +89,7 @@ function kinBlock(m) {
   if (k.k === 'menantu') {
     const sp = asliSpouses(m), o = u.origins.find(x => x.member === m), par = o && o.parent, pu = par && FAM.unitOf.get(par.id);
     const ex = o ? `<div class="rtxt">Keluarga asal: <span class="rchips">${pu.members.map(x => chipL(x, x.gender === 'L' ? 'Ayah' : x.gender === 'P' ? 'Ibu' : 'Orang tua')).join('')}</span> • ${o.grp.size} orang tercatat <button class="btn-s" onclick="goBesan(${o.grp.id})">⌂ Lihat keluarga asal</button></div>`
-      : `<div class="rtxt">Keluarga asal belum dicatat. ${adm(`<button class="btn-s" onclick="addParent(${m.id})">＋ Catat orang tua</button>`)}</div>`;
+      : `<div class="rtxt">Keluarga asal belum dicatat. ${mgr(`<button class="btn-s" onclick="addParent(${m.id})">＋ Catat orang tua</button>`)}</div>`;
     return blk('<em class="kt kt-menantu">Menantu</em> — masuk lewat pernikahan', `${m.gender === 'P' ? 'Istri' : m.gender === 'L' ? 'Suami' : 'Pasangan'} dari <span class="rchips">${sp.map(chip).join('')}</span> • sejajar Generasi ${g}`, ex);
   }
   if (k.k === 'besan') {
