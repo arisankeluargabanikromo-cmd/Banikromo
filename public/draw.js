@@ -323,49 +323,55 @@ const cnt = h => { try { return JSON.parse(h.participants).length; } catch (_) {
 const RULES = [['Hanya anggota aktif', 'Peserta harus terdaftar sebagai anggota arisan.'], ['Sudah bayar iuran bulan ini', 'Yang belum lunas otomatis tidak ikut diundi.'], ['Satu kali menang per siklus', 'Pemenang sebelumnya tidak ikut sampai siklus baru dimulai.'], ['Konfirmasi kehadiran', 'Pemenang sementara harus dikonfirmasi hadir. Bila tidak hadir, dicatat lalu diundi ulang; ia tidak dihitung menang dan tetap bisa ikut bulan berikutnya.'], ['Acak aman & tercatat', 'Diundi di server (crypto random), setiap kocokan disimpan beserta kode bukti.']];
 let PD = null;                                               // data terakhir untuk dialog "lihat semua"
 const dpChip = (n, cls = '') => `<span class="dp-chip ${cls}"><i>${esc(ini(n))}</i><span class="n">${esc(n)}</span></span>`;
-function drawPanelHtml(d) {
-  if (d === undefined) return `<section class="dpanel" id="drawPanel"><div class="card dp-warn">Data pengocokan tidak dapat dimuat saat ini. <button class="btn-s" onclick="reload()">Coba lagi</button></div></section>`;
-  if (stale(d)) return `<section class="dpanel" id="drawPanel"><div class="card dp-warn">⚠ <b>Pengocokan perlu pembaruan database.</b> ${STALE_MSG}</div></section>`;
+// ---- Kartu dashboard: anatomi sama dengan Agenda Keluarga (kepala → hero → tab → baris → "Lihat semua") ----
+let DRD, DRT = null, DRP = null;                             // data terakhir, tab aktif, foto pemenang
+const mAbbr = p => MONTH(p).split(' ')[0].slice(0, 3).toUpperCase();
+const SHORT = { sah: 'Sah', menunggu: 'Menunggu', tidak_hadir: 'Tidak hadir', dipanggil: 'Dipanggil ulang' };
+function drInner(d) {
+  const head = (sub, tools = '') => `<div class="card-head"><div><h3>Pengocokan Arisan</h3><span>${sub}</span></div>${tools}</div>`;
+  if (d === undefined) return head('TIDAK DAPAT DIMUAT') + `<p class="dc-empty">Data pengocokan tidak dapat dimuat saat ini. <button class="btn-s" onclick="reload()">Coba lagi</button></p>`;
+  if (stale(d)) return head('PERLU PEMBARUAN') + `<p class="dc-empty">⚠ <b>Pengocokan perlu pembaruan database.</b> ${STALE_MSG}</p>`;
   PD = d; const w = d.winner, p = d.pending, n = d.eligible.length, A = isA(), st = w ? 'done' : p ? 'wait' : n ? 'ready' : 'none', who = w ? w.winner_name : p ? p.winner_name : '';
-  const pill = { done: '✓ Sudah diundi', wait: '⏳ Menunggu konfirmasi', ready: 'Siap diundi', none: 'Belum ada peserta' }[st];
+  const pill = { done: '✓ Sah', wait: '⏳ Menunggu', ready: 'Siap diundi', none: 'Belum siap' }[st];
   const cta = w ? '🏆 Lihat pemenang' : p ? '▶ Lanjutkan konfirmasi' : d.attempts > 0 ? '🎲 Lanjut kocok ulang' : A ? '🎬 Mulai pengocokan' : '👁 Tonton pengocokan';
-  const label = w ? `PEMENANG ARISAN ${esc(MONTH(d.period).toUpperCase())}` : p ? 'PEMENANG SEMENTARA' : n ? 'SIAP DIKOCOK' : 'BELUM BISA DIKOCOK';
+  const label = w ? 'PEMENANG PERIODE INI' : p ? 'PEMENANG SEMENTARA' : n ? 'SIAP DIKOCOK' : 'BELUM BISA DIKOCOK';
   const name = who ? esc(who) : n ? `${n} peserta` : 'Belum ada peserta';
   const sub = w ? (w.attempt > 1 ? `Disahkan pada kocokan ke-${w.attempt}` : 'Disahkan pada kocokan pertama') : p ? 'Menunggu konfirmasi kehadiran oleh admin' : n ? `memenuhi syarat${d.unpaid ? ` · ${d.unpaid} anggota belum bayar iuran (tidak ikut)` : ''}` : (d.unpaid ? `${d.unpaid} anggota belum bayar iuran` : 'Pastikan ada anggota aktif yang sudah membayar iuran');
-  const av = who ? `<div class="dp-av" id="dpAv">${esc(ini(who))}<span class="dp-crown">👑</span></div>` : `<div class="dp-av die"><span>🎲</span></div>`;
-  const hist = d.history.slice(0, 3).map(h => { const s = STAT[h.status] || STAT.sah; return `<li class="${h.status === 'sah' || h.status === 'menunggu' ? '' : 'dp-mut'}"><div class="hm"><b>${MONTH(h.period).split(' ')[0].slice(0, 3)}</b><small>${h.period.slice(2, 4)}</small></div><div class="hw"><b>${esc(h.winner_name)}</b><small>Kocokan ke-${h.attempt || 1} · ${cnt(h)} peserta</small></div><span class="status ${s[1]}">${s[0]}</span></li>`; }).join('');
-  const shown = d.eligible.slice(0, 8);
-  return `<section class="dpanel" id="drawPanel">
-  <div class="dp-main st-${st}"><div class="dp-orb"></div>
-    <div class="dp-top"><span class="dp-eyebrow">⚡ PENGOCOKAN ARISAN · ${esc(MONTH(d.period).toUpperCase())} · SIKLUS ${d.cycle}</span><span class="dp-pill ${st}">${pill}</span></div>
-    <div class="dp-center">${av}<div class="dp-txt"><div class="dp-k">${label}</div><div class="dp-name">${name}</div><div class="dp-sub">${sub}</div></div></div>
-    <div class="dp-act"><button class="dp-go" onclick="openStage()">${cta}</button><button class="dp-fs" onclick="openStage(true)" title="Cocok untuk proyektor / TV">⛶ Layar penuh</button>${A ? '<button class="dp-fs" title="Mulai siklus baru (semua anggota bisa menang lagi)" onclick="newCycle()">↻ Siklus baru</button>' : ''}</div>
-    ${w && A ? '<button class="dp-minor" onclick="reopenDraw()">↩ Pemenang tidak hadir? Batalkan &amp; kocok ulang</button>' : ''}
-  </div>
-  <div class="card dp-side">
-    <div class="card-head"><h3>Peserta undian</h3><span>${n} orang</span></div>
-    <div class="dp-people">${shown.map(e => dpChip(e.name)).join('') || '<small class="muted">Belum ada peserta yang memenuhi syarat.</small>'}${n > shown.length ? `<button class="dp-more" onclick="openDrawList()">+${n - shown.length} lainnya</button>` : ''}</div>
-    ${d.absent.length ? `<div class="dp-absent"><small>Dilewati (tidak hadir):</small>${d.absent.map(a => dpChip(a.name, 'abs')).join('')}</div>` : ''}
-    <div class="card-head dp-hh"><h3>Riwayat terbaru</h3>${d.history.length ? '<button class="btn-s" onclick="openDrawHistory()">Lihat semua</button>' : ''}</div>
-    ${hist ? `<ul class="dp-hist">${hist}</ul>` : '<p class="dp-empty">Belum ada pengundian tercatat.</p>'}
-    <button class="dp-rules" onclick="openDrawRules()">ℹ Aturan pengundian &amp; transparansi</button>
-  </div></section>`;
+  const av = who ? `<div class="dr-av" id="dpAv">${esc(ini(who))}${w ? '<span class="dr-crown">👑</span>' : ''}</div>` : `<div class="dr-av die">🎲</div>`;
+  const tab = DRT || (w ? 'riwayat' : 'peserta'), row = (nm, sb, tail, cls = '') => `<div class="ag-row dr-row${cls}"><span class="dr-ini">${esc(ini(nm))}</span><div class="ag-t"><b>${esc(nm)}</b><small>${sb}</small></div>${tail}</div>`;
+  let list, foot;
+  if (tab === 'peserta') {
+    const abs = d.absent.slice(0, 2).map(a => row(a.name, 'Dilewati pada periode ini', '<span class="status bad">Tidak hadir</span>', ' abs')), ok = d.eligible.slice(0, 4 - abs.length).map(e => row(e.name, 'Memenuhi syarat', '<span class="ag-rel dr-ok">✓ Lunas</span>'));
+    list = abs.concat(ok).join('') || `<p class="dc-empty">Belum ada peserta yang memenuhi syarat.${d.unpaid ? ` ${d.unpaid} anggota belum membayar iuran.` : ''}</p>`;
+    foot = n ? `<button class="dc-all" onclick="openDrawList()">Lihat semua peserta (${n}) →</button>` : `<button class="dc-all" onclick="openDrawRules()">Aturan pengundian →</button>`;
+  } else {
+    list = d.history.slice(0, 4).map(h => { const s = STAT[h.status] || STAT.sah, mut = h.status === 'sah' || h.status === 'menunggu' ? '' : ' dr-mut';
+      return `<div class="ag-row dr-row${mut}"><div class="dbx dr-mb"><small>${h.period.slice(0, 4)}</small><b>${mAbbr(h.period)}</b></div><div class="ag-t"><b>${esc(h.winner_name)}</b><small>Kocokan ke-${h.attempt || 1} · ${cnt(h)} peserta</small></div><span class="status ${s[1]}">${SHORT[h.status] || s[0]}</span></div>`; }).join('') || '<p class="dc-empty">Belum ada pengundian tercatat.</p>';
+    foot = d.history.length ? '<button class="dc-all" onclick="openDrawHistory()">Lihat semua riwayat →</button>' : '<button class="dc-all" onclick="openDrawRules()">Aturan pengundian →</button>';
+  }
+  const tools = `<div class="dc-ibs">${A ? '<button class="dc-ib" onclick="newCycle()" title="Mulai siklus baru (semua anggota bisa menang lagi)" aria-label="Siklus baru">↻</button>' : ''}<button class="dc-ib" onclick="openDrawRules()" title="Aturan pengundian &amp; transparansi" aria-label="Aturan pengundian">ℹ</button></div>`;
+  return `${head(`${esc(MONTH(d.period).toUpperCase())} · SIKLUS ${d.cycle}`, tools)}
+  <div class="dr-hero st-${st}"><div class="ah-top"><span class="ah-k">${label}</span><span class="ah-rel dr-pill ${st}">${pill}</span></div>
+    <div class="dr-body">${av}<div class="dr-txt"><b>${name}</b><span>${sub}</span></div></div>
+    <div class="dr-act"><button class="dr-go" onclick="openStage()">${cta}</button><button class="dr-fs" onclick="openStage(true)" title="Layar penuh — cocok untuk proyektor / TV" aria-label="Layar penuh">⛶</button></div>
+    ${w && A ? '<button class="dr-minor" onclick="reopenDraw()">↩ Pemenang tidak hadir? Batalkan &amp; kocok ulang</button>' : ''}</div>
+  <div class="ag-tabs"><div class="seg sm"><button class="${tab === 'peserta' ? 'on' : ''}" onclick="drTab('peserta')">Peserta (${n})</button><button class="${tab === 'riwayat' ? 'on' : ''}" onclick="drTab('riwayat')">Riwayat</button></div></div>
+  <div class="ag-list">${list}</div>${foot}`;
 }
-async function loadPanelPhoto(d) {
-  try { const id = d && !stale(d) && ((d.winner && d.winner.winner_id) || (d.pending && d.pending.winner_id)); if (!id) return;
-    const { data } = await sb.from('members').select('photo_path').eq('id', id).maybeSingle(); const av = $('#dpAv'); if (!data || !data.photo_path || !av) return;
-    av.dataset.pp = data.photo_path; av.dataset.sz = 'l'; await hydratePhotos(av.parentNode); } catch (_) { }
+async function drPhoto(d) {
+  try { const id = d && !stale(d) && ((d.winner && d.winner.winner_id) || (d.pending && d.pending.winner_id)), av = $('#dpAv'); if (!id || !av) return;
+    if (!DRP || DRP.id !== id) { const { data } = await sb.from('members').select('photo_path').eq('id', id).maybeSingle(); DRP = { id, path: (data && data.photo_path) || '' }; }
+    if (!DRP.path) return; av.dataset.pp = DRP.path; av.dataset.sz = 'l'; await hydratePhotos(av.parentNode); } catch (_) { }
 }
+window.drTab = t => { DRT = t; const c = $('#drCard'); if (c) { c.innerHTML = drInner(DRD); drPhoto(DRD); } };
+window.drCardInner = () => drInner(DRD);
+window.drAfter = () => drPhoto(DRD);
 const dlg = (id, title, body, cls = '') => modal2(id, `<div class="modal-top"><b>${title}</b><button class="close" onclick="closeModal2('${id}')">×</button></div><div class="dp-dlg">${body}</div>`, cls);
 window.openDrawList = () => PD && dlg('drawListModal', `Peserta undian (${PD.eligible.length})`, `<div class="dp-people all">${PD.eligible.map(e => dpChip(e.name)).join('')}</div>`, 'dp-box');
 window.openDrawRules = () => dlg('drawRulesModal', 'Aturan pengundian', RULES.map(a => `<div class="activity-row"><div class="activity-icon">✓</div><div class="activity-text"><b>${a[0]}</b><span>${a[1]}</span></div></div>`).join(''), 'dp-box');
 window.openDrawHistory = () => PD && dlg('drawHistModal', 'Histori pengundian', `<div class="tscroll"><table class="table"><thead><tr><th>Periode</th><th>Waktu</th><th>Kocokan</th><th>Peserta</th><th>Pemenang</th><th>Status</th><th>Kode bukti</th></tr></thead><tbody>${PD.history.map(h => { const s = STAT[h.status] || STAT.sah; return `<tr class="${h.status === 'sah' || h.status === 'menunggu' ? '' : 'dp-mut'}"><td>${MONTH(h.period)}</td><td>${ft(h.at)}</td><td>ke-${h.attempt || 1}</td><td>${cnt(h)}</td><td><b>${esc(h.winner_name)}</b></td><td><span class="status ${s[1]}">${s[0]}</span></td><td class="proof">${esc((h.proof || '').slice(0, 16))}…</td></tr>`; }).join('')}</tbody></table></div>`, 'dp-box wide');
-const _dash = R.dashboard;                                   // dashboard dasar (app.js) + panel pengocokan tepat di bawah banner
-R.dashboard = async () => {
-  const dp = api('draw').catch(() => undefined);
-  await _dash(); const d = await dp, h = $('#dashboard .hero'); if (!h) return;
-  h.insertAdjacentHTML('afterend', drawPanelHtml(d)); loadPanelPhoto(d);
-};
+const _dash = R.dashboard;                                   // dashboard dasar (app.js); kartu pengocokan ditempatkan oleh dashcards.js bersama kartu lainnya
+R.dashboard = async () => { const dp = api('draw').catch(() => undefined); DRT = null; await _dash(); DRD = await dp; };
 window.reopenDraw = guard(async () => {
   const w = (await api('draw')).winner; if (!w) return;
   if (confirm(`Batalkan ${w.winner_name} sebagai pemenang karena tidak hadir, lalu buka pengocokan ulang?\nBeliau dicatat tidak hadir dan tidak dihitung menang.`)) { await api('draw/reopen', 'POST'); openStage(); }

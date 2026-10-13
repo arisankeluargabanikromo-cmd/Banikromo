@@ -1,5 +1,5 @@
 // ============================================================
-// Dashboard v3.1 — kartu Kalender • Agenda Keluarga • Pengumuman
+// Dashboard v3.5 — kartu Pengocokan • Kalender • Agenda Keluarga • Pengumuman (satu keluarga kartu)
 //   Memakai data & form yang sama dengan halaman Agenda/Pengumuman (tabel events & announcements).
 //   Kalender: navigasi bulan, penanda per hari, klik hari -> daftar acara hari itu.
 //   Agenda: acara mendatang (dengan hitung mundur) / terlewat; klik -> rincian + tambah ke Google Kalender.
@@ -90,9 +90,15 @@ const prev = R.dashboard;
 R.dashboard = async () => {
   const pf = Promise.all([api('events'), api('announcements')]).catch(() => null);
   await prev(); const r = await pf, g = $('#dashboard .grid4'); if (!g) return;
-  if (!r) return g.insertAdjacentHTML('afterend', '<div class="card dc-warn">Kalender, agenda, dan pengumuman tidak dapat dimuat saat ini. <button class="btn-s" onclick="reload()">Coba lagi</button></div>');
-  DC.ev = r[0] || []; DC.an = r[1] || []; CACHE.ev = DC.ev; CACHE.an = DC.an;
-  if (!DC.init) { const d = new Date(); DC.y = d.getFullYear(); DC.m = d.getMonth(); DC.sel = todayS(); DC.init = true; }
-  g.insertAdjacentHTML('afterend', `<section class="dcards"><div class="card dc cal" id="calCard">${calHtml()}</div><div class="card dc ag" id="agCard">${agHtml()}</div><div class="card dc an" id="anCard">${anHtml()}</div></section>`);
+  const dr = window.drCardInner ? `<div class="card dc dr" id="drCard">${drCardInner()}</div>` : '';     // kartu Pengocokan (draw.js)
+  let rest;
+  if (!r) rest = '<div class="card dc-warn dc-span">Kalender, agenda, dan pengumuman tidak dapat dimuat saat ini. <button class="btn-s" onclick="reload()">Coba lagi</button></div>';
+  else {
+    DC.ev = r[0] || []; DC.an = r[1] || []; CACHE.ev = DC.ev; CACHE.an = DC.an;
+    if (!DC.init) { const d = new Date(); DC.y = d.getFullYear(); DC.m = d.getMonth(); DC.sel = todayS(); DC.init = true; }
+    rest = `<div class="card dc cal" id="calCard">${calHtml()}</div><div class="card dc ag" id="agCard">${agHtml()}</div><div class="card dc an" id="anCard">${anHtml()}</div>`;
+  }
+  g.insertAdjacentHTML('afterend', `<section class="dcards">${dr}${rest}</section>`);
+  if (window.drAfter) drAfter();
 };
 })();
