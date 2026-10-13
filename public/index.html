@@ -106,7 +106,7 @@ body.dark .tree .connector,body.dark .branch:before,.dark .branches:before{backg
   <div class="nav-title">Informasi</div>
   <nav class="nav">
     <button onclick="showPage('pengumuman',this)"><span class="nav-icon">◌</span><span>Pengumuman</span></button>
-    <button id="navUsers" style="display:none" onclick="showPage('pengguna',this)"><span class="nav-icon">⚙</span><span>Pengguna</span></button>
+    <button id="navUsers" onclick="showPage('pengguna',this)"><span class="nav-icon">⚙</span><span id="navUsersTx">Akun Saya</span></button>
     <button onclick="showPage('laporan',this)"><span class="nav-icon">▤</span><span>Laporan</span></button>
     <button id="navSettings" style="display:none" onclick="showPage('pengaturan',this)"><span class="nav-icon">✦</span><span>Pengaturan</span></button>
   </nav>
@@ -157,6 +157,7 @@ body.dark .tree .connector,body.dark .branch:before,.dark .branches:before{backg
 <script src="/settings.js"></script>
 <script src="/topbar.js"></script>
 <script src="/print.js"></script>
+<script src="/account.js"></script>
 <script src="/router.js"></script>
 </body>
 </html>

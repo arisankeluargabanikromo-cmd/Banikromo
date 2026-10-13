@@ -80,6 +80,7 @@ function stBusy(msg) {
     close() { el.remove(); }
   };
 }
+window.stBusy = stBusy;   // dipakai juga oleh print.js (Studio Cetak) — tanpa ini tombol SVG/PNG/Cetak gagal diam-diam
 const setBtn = (b, on, txt) => { if (!b) return; if (on) { b._t = b.innerHTML; b.disabled = true; b.innerHTML = txt || '…'; } else { b.disabled = false; if (b._t != null) b.innerHTML = b._t; } };
 
 // ---------- Identitas & logo ----------

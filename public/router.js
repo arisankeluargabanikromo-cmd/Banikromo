@@ -1,22 +1,23 @@
 // ===== Router (v3.7): URL berbeda per halaman, tombol Back/Forward, dan data selalu segar =====
 // Contoh: / (Dashboard), /arisan, /silsilah, /anggota, /keuangan, /agenda, /galeri, /pengumuman,
-//         /laporan, /pengguna, /pengaturan
+//         /laporan, /pengguna (Akun Saya), /pengguna/kelola (admin), /pengaturan
 // Dimuat paling akhir agar bisa membungkus showPage() dan R[...] yang didefinisikan file lain.
 (() => {
 const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+const segs = p => { let s = ''; try { s = decodeURIComponent(p || ''); } catch (_) { } return s.replace(/^\/+|\/+$/g, '').toLowerCase().split('/'); };
+const tabOf = p => { const [a, b] = segs(p); return (a === 'pengguna' && b === 'kelola') ? 'kelola' : 'akun'; };   // sub-tab halaman Akun & Pengguna
 const toId = p => {                                   // '/arisan/' → 'arisan' ; selain itu → null
-  let s = ''; try { s = decodeURIComponent(p || ''); } catch (_) { }
-  s = s.replace(/^\/+|\/+$/g, '').split('/')[0].toLowerCase();
+  const s = segs(p)[0];
   if (s === '' || s === 'dashboard') return 'dashboard';   // alamat utama "/" = Dashboard
+  if (s === 'password') return 'pengguna';                 // alamat lama /password → Akun & Pengguna
   return has(titles, s) ? s : null;
 };
-const pathOf = id => id === 'dashboard' ? '/' : '/' + id;
-const ADMIN_ONLY = ['pengguna'];                      // halaman yang tidak boleh dibuka non-admin
+const pathOf = id => id === 'dashboard' ? '/' : id === 'pengguna' && PG_TAB === 'kelola' ? '/pengguna/kelola' : '/' + id;
 
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
 // Halaman awal diambil dari URL (boot() berjalan setelah semua skrip dimuat & login terverifikasi)
-page = toId(location.pathname) || 'dashboard';
+page = toId(location.pathname) || 'dashboard'; PG_TAB = tabOf(location.pathname);
 
 // ---------- Judul tab browser: "Arisan · FamilyHub — …" ----------
 let baseTitle = document.title, lastTitle = null;
@@ -47,7 +48,7 @@ let popping = false, firstNav = true;
 
 showPage = function (id, btn) {
   if (!has(titles, id)) id = 'dashboard';
-  if (ADMIN_ONLY.includes(id) && ME && !isA()) { id = 'dashboard'; btn = null; toast('Halaman ini khusus admin'); }
+  if (id === 'pengguna' && PG_TAB === 'kelola' && ME && !isA()) PG_TAB = 'akun';   // tab Kelola Pengguna khusus admin
 
   const path = pathOf(id), changed = id !== page;
   if (location.pathname !== path) {
@@ -67,6 +68,7 @@ showPage = function (id, btn) {
 // Tombol Back / Forward browser
 addEventListener('popstate', () => {
   const id = toId(location.pathname) || 'dashboard';
+  PG_TAB = tabOf(location.pathname);
   if (!ME) { page = id; return; }                     // belum login: boot() nanti memakai URL ini
   popping = true; try { showPage(id); } finally { popping = false; }
 });

@@ -58,23 +58,24 @@ const waNum = p => { let n = String(p || '').replace(/\D/g, ''); if (n.startsWit
 // wa() & waGroup() kini ada di finance.js (mendukung dua jenis iuran + tunggakan)
 
 // ---------- Manajemen pengguna (admin) ----------
-titles.pengguna = 'Pengguna';
-R.pengguna = async () => {
+titles.pengguna = 'Akun & Pengguna';
+// Isi tab "Kelola Pengguna" (khusus admin). Kerangka halaman & tab ada di account.js
+async function usersAdminHtml() {
   const us = await api('users'), cnt = r => us.filter(u => u.role === r).length;
   const RC = [['admin', '👑', 'Admin', 'Akses penuh: keuangan, arisan & pengocokan, agenda, pengumuman, album, pengaturan, pengguna, serta anggota & silsilah.'],
     ['pengelola', '🌳', 'Pengelola Silsilah', 'Mengelola <b>anggota & silsilah</b>: tambah/ubah anggota, hubungan keluarga, foto profil, impor CSV, dan leluhur. Juga bisa melihat semua data. Tidak menyentuh keuangan, arisan, atau pengaturan.'],
     ['viewer', '👁', 'Viewer', 'Hanya melihat seluruh data keluarga. Peran awal setiap pendaftar baru.']];
   const opt = (u, v, l) => `<option value="${v}" ${u.role === v ? 'selected' : ''}>${l}</option>`;
-  $('#pengguna').innerHTML = hero('Pengguna & Hak Akses', 'Atur siapa yang boleh mengubah data. Anggota baru mendaftar lewat halaman login dan otomatis menjadi Viewer.') +
-    `<div class="roles">${RC.map(([k, ic, t, d]) => `<div class="card role-card r-${k}"><div class="rc-h"><span class="rc-i">${ic}</span><div><b>${t}</b><small>${cnt(k)} pengguna</small></div></div><p>${d}</p></div>`).join('')}</div>
-    <div class="card"><table class="table"><thead><tr><th>Nama</th><th>Email</th><th>Peran</th></tr></thead><tbody>${us.map(u => `<tr><td><b>${esc(u.name)}</b></td><td>${esc(u.email)}</td><td><select class="select" onchange="setRole('${u.id}',this.value)">${opt(u, 'admin', 'Admin')}${opt(u, 'pengelola', 'Pengelola Silsilah')}${opt(u, 'viewer', 'Viewer')}</select></td></tr>`).join('')}</tbody></table></div>`;
-};
+  return `<div class="roles">${RC.map(([k, ic, t, d]) => `<div class="card role-card r-${k}"><div class="rc-h"><span class="rc-i">${ic}</span><div><b>${t}</b><small>${cnt(k)} pengguna</small></div></div><p>${d}</p></div>`).join('')}</div>
+    <div class="card"><div class="card-head"><h3>Daftar pengguna</h3><span>${us.length} AKUN</span></div><table class="table"><thead><tr><th>Nama</th><th>Email</th><th>Peran</th></tr></thead><tbody>${us.map(u => `<tr><td><b>${esc(u.name)}</b>${ME && u.email === ME.username ? ' <span class="pg-you">Anda</span>' : ''}</td><td>${esc(u.email)}</td><td><select class="select" onchange="setRole('${u.id}',this.value)">${opt(u, 'admin', 'Admin')}${opt(u, 'pengelola', 'Pengelola Silsilah')}${opt(u, 'viewer', 'Viewer')}</select></td></tr>`).join('')}</tbody></table></div>
+    <p class="st-note">Password pengguna lain tidak dapat dilihat atau diubah dari sini. Jika ada yang lupa password, ia bisa menggantinya sendiri di tab <b>Akun Saya</b> setelah masuk, atau admin mengatur ulang lewat dashboard Supabase (Authentication → Users).</p>`;
+}
 const setRole = async (id, role) => { try { await api('users/' + id, 'PUT', { role }); toast('Peran diperbarui'); } catch (e) { } reload(); };
 // Sinkronkan warna bilah browser (mobile) dengan tema + beri tooltip menu saat sidebar hanya ikon
 const syncTheme = () => { const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = document.body.classList.contains('dark') ? '#101426' : '#ffffff'; };
 const _tt = toggleTheme; toggleTheme = () => { _tt(); syncTheme(); }; syncTheme();
 const _boot = boot; boot = () => {
-  $('#navUsers').style.display = isA() ? '' : 'none';
+  $('#navUsersTx').textContent = isA() ? 'Akun & Pengguna' : 'Akun Saya';       // semua peran punya halaman akun
   document.querySelectorAll('.nav button').forEach(b => { b.title = b.querySelector('span:last-child').textContent; });
   _boot();
   const sc = document.querySelector('.side-scroll'), fade = () => sc.classList.toggle('more', sc.scrollTop + sc.clientHeight < sc.scrollHeight - 4);

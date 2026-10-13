@@ -49,7 +49,8 @@ function renderUser() {
   box.innerHTML = `<button class="tb-user-btn" id="tbUserBtn" type="button" aria-haspopup="menu" aria-expanded="false" title="${esc(ME.name)}"><div class="avatar">${esc(ini(ME.name))}</div><span class="tb-uname"><b>${esc(ME.name)}</b><small>${role}</small></span><i class="tb-chev">▾</i></button>
   <div class="tb-menu" id="tbMenu" role="menu" hidden>
     <div class="tb-mh"><div class="avatar">${esc(ini(ME.name))}</div><div><b>${esc(ME.name)}</b><small>${esc(ME.username || '')}</small><span class="role">${role}</span></div></div>
-    ${isA() ? `<button class="tb-mi" role="menuitem" data-go="pengaturan"><span class="ic">✦</span>Pengaturan</button><button class="tb-mi" role="menuitem" data-go="pengguna"><span class="ic">⚙</span>Pengguna & hak akses</button>` : ''}
+    <button class="tb-mi" role="menuitem" data-go="pengguna" data-tab="akun"><span class="ic">◉</span>Akun saya & ganti password</button>
+    ${isA() ? `<button class="tb-mi" role="menuitem" data-go="pengguna" data-tab="kelola"><span class="ic">⚙</span>Kelola pengguna & hak akses</button><button class="tb-mi" role="menuitem" data-go="pengaturan"><span class="ic">✦</span>Pengaturan</button>` : ''}
     <button class="tb-mi" role="menuitem" data-theme><span class="ic">${dark ? '☀' : '◐'}</span>${dark ? 'Mode terang' : 'Mode gelap'}</button>
     <button class="tb-mi" role="menuitem" data-sync><span class="ic">⟳</span>Sinkronkan data</button>
     <div class="tb-sep"></div>
@@ -64,7 +65,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('#tbUserBtn')) return setMenu(menu().hidden);
   const it = e.target.closest('.tb-mi'); if (!it) return;
   setMenu(false);
-  if (it.dataset.go) showPage(it.dataset.go);
+  if (it.dataset.go) { if (it.dataset.tab) PG_TAB = it.dataset.tab; showPage(it.dataset.go); }
   else if ('theme' in it.dataset) { toggleTheme(); renderUser(); }
   else if ('sync' in it.dataset) syncNow();
   else if ('out' in it.dataset) logout();
