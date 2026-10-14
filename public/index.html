@@ -118,7 +118,7 @@ body.dark .tree .connector,body.dark .branch:before,.dark .branches:before{backg
   <div class="actions">
     <div class="tb-clock" id="tbClock" title="Waktu Jakarta (WIB)" aria-live="off"><b id="tbTime">--:--:--</b><small id="tbDate">&nbsp;</small></div>
     <button class="tb-sync" id="tbSync" type="button" onclick="syncNow()" title="Sinkronkan data dengan server"><span class="tb-sync-ic" aria-hidden="true">⟳</span><span class="tb-sync-tx"><b>Sinkron</b><small id="tbSyncAt">belum</small></span><i class="tb-net" id="tbNet" aria-hidden="true"></i></button>
-    <button class="icon-btn" title="Notifikasi" onclick="toast('Tidak ada notifikasi baru')">♧<i class="dot"></i></button>
+    <button class="icon-btn" id="notifBtn" title="Notifikasi" onclick="openNotif()">♧<i class="dot" id="notifDot" hidden></i></button>
     <button class="icon-btn" id="themeBtn" title="Ganti tema" onclick="toggleTheme()">◐</button>
     <div class="tb-user" id="tbUser"></div>
   </div></div>
@@ -138,9 +138,9 @@ body.dark .tree .connector,body.dark .branch:before,.dark .branches:before{backg
 </div>
 <div class="modal" id="profileModal"><div class="modal-box" id="profileBox"></div></div>
 <div class="modal" id="formModal"><div class="modal-box"><div class="modal-top"><b id="fTitle"></b><button class="close" onclick="closeForm()">×</button></div><form id="fForm" class="fform"></form></div></div>
-<div class="login" id="loginBox"><form class="modal-box" id="loginForm"><div class="logo-mark" style="margin:0 auto 12px;color:#fff;width:52px;height:52px">FH</div><h2 style="text-align:center;margin:0 0 4px">FamilyHub</h2><p style="text-align:center;color:var(--muted);font-size:12px;margin:0 0 18px">Masuk untuk melanjutkan</p><label>Email<input name="username" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><div id="loginMsg" class="loginmsg"></div><button class="primary" id="loginBtn" style="width:100%;margin-top:14px">Masuk</button><button type="button" id="signupBtn" class="ghost" style="width:100%;margin-top:8px;padding:11px;border-radius:13px">Daftar akun baru</button></form></div>
+<div class="login" id="loginBox"><form class="modal-box" id="loginForm"><div class="logo-mark" style="margin:0 auto 12px;color:#fff;width:52px;height:52px">FH</div><h2 style="text-align:center;margin:0 0 4px">FamilyHub</h2><p id="loginSub" style="text-align:center;color:var(--muted);font-size:12px;margin:0 0 18px">Masuk untuk melanjutkan</p><label id="nameRow" style="display:none">Nama lengkap<input name="name" type="text" autocomplete="name" maxlength="80"></label><label>Email<input name="username" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><div id="loginMsg" class="loginmsg"></div><button class="primary" id="loginBtn" style="width:100%;margin-top:14px">Masuk</button><button type="button" id="signupBtn" class="ghost" style="width:100%;margin-top:8px;padding:11px;border-radius:13px">Daftar akun baru</button><button type="button" id="backLogin" class="ghost" style="display:none;width:100%;margin-top:8px;padding:11px;border-radius:13px">← Kembali ke halaman masuk</button></form></div>
 <div class="toast" id="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/vendor/supabase-js-2.45.4.js"></script>
 <script src="/config.js"></script>
 <script src="/data.js"></script>
 <script src="/app.js"></script>

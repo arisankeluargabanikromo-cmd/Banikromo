@@ -20,9 +20,10 @@ const guard = f => async (...a) => { try { return await f(...a); } catch (e) { i
 // ---------- Auth ----------
 function showLogin() { $('#loginBox').classList.add('show'); }
 $('#loginForm').onsubmit = async e => {
-  e.preventDefault(); const f = Object.fromEntries(new FormData(e.target)), b = $('#loginBtn'); $('#loginMsg').className = 'loginmsg';
+  e.preventDefault(); if (SIGNUP) return doSignup();      // tombol Enter saat mode pendaftaran = kirim pendaftaran
+  const f = Object.fromEntries(new FormData(e.target)), b = $('#loginBtn'); $('#loginMsg').className = 'loginmsg';
   b.disabled = true; b.textContent = 'Memproses…';
-  try { ME = await api('login', 'POST', f); $('#loginBox').classList.remove('show'); e.target.reset(); boot(); }
+  try { ME = await api('login', 'POST', f); $('#loginBox').classList.remove('show'); e.target.reset(); enter(); }
   catch (err) { if (err) { console.error(err); if (!$('#loginMsg').classList.contains('show')) toast('Gagal masuk: ' + (err.message || 'periksa koneksi & konfigurasi Supabase')); } }
   finally { b.disabled = false; b.textContent = 'Masuk'; }
 };
@@ -134,4 +135,46 @@ if (localStorage.getItem('familyhub-theme') === 'dark') { document.body.classLis
 function boot() {
   showPage(page);
 }
-api('me').then(u => { ME = u; boot(); }).catch(() => { });
+
+// ---------- Gerbang persetujuan akun (v3.10) ----------
+// Akun baru berstatus MENUNGGU sampai admin menyetujui. Database juga menolak semua data untuk akun ini (RLS);
+// layar ini hanya memberi tahu pengguna. Tidak ada pemanggilan data selama menunggu.
+function enter() {
+  if (ME && ME.approved === false) return showPending();
+  const pb = $('#pendingBox'); if (pb) pb.classList.remove('show');
+  boot(); refreshNotif();
+}
+function showPending() {
+  let el = $('#pendingBox');
+  if (!el) { el = document.createElement('div'); el.id = 'pendingBox'; el.className = 'login'; document.body.appendChild(el); }
+  el.innerHTML = `<div class="modal-box" style="text-align:center" role="alertdialog" aria-live="polite">
+    <div style="font-size:44px;line-height:1;margin-bottom:10px">⏳</div>
+    <h2 style="margin:0 0 6px">Menunggu persetujuan</h2>
+    <p style="color:var(--muted);font-size:13px;line-height:1.6;margin:0 0 6px">Akun <b>${esc(ME.username || '')}</b> sudah terdaftar, tetapi admin keluarga perlu menyetujuinya dulu sebelum Anda dapat melihat data.</p>
+    <p style="color:var(--muted);font-size:12px;margin:0 0 18px">Hubungi admin keluarga, lalu tekan “Periksa lagi”.</p>
+    <div id="pendMsg" class="loginmsg"></div>
+    <button class="primary" id="pendRetry" style="width:100%;margin-top:6px">Periksa lagi</button>
+    <button class="ghost" id="pendOut" style="width:100%;margin-top:8px;padding:11px;border-radius:13px">Keluar</button></div>`;
+  el.classList.add('show');
+  $('#pendOut').onclick = logout;
+  $('#pendRetry').onclick = async () => {
+    const b = $('#pendRetry'), m = $('#pendMsg'); b.disabled = true; b.textContent = 'Memeriksa…';
+    try { const u = await api('me'); ME = u; if (u.approved !== false) return enter(); m.textContent = 'Belum disetujui. Coba lagi nanti.'; m.className = 'loginmsg show'; }
+    catch (e) { if (e) console.error(e); } finally { b.disabled = false; b.textContent = 'Periksa lagi'; }
+  };
+}
+
+// ---------- Notifikasi: pendaftar yang menunggu persetujuan (admin) ----------
+let PENDING_N = 0;
+async function refreshNotif() {
+  const dot = $('#notifDot'), btn = $('#notifBtn'); if (!dot) return;
+  PENDING_N = 0;
+  if (isA()) { try { PENDING_N = (await api('users')).filter(u => u.approved === false).length; } catch (e) { } }
+  dot.hidden = !PENDING_N; btn.title = PENDING_N ? `${PENDING_N} pendaftar menunggu persetujuan` : 'Notifikasi';
+}
+function openNotif() {
+  if (PENDING_N && isA()) { PG_TAB = 'kelola'; return showPage('pengguna'); }
+  toast('Tidak ada notifikasi baru');
+}
+setInterval(() => { if (ME && ME.approved !== false && !document.hidden) refreshNotif(); }, 5 * 60 * 1000);
+api('me').then(u => { ME = u; enter(); }).catch(() => { });

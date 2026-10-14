@@ -61,15 +61,38 @@ const waNum = p => { let n = String(p || '').replace(/\D/g, ''); if (n.startsWit
 titles.pengguna = 'Akun & Pengguna';
 // Isi tab "Kelola Pengguna" (khusus admin). Kerangka halaman & tab ada di account.js
 async function usersAdminHtml() {
-  const us = await api('users'), cnt = r => us.filter(u => u.role === r).length;
+  const all = await api('users'), pend = all.filter(u => u.approved === false), us = all.filter(u => u.approved !== false), cnt = r => us.filter(u => u.role === r).length;
+  CACHE.pend = pend; PENDING_N = pend.length; { const d = $('#notifDot'); if (d) d.hidden = !PENDING_N; }   // sinkronkan titik notifikasi
   const RC = [['admin', '👑', 'Admin', 'Akses penuh: keuangan, arisan & pengocokan, agenda, pengumuman, album, pengaturan, pengguna, serta anggota & silsilah.'],
     ['pengelola', '🌳', 'Pengelola Silsilah', 'Mengelola <b>anggota & silsilah</b>: tambah/ubah anggota, hubungan keluarga, foto profil, impor CSV, dan leluhur. Juga bisa melihat semua data. Tidak menyentuh keuangan, arisan, atau pengaturan.'],
     ['viewer', '👁', 'Viewer', 'Hanya melihat seluruh data keluarga. Peran awal setiap pendaftar baru.']];
   const opt = (u, v, l) => `<option value="${v}" ${u.role === v ? 'selected' : ''}>${l}</option>`;
-  return `<div class="roles">${RC.map(([k, ic, t, d]) => `<div class="card role-card r-${k}"><div class="rc-h"><span class="rc-i">${ic}</span><div><b>${t}</b><small>${cnt(k)} pengguna</small></div></div><p>${d}</p></div>`).join('')}</div>
+  const pendHtml = pend.length ? `<div class="card pend-card"><div class="card-head"><h3>⏳ Menunggu persetujuan</h3><span>${pend.length} PENDAFTAR</span></div><p class="st-note" style="margin:0 20px 8px">Orang-orang ini sudah mendaftar tetapi <b>belum bisa melihat data apa pun</b> sampai Anda menyetujuinya. Tolak bila Anda tidak mengenalnya.</p><table class="table"><thead><tr><th>Nama</th><th>Email</th><th>Mendaftar</th><th>Peran</th><th></th></tr></thead><tbody>${pend.map(u => `<tr><td><b>${esc(u.name)}</b></td><td>${esc(u.email)}</td><td>${u.created_at ? ft(u.created_at) : '—'}</td><td><select class="select" id="apr_${esc(u.id)}"><option value="viewer">Viewer</option><option value="pengelola">Pengelola Silsilah</option><option value="admin">Admin</option></select></td><td style="white-space:nowrap"><button class="btn-s" onclick="approveUser('${esc(u.id)}')">Setujui</button> <button class="btn-s d" onclick="rejectUser('${esc(u.id)}')">Tolak</button></td></tr>`).join('')}</tbody></table></div>` : '';
+  const auditHtml = `<div class="card" id="auditCard"><div class="card-head"><h3>Jejak audit</h3><span>PERUBAHAN PENTING</span></div><div id="auditBody" style="padding:0 20px 20px"><p class="st-note" style="margin:0 0 10px">Mencatat perubahan buku kas, pembatalan pembayaran, perubahan tarif iuran, serta peran/persetujuan pengguna — lengkap dengan nilai lama dan baru. Tidak bisa diubah atau dihapus dari aplikasi.</p><button class="btn-s" onclick="loadAudit(this)">Tampilkan 50 catatan terbaru</button></div></div>`;
+  return pendHtml + `<div class="roles">${RC.map(([k, ic, t, d]) => `<div class="card role-card r-${k}"><div class="rc-h"><span class="rc-i">${ic}</span><div><b>${t}</b><small>${cnt(k)} pengguna</small></div></div><p>${d}</p></div>`).join('')}</div>
     <div class="card"><div class="card-head"><h3>Daftar pengguna</h3><span>${us.length} AKUN</span></div><table class="table"><thead><tr><th>Nama</th><th>Email</th><th>Peran</th></tr></thead><tbody>${us.map(u => `<tr><td><b>${esc(u.name)}</b>${ME && u.email === ME.username ? ' <span class="pg-you">Anda</span>' : ''}</td><td>${esc(u.email)}</td><td><select class="select" onchange="setRole('${u.id}',this.value)">${opt(u, 'admin', 'Admin')}${opt(u, 'pengelola', 'Pengelola Silsilah')}${opt(u, 'viewer', 'Viewer')}</select></td></tr>`).join('')}</tbody></table></div>
+    ${auditHtml}
     <p class="st-note">Password pengguna lain tidak dapat dilihat atau diubah dari sini. Jika ada yang lupa password, ia bisa menggantinya sendiri di tab <b>Akun Saya</b> setelah masuk, atau admin mengatur ulang lewat dashboard Supabase (Authentication → Users).</p>`;
 }
+const approveUser = async id => { const sel = document.getElementById('apr_' + id); try { await api('users/approve', 'POST', { id, role: sel ? sel.value : 'viewer' }); toast('Akun disetujui'); } catch (e) { } reload(); };
+// Nama pendaftar TIDAK pernah disisipkan ke atribut HTML (hanya id) — mencegah XSS tersimpan.
+const rejectUser = async id => { const u = (CACHE.pend || []).find(x => x.id === id); if (!confirm(`Tolak dan hapus pendaftaran "${u ? u.name : 'ini'}"? Akunnya akan dihapus.`)) return; try { await api('users/reject', 'POST', { id }); toast('Pendaftaran ditolak'); } catch (e) { } reload(); };
+const AUD_T = { transactions: 'Buku kas', payments: 'Pembayaran iuran', fee_types: 'Jenis iuran', profiles: 'Pengguna' }, AUD_O = { INSERT: 'Ditambah', UPDATE: 'Diubah', DELETE: 'Dihapus' };
+const audVal = v => v == null ? '—' : String(typeof v === 'object' ? JSON.stringify(v) : v).slice(0, 40);
+function audRow(a) {
+  const o = a.old_row || {}, n = a.new_row || {}, nm = n.description || o.description || n.name || o.name || o.receipt_no || ('#' + a.row_id);
+  let det = '';
+  if (a.op === 'UPDATE') det = Object.keys(n).filter(k => JSON.stringify(n[k]) !== JSON.stringify(o[k])).slice(0, 4).map(k => `${k}: ${audVal(o[k])} → ${audVal(n[k])}`).join(' · ');
+  else if (o.amount != null || n.amount != null) det = rp(o.amount ?? n.amount);
+  return `<tr><td style="white-space:nowrap">${ft(a.at)}</td><td>${esc(a.actor_name || 'sistem')}</td><td><span class="status ${a.op === 'DELETE' ? 'pending' : ''}">${esc(AUD_O[a.op] || a.op)}</span> ${esc(AUD_T[a.tbl] || a.tbl)}</td><td><b>${esc(nm)}</b>${det ? `<br><small class="muted">${esc(det)}</small>` : ''}</td></tr>`;
+}
+const loadAudit = async btn => {
+  btn.disabled = true; btn.textContent = 'Memuat…';
+  try {
+    const rows = await api('users/audit', 'GET', { limit: 50 });
+    $('#auditBody').innerHTML = rows.length ? `<div class="tscroll"><table class="table"><thead><tr><th>Waktu</th><th>Oleh</th><th>Kejadian</th><th>Rincian</th></tr></thead><tbody>${rows.map(audRow).join('')}</tbody></table></div>` : '<p class="st-note">Belum ada catatan.</p>';
+  } catch (e) { btn.disabled = false; btn.textContent = 'Tampilkan 50 catatan terbaru'; }
+};
 const setRole = async (id, role) => { try { await api('users/' + id, 'PUT', { role }); toast('Peran diperbarui'); } catch (e) { } reload(); };
 // Sinkronkan warna bilah browser (mobile) dengan tema + beri tooltip menu saat sidebar hanya ikon
 const syncTheme = () => { const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = document.body.classList.contains('dark') ? '#101426' : '#ffffff'; };

@@ -21,10 +21,12 @@ function clean(t, b) {
   return o;
 }
 async function profile(u) {
-  let { data, error } = await sb.from('profiles').select('name,role').eq('id', u.id).maybeSingle();
+  // 'approved' ada sejak patch-011. Bila SQL belum di-patch (kolom tidak ada), anggap disetujui agar tidak terkunci keluar.
+  let { data, error } = await sb.from('profiles').select('name,role,approved').eq('id', u.id).maybeSingle();
+  if (error && (error.code === '42703' || /approved/.test(error.message || ''))) ({ data, error } = await sb.from('profiles').select('name,role').eq('id', u.id).maybeSingle());
   if (!data && !error) { const r = await sb.rpc('ensure_profile'); data = r.data; error = r.error; }   // buat profil bila belum ada
   if (error || !data) return fail(error || {}, 'Profil tidak ditemukan. Pastikan supabase/schema.sql sudah dijalankan.');
-  return { username: u.email, name: data.name, role: data.role };
+  return { username: u.email, name: data.name, role: data.role, approved: data.approved !== false };
 }
 async function api(p, m = 'GET', b = {}) {
   const [t, id] = p.split('/'), rpc = async (fn, a) => { const r = await sb.rpc(fn, a); return r.error ? fail(r.error) : r.data; };
@@ -50,7 +52,12 @@ async function api(p, m = 'GET', b = {}) {
     if (id === 'disburse') return rpc('disburse_arisan', { p_period: b.period || null });
     if (id === 'undisburse') return rpc('cancel_disbursement', { p_id: +b.id });
   }
-  if (t === 'users') return m === 'PUT' ? rpc('set_role', { p_id: id, p_role: b.role }) : rpc('list_users');
+  if (t === 'users') {
+    if (id === 'approve') return rpc('approve_user', { p_id: b.id, p_role: b.role || 'viewer' });   // setujui pendaftar baru
+    if (id === 'reject') return rpc('reject_user', { p_id: b.id });                                  // tolak pendaftar yang belum disetujui
+    if (id === 'audit') return rpc('audit_recent', { p_limit: +b.limit || 100 });                    // jejak audit (admin)
+    return m === 'PUT' ? rpc('set_role', { p_id: id, p_role: b.role }) : rpc('list_users');
+  }
   if (t === 'history') { const [a, w] = await Promise.all([sb.from('payments').select('period,fee_type_id').eq('member_id', +id).order('period', { ascending: false }).limit(36), sb.from('draws').select('period').eq('winner_id', +id).eq('status', 'sah').order('period')]); return { pays: a.data || [], wins: w.data || [] }; }
   if (t === 'members' && m === 'DELETE') {      // hapus baris dulu; berkas foto baru dibersihkan bila berhasil (penghapusan bisa ditolak pagar database)
     const { data } = await sb.from('members').select('photo_path').eq('id', +id).maybeSingle(), r = await sb.from('members').delete().eq('id', +id);
@@ -81,12 +88,26 @@ async function api(p, m = 'GET', b = {}) {
   const row = clean(t, b), r = m === 'POST' ? await sb.from(t).insert(row) : await sb.from(t).update(row).eq('id', +id);
   return r.error ? fail(r.error) : {};
 }
-// Pendaftaran akun baru (akun pertama otomatis admin; berikutnya viewer)
-document.getElementById('signupBtn').onclick = async () => {
+// Pendaftaran akun baru. Akun PERTAMA otomatis admin; berikutnya viewer berstatus MENUNGGU persetujuan admin.
+let SIGNUP = false;
+function setSignupMode(on) {
+  SIGNUP = on; const f = document.getElementById('loginForm'), $e = id => document.getElementById(id);
+  $e('nameRow').style.display = on ? '' : 'none'; $e('loginBtn').style.display = on ? 'none' : ''; $e('backLogin').style.display = on ? '' : 'none';
+  $e('signupBtn').textContent = on ? 'Kirim pendaftaran' : 'Daftar akun baru'; $e('loginSub').textContent = on ? 'Buat akun — admin keluarga akan menyetujuinya' : 'Masuk untuk melanjutkan';
+  f.elements.password.autocomplete = on ? 'new-password' : 'current-password'; $e('loginMsg').className = 'loginmsg';
+  if (on) f.elements.name.focus();
+}
+async function doSignup() {
   const f = Object.fromEntries(new FormData(document.getElementById('loginForm')));
-  if (!f.username || (f.password || '').length < 6) return toast('Isi email dan password (min. 6 karakter)');
-  const name = prompt('Nama lengkap Anda?') || f.username.split('@')[0];
-  const { data, error } = await sb.auth.signUp({ email: f.username.trim(), password: f.password, options: { data: { name } } });
-  if (error) return toast(MSG[error.message] || error.message);
-  data.session ? location.reload() : toast('Akun dibuat. Buka email untuk konfirmasi, lalu login di sini.', true);
-};
+  const name = (f.name || '').trim();
+  if (!f.username || !name) return toast('Isi nama lengkap dan email');
+  if ((f.password || '').length < 8) return toast('Password minimal 8 karakter');
+  const b = document.getElementById('signupBtn'); b.disabled = true;
+  try {
+    const { data, error } = await sb.auth.signUp({ email: f.username.trim(), password: f.password, options: { data: { name } } });
+    if (error) return toast(MSG[error.message] || error.message);
+    data.session ? location.reload() : toast('Pendaftaran terkirim. Buka email untuk konfirmasi, lalu masuk. Setelah itu admin keluarga perlu menyetujui akun Anda.', true);
+  } finally { b.disabled = false; }
+}
+document.getElementById('signupBtn').onclick = () => SIGNUP ? doSignup() : setSignupMode(true);
+document.getElementById('backLogin').onclick = () => setSignupMode(false);

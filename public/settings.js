@@ -5,7 +5,7 @@
 // (supabase/patch-009-pengaturan.sql): bila gagal, tidak ada data yang berubah.
 // ============================================================
 (() => {
-const VER = '3.2.0', LS = 'fh-brand';
+const VER = '3.10.0', LS = 'fh-brand';
 const DEF = { name: 'FamilyHub', tagline: 'Arisan & Family Network', shape: 'rounded', logo: '' };
 const SAFE_LOGO = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 const ST = { tab: 'umum', ready: null, brand: { ...DEF }, pend: { ...DEF }, last: null, counts: null, rst: null, imp: { ds: 'anggota', res: null, skip: true } };
@@ -29,7 +29,7 @@ async function sha256(s) { try { const b = await crypto.subtle.digest('SHA-256',
 async function readText(file) { const buf = await file.arrayBuffer(); try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch { return new TextDecoder('windows-1252').decode(buf); } }
 function loadXlsx() {
   if (window.XLSX) return Promise.resolve(window.XLSX);
-  return new Promise((ok, bad) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'; s.onload = () => window.XLSX ? ok(window.XLSX) : bad(); s.onerror = bad; document.head.appendChild(s); });
+  return new Promise((ok, bad) => { const s = document.createElement('script'); s.src = '/vendor/xlsx-0.18.5.full.min.js'; s.onload = () => window.XLSX ? ok(window.XLSX) : bad(); s.onerror = bad; document.head.appendChild(s); });
 }
 // Panggilan RPC: bila fungsi belum ada (patch-009 belum dijalankan) tampilkan petunjuk yang jelas
 async function rpc(fn, args) {
