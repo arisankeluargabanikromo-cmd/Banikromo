@@ -1,9 +1,16 @@
 {
   "name": "familyhub",
-  "version": "3.9.1",
+  "version": "3.13.0",
   "private": true,
   "scripts": {
     "dev": "npx serve -s public",
-    "build": "node scripts/gen-config.js"
+    "build": "node scripts/gen-config.js",
+    "test": "node tests/drift.test.mjs && node tests/schema.test.mjs && node tests/frontend.test.mjs",
+    "test:sql": "node tests/drift.test.mjs && node tests/schema.test.mjs",
+    "build:sql": "node scripts/build-schema.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.9",
+    "jsdom": "^30.1.2"
   }
 }

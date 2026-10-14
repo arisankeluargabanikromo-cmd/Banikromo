@@ -4,9 +4,12 @@ Frontend statis (HTML/CSS/JS) + **Supabase** (Postgres, Auth, RLS) · deploy via
 ```
 public/            index.html, app.js (tampilan), data.js (lapisan Supabase), config.js
 supabase/          schema.sql (wajib, sudah mencakup semua fitur), seed.sql (opsional),
-                   patch-001/002/003/004/005/006/007/008/009/010 (HANYA untuk yang sudah terlanjur memakai versi lama),
+                   patch-001 … patch-014 (HANYA untuk yang sudah terlanjur memakai versi lama),
                    demo-500-keluarga.sql (opsional, data uji 500 orang)
 scripts/           gen-config.js (isi config.js dari env var saat build Vercel)
+supabase/base/      skema dasar v3.9.1 (beku); supabase/migrations/ = format Supabase CLI (dihasilkan otomatis)
+tests/             drift.test.mjs (skema tidak melenceng), schema.test.mjs (uji SQL di Postgres sungguhan via PGlite), frontend.test.mjs (uji UI di jsdom) — `npm test`
+public/vendor/     supabase-js & SheetJS yang di-host sendiri (lihat vendor/README.md)
 vercel.json        outputDirectory = public
 ```
 
@@ -40,14 +43,20 @@ git push -u origin main
    (mis. `https://familyhub.vercel.app`) agar link konfirmasi email benar.
 
 ## 5) Akun & peran
-- Buka situs → **Daftar akun baru**. **Akun pertama otomatis menjadi admin**; akun berikutnya = viewer (hanya melihat).
+- Buka situs → **Daftar akun baru**. **Akun pertama otomatis menjadi admin**; akun berikutnya berstatus **menunggu persetujuan** — admin menyetujuinya di *Akun & Pengguna → Kelola Pengguna* (sejak v3.10).
+- **Daftarkan akun admin Anda segera setelah deploy**: pendaftar pertama selalu menjadi admin.
 - Jadikan admin tambahan (SQL Editor): `update profiles set role='admin' where id=(select id from auth.users where email='email@anda.com');`
 
 ## Keamanan
-- Anon key memang publik; yang melindungi data adalah **Row Level Security**: semua tabel hanya bisa dibaca pengguna login, dan hanya admin yang boleh menulis.
-- Pencatatan iuran, undian, dan laporan berjalan sebagai fungsi SQL di server (tidak bisa dimanipulasi dari browser).
-- **Jangan pernah** memasang `service_role` key di frontend atau Vercel env publik.
+- Anon key memang publik; yang melindungi data adalah **Row Level Security** dan fungsi SQL di server. Sejak v3.10, **hanya akun yang disetujui admin** yang bisa membaca data — pendaftar baru melihat layar "Menunggu persetujuan" dan database menolak semua permintaan data mereka (tabel, fungsi RPC, dan foto di Storage).
+- Hanya admin yang boleh menulis (pengelola silsilah: hanya anggota & silsilah).
+- Pencatatan iuran, undian, dan laporan berjalan sebagai fungsi SQL di server (tidak bisa dimanipulasi dari browser). Baris kas hasil pembayaran iuran **dikunci**: tidak bisa diubah/dihapus langsung, hanya lewat *Batalkan pembayaran*.
+- **Jejak audit** (tabel `audit_log`): perubahan buku kas, pembatalan pembayaran, tarif iuran, dan peran/persetujuan pengguna tercatat dengan nilai lama & baru. Hanya admin yang bisa membacanya; tidak bisa diubah dari aplikasi dan tidak ikut terhapus oleh Reset/Pemulihan.
 - Pengundian memakai UUID acak kriptografis, sekali per bulan, tersimpan dengan kode bukti SHA-256.
+- Header keamanan (CSP, anti-framing, nosniff, dll.) diatur di `vercel.json`. Pustaka pihak ketiga di-host sendiri (`public/vendor`), jadi tidak ada skrip dari CDN.
+- **Jangan pernah** memasang `service_role` key di frontend atau Vercel env publik.
+- Opsional, lapisan tambahan: setelah semua anggota keluarga punya akun, matikan pendaftaran publik di Supabase → **Authentication → Sign In / Providers → "Allow new users to sign up"** (admin tetap bisa mengundang lewat *Authentication → Users → Invite*). Catatan: pendaftar yang diundang tetap berstatus menunggu sampai disetujui.
+- Bila memakai *custom domain* Supabase, tambahkan domain itu ke `connect-src` dan `img-src` pada CSP di `vercel.json`.
 
 ## Troubleshooting login
 Pesan kesalahan kini tampil langsung di kotak login (merah) dan di konsol browser (F12 → Console).
@@ -320,3 +329,33 @@ Halaman **Akun & Pengguna** (`/pengguna`) kini dibuka oleh **semua peran**, deng
 - **Masalah:** di Studio Cetak, tombol **⬇ SVG**, **⬇ PNG**, dan **🖨 Cetak / PDF** tidak bereaksi sama sekali. Penyebabnya, `print.js` memanggil `stBusy()` (kotak "Menyiapkan…") yang hanya ada di dalam `settings.js` sehingga terjadi `ReferenceError` yang tertelan diam-diam.
 - **Perbaikan:** `settings.js` kini mengekspos `window.stBusy`. Tidak ada perubahan database.
 
+## Audit keamanan & jejak audit (v3.10.0)
+Hasil audit lengkap ada di **AUDIT.md**. Ringkasan perubahan:
+- **Persetujuan akun** — sebelumnya setiap pendaftar langsung bisa membaca seluruh data keluarga. Kini akun baru *menunggu* sampai admin menyetujui (peran bisa dipilih saat menyetujui) atau menolak. Titik merah di lonceng top bar menandakan ada pendaftar menunggu. Akun yang sudah ada otomatis disetujui, jadi tidak ada yang terkunci keluar.
+- **Jejak audit** — tab *Kelola Pengguna → Jejak audit*.
+- **Kunci transaksi iuran** — kas hasil pembayaran tidak bisa diutak-atik; ubah lewat Batalkan pembayaran.
+- **XSS tersimpan ditutup sebelum sempat ada** — panel persetujuan tidak pernah menyisipkan nama pendaftar ke atribut HTML.
+- **Pendaftaran**: nama lengkap kini kolom di form (bukan `prompt()`), password minimal 8 karakter (sama dengan halaman Ganti Password), pesan menjelaskan perlunya persetujuan admin.
+- **Infrastruktur**: header keamanan di `vercel.json`, pustaka di-host sendiri, berkas sisa dihapus (`_redirects` milik Netlify, `.icon-512.png` duplikat), ikon manifest diperbaiki (`purpose: any`), versi backup kini 3.10.0.
+
+**Upgrade dari v3.9.x:** jalankan `supabase/patch-011-keamanan.sql` sekali di SQL Editor (aman diulang), lalu deploy frontend. Urutan bebas: frontend baru tetap berjalan sebelum SQL di-patch (pengguna dianggap disetujui), dan SQL baru tetap melayani frontend lama kecuali layar "menunggu" yang baru tampil setelah frontend diperbarui.
+**Instalasi baru:** `schema.sql` sudah memuat patch-011.
+
+**Menjalankan tes** (Node ≥ 18): `npm install && npm test` — 131 tes SQL (instalasi baru, upgrade berantai dari v3.9.1, idempoten, RLS, pembungkus fungsi, undian, restore/reset, portal anggota, anti-spam, kesamaan skema) dan 59 tes frontend.
+
+## Restore tahan versi & penghapusan aman (v3.11.0)
+- **Restore backup lama kini berhasil.** Sebelumnya, backup dari versi lama gagal ("null value … violates not-null constraint") karena kolom yang ditambahkan belakangan tidak ada di berkas. Kini `restore_backup` hanya mengisi kolom yang ada di backup; sisanya memakai nilai default. Backup yang berisi kolom tak dikenal ditolak rapi dan data tetap utuh.
+- **Hapus foto/album: baris database dulu, berkas sesudahnya.** Bila penghapusan di database ditolak atau gagal, berkas tidak ikut hilang (sebelumnya bisa tersisa baris foto tanpa berkas).
+- **Pembatalan pembayaran** memakai kunci yang sama dengan pencairan arisan, sehingga keduanya tidak bisa bertabrakan.
+- **Upgrade dari v3.10:** jalankan `supabase/patch-012-restore-tahan-versi.sql` sekali (aman diulang). Instalasi baru: `schema.sql` sudah memuatnya.
+
+## Portal anggota "Iuran Saya" (v3.12.0)
+Setiap anggota keluarga yang punya akun kini bisa melihat sendiri: status iuran bulan ini per jenis, **tunggakan** (berapa bulan & berapa rupiah, bulan mana saja), 12 pembayaran terakhir lengkap dengan **nomor kuitansi**, kelayakan undian arisan bulan ini, dan riwayat kemenangannya. Buka tab **Iuran Saya** di *Akun & Pengguna* (alamat `/pengguna/iuran`).
+- **Cara mengaktifkan:** admin membuka *Akun & Pengguna → Kelola Pengguna*, lalu pada kolom **Anggota keluarga** memilih anggota yang sesuai untuk tiap akun. Satu anggota hanya bisa dihubungkan ke satu akun; anggota yang sudah terhubung tampil nonaktif di daftar. Akun yang belum dihubungkan melihat pesan penjelasan.
+- **Keamanan:** halaman ini hanya menampilkan data anggota yang terhubung ke akun itu sendiri (dihitung di server oleh `my_status()`); hubungan hanya bisa diubah admin dan tercatat di jejak audit. Catatan: ini kenyamanan tampilan, bukan pembatasan — peran Viewer tetap bisa melihat seluruh data keluarga di halaman lain.
+- Angka tunggakan memakai logika yang sama dengan halaman Iuran admin (tes silang otomatis membuktikan keduanya identik).
+- **Upgrade dari v3.11:** jalankan `supabase/patch-013-portal-anggota.sql` sekali (aman diulang), lalu deploy frontend. Sebelum patch dijalankan, tab Iuran Saya menampilkan pesan agar patch dijalankan. Instalasi baru: `schema.sql` sudah memuatnya.
+
+## Anti-spam pendaftaran & satu sumber skema (v3.13.0)
+- **Batas pendaftar menunggu: 50.** Pendaftaran publik tidak lagi bisa membanjiri daftar persetujuan; pendaftar ke-51 ditolak dengan pesan jelas sampai admin menyetujui/menolak sebagian. Tombol **Tolak semua** di panel *Menunggu persetujuan* membersihkan semuanya sekali klik (akun yang sudah disetujui tidak tersentuh). Nama pendaftar dipangkas maksimal 80 karakter. **Upgrade dari v3.12:** jalankan `supabase/patch-014-anti-spam.sql` sekali (aman diulang).
+- **`schema.sql` kini dihasilkan otomatis** dari `supabase/base/schema-v3.9.1.sql` + `patch-011…` (jangan diedit tangan). Folder `supabase/migrations/` (format Supabase CLI) ikut dihasilkan. Untuk menambah perubahan database: buat `supabase/patch-0NN-nama.sql`, lalu `npm run build:sql`. `npm test` gagal bila `schema.sql`/`migrations/` tidak sinkron, dan membuktikan ketiga jalur instalasi (schema.sql, migrations, dasar+patch) menghasilkan katalog database yang identik.
