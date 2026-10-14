@@ -1,0 +1,124 @@
+/* FamilyHub Glassmorphism UI — v2.9 */
+:root{--bg:#edf2ff;--panel:rgba(255,255,255,.62);--panel2:rgba(255,255,255,.42);--text:#19233d;--muted:#697692;--line:rgba(255,255,255,.72);--accent:#6558e8;--accent2:#21bfa8;--shadow:0 18px 48px rgba(48,58,112,.12);--radius:22px;--glass-stroke:rgba(255,255,255,.72);--glass-blur:20px}
+body{background:radial-gradient(ellipse at 8% 0%,rgba(149,163,255,.34),transparent 38%),radial-gradient(ellipse at 90% 14%,rgba(119,232,211,.26),transparent 35%),linear-gradient(135deg,#eef2ff,#f4f8ff 52%,#e8f7f5);background-attachment:fixed;color:var(--text)}
+body:before{content:"";position:fixed;z-index:-1;pointer-events:none;width:380px;height:380px;border-radius:50%;right:-110px;bottom:-140px;background:rgba(165,151,255,.18);filter:blur(3px)}
+.sidebar{background:rgba(255,255,255,.48)!important;color:var(--text);border-right:1px solid rgba(255,255,255,.8)!important;box-shadow:12px 0 40px rgba(47,59,116,.07)!important;backdrop-filter:blur(26px) saturate(145%);-webkit-backdrop-filter:blur(26px) saturate(145%)}
+.logo{padding-bottom:22px}.logo-mark{box-shadow:0 8px 20px rgba(101,88,232,.25)}.sidebar-bottom{background:rgba(255,255,255,.45)!important;border:1px solid rgba(255,255,255,.78)!important;box-shadow:0 8px 24px rgba(44,55,105,.06)}
+.nav button{border:1px solid transparent;transition:all .2s ease}.nav button:hover{background:rgba(255,255,255,.56)!important;border-color:rgba(255,255,255,.8);transform:translateX(2px)}.nav button.active{background:linear-gradient(120deg,rgba(111,99,239,.17),rgba(77,208,186,.12))!important;border:1px solid rgba(120,112,235,.18);box-shadow:inset 3px 0 0 var(--accent)}
+.main{min-width:0}.card,.fchip,.ftcard,.modal-box,.ftres,.node,.pc,.draw-stage,.chart-card,.next,.activity,.members,.album,.pthumb{backdrop-filter:blur(var(--glass-blur)) saturate(150%);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(150%)}
+.card{background:var(--panel)!important;border:1px solid var(--glass-stroke)!important;box-shadow:var(--shadow)!important;border-radius:24px;overflow:hidden}.hero{background:linear-gradient(120deg,rgba(73,72,174,.88),rgba(102,88,232,.82) 52%,rgba(35,184,164,.78))!important;border:1px solid rgba(255,255,255,.35);box-shadow:0 24px 55px rgba(81,83,177,.2)!important;backdrop-filter:blur(22px) saturate(145%);-webkit-backdrop-filter:blur(22px) saturate(145%)}.hero:before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(255,255,255,.16),transparent 42%);pointer-events:none}.hero:after{background:radial-gradient(circle,rgba(255,255,255,.27),transparent 68%)}
+.stat,.next,.chart-card,.activity,.members{background:var(--panel)!important}.stat-icon,.datebox,.activity-icon{background:rgba(111,99,239,.12)!important;color:var(--accent)}
+.primary,.ftbar .primary{background:linear-gradient(135deg,#7165ed,#8a7cf6 65%,#48cdb8)!important;color:#fff!important;box-shadow:0 10px 24px rgba(101,88,232,.22);border:1px solid rgba(255,255,255,.35);transition:transform .18s,box-shadow .18s}.primary:hover,.ftbar .primary:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(101,88,232,.3)}
+.icon-btn,.search,.select,.ftsearch input,.ftsel select,.seg,.fform input,.fform select,.fform textarea,#loginForm input{background:rgba(255,255,255,.48)!important;border:1px solid rgba(255,255,255,.85)!important;color:var(--text)!important;box-shadow:inset 0 1px rgba(255,255,255,.6),0 6px 18px rgba(48,58,112,.045)}.icon-btn{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}.search:focus,.ftsearch input:focus,.fform input:focus,.fform select:focus,.fform textarea:focus{border-color:rgba(101,88,232,.55)!important;box-shadow:0 0 0 4px rgba(101,88,232,.1)}
+.seg button.on{background:linear-gradient(135deg,#7165ed,#8a7cf6)!important;box-shadow:0 5px 14px rgba(101,88,232,.2)}.table th,.table td{border-color:rgba(135,148,190,.18)!important}.table th{letter-spacing:.07em}.activity-row,.member-row{border-color:rgba(135,148,190,.18)!important}
+.node,.pc{background:rgba(255,255,255,.7)!important;border-color:rgba(255,255,255,.9)!important;box-shadow:0 12px 28px rgba(56,67,128,.12)!important;backdrop-filter:blur(14px) saturate(145%);-webkit-backdrop-filter:blur(14px) saturate(145%)}.node:hover,.pc:hover{box-shadow:0 17px 34px rgba(56,67,128,.17)!important}.connector,.branches:before,.branch:before{background:rgba(112,124,166,.45)!important}
+.fchip{background:rgba(255,255,255,.52)!important;border-color:rgba(255,255,255,.8)!important;box-shadow:0 10px 26px rgba(48,58,112,.07)}.ftcard{background:rgba(255,255,255,.53)!important;border:1px solid rgba(255,255,255,.8)!important;box-shadow:var(--shadow)!important;border-radius:24px}.ftres{background:rgba(255,255,255,.88)!important;border-color:rgba(255,255,255,.95)!important;box-shadow:0 20px 45px rgba(37,47,100,.18)}
+.modal{background:rgba(27,34,66,.32)!important;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}.modal-box{background:rgba(250,251,255,.88)!important;border:1px solid rgba(255,255,255,.9);box-shadow:0 30px 90px rgba(24,31,72,.25)!important}.detail{background:rgba(110,122,180,.08)!important}.close,.ghost{background:rgba(112,123,170,.12)!important;color:var(--text)!important}.toast{backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);background:rgba(30,37,75,.88)!important;border:1px solid rgba(255,255,255,.18)}
+.login{background:radial-gradient(ellipse at 20% 15%,rgba(149,163,255,.48),transparent 42%),radial-gradient(ellipse at 85% 80%,rgba(71,218,190,.34),transparent 38%),linear-gradient(135deg,#e9edff,#edf8f5)!important}.pthumb{border-color:rgba(255,255,255,.8)!important;box-shadow:0 8px 22px rgba(48,58,112,.08)}.album{background:rgba(255,255,255,.38)}.draw-stage{border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+body.dark{--bg:#090e1c;--panel:rgba(20,29,51,.72);--panel2:rgba(24,34,58,.58);--text:#edf2ff;--muted:#a1acc6;--line:rgba(255,255,255,.12);--shadow:0 20px 55px rgba(0,0,0,.24);--glass-stroke:rgba(255,255,255,.13);background:radial-gradient(ellipse at 10% 0%,rgba(83,83,178,.28),transparent 38%),radial-gradient(ellipse at 90% 18%,rgba(26,154,145,.16),transparent 34%),linear-gradient(135deg,#090e1c,#10172b 55%,#0c2028);background-attachment:fixed}
+body.dark .sidebar{background:rgba(12,18,34,.72)!important;border-right-color:rgba(255,255,255,.1)!important;box-shadow:12px 0 40px rgba(0,0,0,.16)!important}body.dark .sidebar-bottom{background:rgba(255,255,255,.045)!important;border-color:rgba(255,255,255,.1)!important}body.dark .nav button:hover{background:rgba(255,255,255,.07)!important}body.dark .nav button.active{background:linear-gradient(120deg,rgba(111,99,239,.24),rgba(77,208,186,.12))!important;border-color:rgba(145,137,255,.18)}
+body.dark .card,body.dark .fchip,body.dark .ftcard{background:rgba(20,29,51,.68)!important;border-color:rgba(255,255,255,.11)!important}body.dark .icon-btn,body.dark .search,body.dark .select,body.dark .ftsearch input,body.dark .ftsel select,body.dark .seg,body.dark .fform input,body.dark .fform select,body.dark .fform textarea,body.dark #loginForm input{background:rgba(255,255,255,.055)!important;border-color:rgba(255,255,255,.13)!important;color:var(--text)!important}body.dark .node,body.dark .pc{background:rgba(22,31,53,.88)!important;border-color:rgba(255,255,255,.14)!important;color:var(--text)}body.dark .ftres{background:rgba(17,25,44,.95)!important;border-color:rgba(255,255,255,.13)!important}body.dark .ftres button:hover,body.dark .ftres button.sel{background:rgba(255,255,255,.07)!important}body.dark .modal-box{background:rgba(16,24,43,.94)!important;border-color:rgba(255,255,255,.14)}body.dark .detail,body.dark .close,body.dark .ghost{background:rgba(255,255,255,.07)!important;color:var(--text)!important}body.dark .login{background:radial-gradient(ellipse at 20% 15%,rgba(92,86,190,.35),transparent 42%),radial-gradient(ellipse at 85% 80%,rgba(31,157,144,.2),transparent 38%),linear-gradient(135deg,#090e1c,#10172b)!important}body.dark .datebox,body.dark .stat-icon,body.dark .activity-icon{background:rgba(130,120,255,.17)!important;color:#c3bdff}body.dark .fnote{background:rgba(242,190,80,.12);border:1px solid rgba(242,190,80,.15)}body.dark .kt-besan{background:rgba(217,149,58,.17)}body.dark .kt-menantu{background:rgba(111,115,217,.17)}body.dark .kt-asli{background:rgba(23,169,138,.16)}
+@media(max-width:760px){.main{padding:18px 14px 30px}.hero{padding:22px 20px;border-radius:23px}.hero h1{font-size:23px}.card,.ftcard{border-radius:20px}.sidebar{background:rgba(255,255,255,.76)!important}body.dark .sidebar{background:rgba(12,18,34,.88)!important}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}@supports not ((backdrop-filter:blur(2px)) or (-webkit-backdrop-filter:blur(2px))){.card,.sidebar,.modal-box,.ftcard,.fchip{background:var(--panel)!important}}
+
+/* v2.10 — profil keluarga lebih luas, lega, dan mudah dibaca */
+#profileModal{padding:clamp(12px,3vw,34px);align-items:center}
+#profileModal .modal-box{width:min(980px,calc(100vw - 40px));max-width:980px;max-height:92vh;overflow:auto;padding:clamp(22px,3vw,38px);border-radius:30px;scrollbar-width:thin}
+#profileModal .modal-top{align-items:center;margin-bottom:22px;font-size:18px;gap:16px}
+#profileModal .modal-top>b{font-size:19px;letter-spacing:-.025em}
+#profileModal .close{width:42px;height:42px;font-size:25px;flex:none}
+#profileModal .profile{padding:10px 18px 26px;margin-bottom:24px;border-bottom:1px solid rgba(130,143,183,.2);text-align:center}
+#profileModal .pavw{width:126px;margin:0 auto 15px}
+#profileModal .pav{width:126px;height:126px;font-size:38px;border:4px solid rgba(255,255,255,.78);box-shadow:0 12px 32px rgba(43,52,111,.2)}
+#profileModal .pcam{width:38px;height:38px;font-size:18px}
+#profileModal .profile h2{font-size:clamp(25px,3vw,34px);line-height:1.2;letter-spacing:-.035em;margin:14px 0 8px}
+#profileModal .profile p{font-size:14px;line-height:1.7;margin:5px auto;color:var(--muted);max-width:760px;overflow-wrap:anywhere}
+#profileModal .profile p.prel{font-size:15px;font-weight:750;color:var(--accent)}
+#profileModal .detail-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#profileModal .detail{padding:19px 20px;border:1px solid rgba(130,143,183,.13);border-radius:18px;min-width:0;overflow-wrap:anywhere}
+#profileModal .detail>span{font-size:12px;line-height:1.5;letter-spacing:.015em;margin-bottom:8px}
+#profileModal .detail>b{font-size:16px;line-height:1.6;margin-top:3px}
+#profileModal .detail b[style*="font-size:12px"]{font-size:14px!important;line-height:1.9!important}
+#profileModal .detail .rtxt{font-size:13px;line-height:1.75}
+#profileModal .detail.kin .kt{font-size:11px;padding:5px 10px}
+#profileModal .detail.kin .rtxt{font-size:13px;line-height:1.8}
+#profileModal .rchips{gap:8px;align-items:center}
+#profileModal .rchip{padding:7px 10px;gap:8px;border-radius:13px;max-width:100%}
+#profileModal .rchip>span{font-size:13px;line-height:1.45}
+#profileModal .rchip small{font-size:11px;line-height:1.4}
+#profileModal .rchip .av{flex:none}
+#profileModal .rarr{font-size:18px;padding:0 2px}
+#profileModal .rme{font-size:13px}
+#profileModal .pbtns{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+#profileModal .pbtns button{font-size:13px;padding:12px 15px;white-space:normal;min-height:44px;border-radius:13px}
+#profileModal .pbtns button.primary{flex:1 1 180px}
+#profileModal .pbtns button.ghost{flex:0 1 auto}
+#profileModal .detail-grid .detail[style*="grid-column:span 2"]{grid-column:1/-1}
+body.dark #profileModal .profile{border-bottom-color:rgba(255,255,255,.12)}
+body.dark #profileModal .detail{border-color:rgba(255,255,255,.1)}
+@media(min-width:900px){#profileModal .detail-grid{grid-template-columns:repeat(3,minmax(0,1fr))}#profileModal .detail-grid .detail[style*="grid-column:span 2"]{grid-column:span 2}#profileModal .detail-grid .detail[style*="grid-column:span 2"]:has(.rchips.anc){grid-column:1/-1}}
+@media(max-width:600px){#profileModal{padding:8px;align-items:flex-end}#profileModal .modal-box{width:100%;max-width:none;max-height:94vh;padding:20px 15px;border-radius:24px 24px 16px 16px}#profileModal .modal-top{font-size:16px;margin-bottom:14px}#profileModal .modal-top>b{font-size:17px}#profileModal .profile{padding:8px 4px 20px;margin-bottom:16px}#profileModal .pavw,#profileModal .pav{width:100px}#profileModal .pav{height:100px;font-size:31px}#profileModal .detail-grid{grid-template-columns:1fr;gap:10px}#profileModal .detail,#profileModal .detail-grid .detail[style*="grid-column:span 2"]{grid-column:1/-1!important;padding:15px 14px}#profileModal .detail>span{font-size:12px}#profileModal .detail>b{font-size:15px}#profileModal .pbtns{gap:8px}#profileModal .pbtns button{flex:1 1 100%;font-size:13px;padding:12px}#profileModal .rchip{max-width:100%}}
+
+/* v2.11 — professional profile layout: clear hierarchy, consistent spacing, responsive grid */
+#profileModal{padding:24px;align-items:center}
+#profileModal .modal-box{width:min(1080px,calc(100vw - 48px));max-width:1080px;max-height:min(92vh,980px);padding:30px;overflow:auto;border-radius:26px;box-shadow:0 28px 90px rgba(28,38,83,.24)!important}
+#profileModal .modal-top{position:sticky;top:-30px;z-index:5;margin:-30px -30px 24px;padding:20px 30px;background:rgba(248,250,255,.9);border-bottom:1px solid rgba(130,143,183,.16);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+#profileModal .modal-top>b{font-size:17px;font-weight:750;letter-spacing:-.02em}
+#profileModal .close{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;line-height:1;font-size:24px}
+#profileModal .profile{display:grid;grid-template-columns:132px minmax(0,1fr);grid-template-rows:auto;column-gap:26px;align-items:center;text-align:left;padding:4px 4px 26px;margin-bottom:24px}
+#profileModal .pavw{grid-column:1;grid-row:1 / span 5;width:120px;margin:0;align-self:center}
+#profileModal .pav{width:120px;height:120px;font-size:36px;border:4px solid rgba(255,255,255,.92);box-shadow:0 10px 28px rgba(43,52,111,.18)}
+#profileModal .profile h2{grid-column:2;margin:0 0 5px;font-size:clamp(25px,2.5vw,32px);letter-spacing:-.035em;overflow-wrap:anywhere}
+#profileModal .profile p{grid-column:2;margin:3px 0;max-width:none;font-size:13px;line-height:1.65}
+#profileModal .profile p.prel{font-size:14px;font-weight:750}
+#profileModal .detail-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#profileModal .detail{padding:17px 18px;border-radius:16px;background:rgba(255,255,255,.48)!important;border:1px solid rgba(130,143,183,.16);box-shadow:0 5px 16px rgba(42,52,96,.035)}
+#profileModal .detail>span{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.055em;margin-bottom:7px;color:var(--muted)}
+#profileModal .detail>b{font-size:15px;line-height:1.65}
+#profileModal .detail b[style*="font-size:12px"]{font-size:13px!important;line-height:1.9!important}
+#profileModal .detail .rtxt{font-size:13px;line-height:1.75}
+#profileModal .detail.kin .kt{font-size:10px;padding:4px 8px}
+#profileModal .rchips{gap:7px}
+#profileModal .rchip{padding:6px 9px;border-radius:11px;background:rgba(119,130,180,.1);border:1px solid rgba(119,130,180,.1)}
+#profileModal .rchip>span{font-size:12px;line-height:1.45}
+#profileModal .pbtns{padding-top:18px;border-top:1px solid rgba(130,143,183,.16);gap:9px}
+#profileModal .pbtns button{min-height:44px;font-size:12px;font-weight:650;padding:11px 14px}
+#profileModal .pbtns button.primary{flex:0 0 auto}
+#profileModal .pbtns button.ghost{flex:0 1 auto}
+body.dark #profileModal .modal-top{background:rgba(16,24,43,.94);border-bottom-color:rgba(255,255,255,.1)}
+body.dark #profileModal .detail{background:rgba(255,255,255,.045)!important;border-color:rgba(255,255,255,.1);box-shadow:none}
+body.dark #profileModal .rchip{background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.08)}
+body.dark #profileModal .pbtns{border-top-color:rgba(255,255,255,.1)}
+@media(min-width:900px){#profileModal .detail-grid .detail[style*="grid-column:span 2"]{grid-column:span 2}#profileModal .detail-grid .detail[style*="grid-column:span 2"]:has(.rchips.anc){grid-column:1/-1}}
+@media(max-width:760px){#profileModal{padding:12px}#profileModal .modal-box{width:min(100%,680px);max-width:680px;max-height:94vh;padding:22px 18px;border-radius:22px}#profileModal .modal-top{top:-22px;margin:-22px -18px 18px;padding:15px 18px}#profileModal .profile{grid-template-columns:84px minmax(0,1fr);column-gap:16px;padding-bottom:20px;margin-bottom:18px}#profileModal .pavw{width:82px;grid-row:1 / span 5}#profileModal .pav{width:82px;height:82px;font-size:26px}#profileModal .profile h2{font-size:23px}#profileModal .profile p{font-size:12px;line-height:1.55}#profileModal .profile p.prel{font-size:13px}#profileModal .detail-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#profileModal .detail,#profileModal .detail-grid .detail[style*="grid-column:span 2"]{padding:14px;min-width:0}#profileModal .detail>span{font-size:10px}#profileModal .detail>b{font-size:14px}#profileModal .pbtns button.primary,#profileModal .pbtns button.ghost{flex:1 1 calc(50% - 10px)}}
+@media(max-width:480px){#profileModal{padding:0;align-items:flex-end}#profileModal .modal-box{width:100%;max-width:none;max-height:95dvh;padding:18px 13px;border-radius:22px 22px 0 0}#profileModal .modal-top{top:-18px;margin:-18px -13px 16px;padding:14px 13px}#profileModal .profile{grid-template-columns:68px minmax(0,1fr);column-gap:12px;padding:0 2px 17px;margin-bottom:15px}#profileModal .pavw{width:66px}#profileModal .pav{width:66px;height:66px;font-size:21px;border-width:3px}#profileModal .pcam{width:28px;height:28px;font-size:13px}#profileModal .profile h2{font-size:20px;margin-bottom:3px}#profileModal .profile p{font-size:11px;line-height:1.5}#profileModal .profile p.prel{font-size:12px}#profileModal .detail-grid{grid-template-columns:1fr;gap:9px}#profileModal .detail,#profileModal .detail-grid .detail[style*="grid-column:span 2"]{grid-column:1/-1!important;padding:13px 12px}#profileModal .detail>span{font-size:10px}#profileModal .detail>b{font-size:14px}#profileModal .pbtns{gap:8px;padding-top:14px}#profileModal .pbtns button.primary,#profileModal .pbtns button.ghost{flex:1 1 100%;font-size:12px}}
+
+/* v2.12 — Facebook-inspired family profile cover and identity header */
+#profileModal .modal-box{padding:0!important;overflow:auto;background:rgba(250,252,255,.94)!important;border:1px solid rgba(255,255,255,.82);}
+#profileModal .modal-top{position:sticky;top:0;margin:0;padding:17px 26px;background:rgba(249,251,255,.91);z-index:12;border-bottom:1px solid rgba(125,139,180,.14);}
+#profileModal .fb-cover{height:220px;position:relative;overflow:hidden;margin:0;background:linear-gradient(120deg,#373c8c 0%,#7164dc 46%,#4ac8bb 100%);isolation:isolate}
+#profileModal .fb-cover:before,#profileModal .fb-cover:after{content:"";position:absolute;border:1px solid rgba(255,255,255,.2);border-radius:50%;pointer-events:none}
+#profileModal .fb-cover:before{width:390px;height:390px;right:7%;top:-245px;box-shadow:0 0 0 28px rgba(255,255,255,.045),0 0 0 65px rgba(255,255,255,.035)}
+#profileModal .fb-cover:after{width:300px;height:300px;left:23%;bottom:-250px;box-shadow:0 0 0 30px rgba(255,255,255,.055),0 0 0 70px rgba(255,255,255,.035)}
+#profileModal .fb-cover-glow{position:absolute;width:220px;height:220px;right:20%;top:-110px;border-radius:50%;background:rgba(255,255,255,.18);filter:blur(30px)}
+#profileModal .fb-cover-caption{position:absolute;right:24px;bottom:20px;display:flex;align-items:center;gap:10px;color:rgba(255,255,255,.9);font-size:12px;font-weight:650;letter-spacing:.04em;text-shadow:0 1px 8px rgba(21,27,70,.2)}
+#profileModal .fb-cover-mark{display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(255,255,255,.45);border-radius:11px;background:rgba(255,255,255,.16);font-size:13px;font-weight:850;backdrop-filter:blur(8px)}
+#profileModal .fb-profile-head{position:relative;grid-template-columns:158px minmax(0,1fr);column-gap:24px;margin:-58px 28px 0;padding:0 0 24px;border-bottom:1px solid rgba(130,143,183,.18);z-index:2;}
+#profileModal .fb-profile-head .pavw{width:148px;margin:0;grid-row:1 / span 5;align-self:start;padding-top:0}
+#profileModal .fb-profile-head .pav{width:148px;height:148px;font-size:40px;border:5px solid rgba(250,252,255,.98);box-shadow:0 8px 28px rgba(28,37,83,.22)}
+#profileModal .fb-profile-head .pcam{right:8px;bottom:8px;width:36px;height:36px;border:2px solid rgba(255,255,255,.95);background:rgba(255,255,255,.92)}
+#profileModal .fb-profile-head h2{align-self:end;padding-top:70px;font-size:clamp(25px,2.5vw,34px);line-height:1.18}
+#profileModal .fb-profile-head p{max-width:100%;overflow-wrap:anywhere}
+#profileModal .fb-profile-head p.prel{display:inline-flex;justify-self:start;align-items:center;width:max-content;max-width:100%;padding:5px 11px;border:1px solid rgba(105,93,225,.16);border-radius:999px;background:rgba(105,93,225,.09);font-size:12px}
+#profileModal .detail-grid{padding:24px 28px 0;gap:14px}
+#profileModal .detail{background:rgba(255,255,255,.58)!important;border-color:rgba(129,143,185,.18);border-radius:17px}
+#profileModal .pbtns{margin:20px 28px 0;padding:18px 0 26px}
+#profileModal .pbtns:last-child{margin-top:0;padding-top:0;border-top:0}
+body.dark #profileModal .modal-box{background:rgba(13,20,38,.97)!important;border-color:rgba(255,255,255,.13)}
+body.dark #profileModal .modal-top{background:rgba(13,20,38,.94);border-bottom-color:rgba(255,255,255,.1)}
+body.dark #profileModal .fb-profile-head{border-bottom-color:rgba(255,255,255,.12)}
+body.dark #profileModal .fb-profile-head .pav{border-color:#18233b}
+body.dark #profileModal .fb-profile-head p.prel{background:rgba(137,126,255,.15);border-color:rgba(137,126,255,.2)}
+body.dark #profileModal .detail{background:rgba(255,255,255,.045)!important}
+@media(max-width:760px){#profileModal .modal-box{width:min(100%,700px);max-width:700px;padding:0!important}#profileModal .modal-top{padding:14px 18px}#profileModal .fb-cover{height:165px}#profileModal .fb-cover-caption{right:15px;bottom:14px;font-size:10px}#profileModal .fb-profile-head{grid-template-columns:106px minmax(0,1fr);column-gap:15px;margin:-46px 18px 0;padding-bottom:18px}#profileModal .fb-profile-head .pavw{width:102px}#profileModal .fb-profile-head .pav{width:102px;height:102px;font-size:29px;border-width:4px}#profileModal .fb-profile-head .pcam{width:30px;height:30px;right:2px;bottom:4px}#profileModal .fb-profile-head h2{padding-top:52px;font-size:23px}#profileModal .fb-profile-head p{font-size:11px}#profileModal .fb-profile-head p.prel{font-size:11px;padding:4px 8px}#profileModal .detail-grid{padding:18px 18px 0;grid-template-columns:repeat(2,minmax(0,1fr))}#profileModal .pbtns{margin:16px 18px 0;padding-bottom:20px}}
+@media(max-width:480px){#profileModal{padding:0!important;align-items:flex-end}#profileModal .modal-box{width:100%;max-width:none;max-height:96dvh;border-radius:22px 22px 0 0!important}#profileModal .fb-cover{height:130px}#profileModal .fb-cover-caption{font-size:9px;gap:6px}#profileModal .fb-cover-mark{width:28px;height:28px}#profileModal .fb-profile-head{grid-template-columns:76px minmax(0,1fr);column-gap:12px;margin:-34px 13px 0;padding-bottom:15px}#profileModal .fb-profile-head .pavw{width:74px}#profileModal .fb-profile-head .pav{width:74px;height:74px;font-size:22px;border-width:3px}#profileModal .fb-profile-head .pcam{width:25px;height:25px;font-size:11px;right:0;bottom:1px}#profileModal .fb-profile-head h2{padding-top:39px;font-size:19px}#profileModal .fb-profile-head p{font-size:10px;line-height:1.45}#profileModal .fb-profile-head p.prel{font-size:10px;padding:3px 7px}#profileModal .detail-grid{grid-template-columns:1fr;padding:14px 13px 0;gap:9px}#profileModal .pbtns{margin:14px 13px 0}#profileModal .pbtns button.primary,#profileModal .pbtns button.ghost{flex:1 1 100%}}

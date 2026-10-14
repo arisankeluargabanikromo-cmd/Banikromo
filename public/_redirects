@@ -1,0 +1,3 @@
+# Fallback SPA untuk Netlify & Cloudflare Pages: setiap alamat (mis. /arisan) dilayani index.html.
+# Berkas nyata (css/js/gambar) tetap dilayani lebih dulu; aturan ini hanya berlaku bila berkas tidak ada.
+/*    /index.html   200
