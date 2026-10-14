@@ -307,6 +307,18 @@ Setiap menu kini punya alamat sendiri, sehingga tombol **Back/Forward** browser,
 - **File baru**: `public/router.js`. **Diubah**: `vercel.json` (rewrite ke `index.html`), `index.html` (memuat router.js), `topbar.css` (bilah progres), `package.json` (`npm run dev` memakai `serve -s`), serta `public/_redirects` (cadangan untuk Netlify).
 - **Upgrade dari v3.6**: cukup timpa file lalu deploy ulang. Tidak ada perubahan database.
 
+## Perbaikan refresh halaman: "This page doesn't exist" (v3.13.1)
+**Penyebab:** aplikasi ini satu halaman (`index.html`) dengan alamat bersih seperti `/arisan`. Saat menu diklik, router mengubah URL tanpa meminta ke server, jadi terlihat normal. Tetapi saat **refresh / buka link langsung**, browser meminta `/arisan` ke server. Bila hosting tidak punya aturan "kembalikan `index.html` untuk alamat yang tidak ada berkas", server menjawab 404. Aturan itu hanya ada di `vercel.json` (dibaca Vercel **hanya bila berada di root repositori / Root Directory proyek**); `_redirects` untuk Netlify/Cloudflare sempat dihapus di v3.10.
+
+**Perbaikan (berlaku di semua hosting):**
+- `vercel.json`: rewrite kini hanya untuk alamat **tanpa ekstensi berkas**, sehingga aset yang hilang tetap 404 sungguhan (bukan HTML palsu yang membuat galat "Unexpected token <").
+- `public/_redirects` (baru): fallback `/* /index.html 200` untuk **Netlify & Cloudflare Pages**.
+- `public/404.html` (baru): fallback untuk **GitHub Pages** dan hosting statis lain; menyimpan alamat, memuat `/`, lalu `router.js` memulihkannya. Alamat berekstensi yang benar-benar tidak ada menampilkan halaman 404 yang rapi.
+- `router.js`: memulihkan alamat dari `404.html` (hanya path internal; `//host` diabaikan).
+- Tes baru (bagian 10 + cek statis): deep-link `/arisan`, pemulihan dari 404.html, alamat berbahaya, alamat tak dikenal.
+
+**Bila masih 404 di Vercel:** pastikan `vercel.json` ada di **root repositori** (bukan di dalam folder `familyhub/`) atau setel *Settings → General → Root Directory* ke folder tersebut, lalu **Redeploy**. Aplikasi harus berada di akar domain (bukan sub-folder).
+
 ## Akun & Pengguna — ganti password dalam satu halaman (v3.9)
 
 Halaman **Akun & Pengguna** (`/pengguna`) kini dibuka oleh **semua peran**, dengan tab:
