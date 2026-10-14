@@ -36,7 +36,9 @@ function showPage(id, btn) {
   page = id; document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === id));
   document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
   (btn || [...document.querySelectorAll('.nav button')].find(b => b.getAttribute('onclick').includes(`'${id}'`))).classList.add('active');
-  $('#pageTitle').textContent = titles[id]; window.scrollTo({ top: 0 }); guard(R[id])();
+  $('#pageTitle').textContent = titles[id]; window.scrollTo({ top: 0 });
+  if (typeof R[id] !== 'function') { console.error('Halaman "' + id + '" belum siap (skrip belum dimuat)'); return; }
+  guard(R[id])();
 }
 const reload = () => guard(R[page])();
 
@@ -177,4 +179,11 @@ function openNotif() {
   toast('Tidak ada notifikasi baru');
 }
 setInterval(() => { if (ME && ME.approved !== false && !document.hidden) refreshNotif(); }, 5 * 60 * 1000);
-api('me').then(u => { ME = u; enter(); }).catch(() => { });
+// Pintu masuk aplikasi. Dipanggil dari AKHIR router.js (skrip terakhir), bukan di sini: skrip lain (tree.js, members.js, router.js, …)
+// baru mendefinisikan R.silsilah, R.anggota, dst. setelah app.js. Memulai lebih awal membuat halaman-halaman itu kosong dan
+// alamat /silsilah jatuh ke Dashboard bila respons server lebih cepat daripada pemuatan skrip (terutama saat refresh).
+let STARTED = false;
+function startApp() {
+  if (STARTED) return; STARTED = true;
+  api('me').then(u => { ME = u; enter(); }).catch(e => { if (e) console.error('Gagal memulai aplikasi:', e); });
+}

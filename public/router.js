@@ -91,3 +91,5 @@ document.addEventListener('visibilitychange', () => {
 
 paintTitle();
 })();
+
+startApp();   // semua skrip sudah dimuat & dibungkus → aman memulai (verifikasi sesi, boot, tampilkan halaman dari URL)
