@@ -317,6 +317,9 @@ Setiap menu kini punya alamat sendiri, sehingga tombol **Back/Forward** browser,
 - `router.js`: memulihkan alamat dari `404.html` (hanya path internal; `//host` diabaikan).
 - Tes baru (bagian 10 + cek statis): deep-link `/arisan`, pemulihan dari 404.html, alamat berbahaya, alamat tak dikenal.
 
+**Jaring pengaman (v3.13.2):** `scripts/gen-routes.js` menyalin `index.html` ke `public/arisan/`, `public/silsilah/`, … sehingga setiap alamat menu adalah **berkas nyata** dan tetap terbuka saat refresh walaupun aturan rewrite tidak terbaca hosting. Dijalankan otomatis oleh `npm run build` / build Vercel; bila `index.html` diubah, jalankan `node scripts/gen-routes.js` sebelum commit (tes gagal bila salinan tidak identik).
+**Diagnosis cepat:** DevTools → Network → klik `/` → Response Headers. Bila tidak ada `content-security-policy`, berarti `vercel.json` tidak terbaca (periksa Root Directory).
+
 **Bila masih 404 di Vercel:** pastikan `vercel.json` ada di **root repositori** (bukan di dalam folder `familyhub/`) atau setel *Settings → General → Root Directory* ke folder tersebut, lalu **Redeploy**. Aplikasi harus berada di akar domain (bukan sub-folder).
 
 ## Akun & Pengguna — ganti password dalam satu halaman (v3.9)
