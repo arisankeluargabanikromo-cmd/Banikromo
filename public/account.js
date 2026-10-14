@@ -104,21 +104,41 @@ function wirePassword() {
   setTimeout(() => { const f = E('pwOld'); if (f && page === 'pengguna' && PG_TAB === 'akun' && innerWidth > 760) f.focus(); }, 60);
 }
 
+// ---------- Iuran Saya (portal anggota, v3.12) ----------
+// Menampilkan HANYA data anggota yang dihubungkan admin ke akun ini (server: my_status()).
+async function myIuranHtml() {
+  const s = await api('my');
+  if (!s.linked) return `<div class="card st-card"><h3 style="margin:0 0 6px">Akun belum dihubungkan ke anggota</h3><p class="st-note" style="margin:0">Status iuran belum bisa ditampilkan karena akun Anda belum dihubungkan ke data anggota keluarga. Minta admin menghubungkannya di <b>Akun &amp; Pengguna → Kelola Pengguna</b>.</p></div>`;
+  const m = s.member, owed = s.types.reduce((a, t) => a + t.arrears_total, 0), nOwed = s.types.reduce((a, t) => a + t.arrears, 0), unpaid = s.types.filter(t => !t.paid_now);
+  const ok = !owed && !unpaid.length;
+  const banner = !m.active ? `<div class="card st-card"><b>Anggota nonaktif.</b> <span class="st-note">Iuran tidak ditagihkan untuk anggota yang nonaktif.</span></div>`
+    : `<div class="card st-card" style="border-left:4px solid var(${ok ? '--green, #22c55e' : '--amber, #f59e0b'})"><b style="font-size:16px">${ok ? '✓ Iuran Anda lunas' : 'Ada iuran yang perlu diselesaikan'}</b><div class="st-note" style="margin:4px 0 0">${esc(m.name)} · periode ${esc(MONTH(s.period))}${owed ? ` · tunggakan <b>${esc(rp(owed))}</b> (${nOwed} bulan)` : ''}</div></div>`;
+  const per = ps => ps.slice(0, 6).map(p => esc(MONTH(p))).join(', ') + (ps.length > 6 ? ` dan ${ps.length - 6} bulan lainnya` : '');
+  const types = s.types.map(t => `<div class="card st-card" style="flex:1 1 240px;margin:0"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(t.name)}</b><span class="status ${t.paid_now ? 'done' : 'bad'}">${t.paid_now ? 'Lunas bulan ini' : 'Belum dibayar'}</span></div><div class="st-note" style="margin:6px 0 0">${esc(rp(t.amount))} / bulan${t.required_for_draw ? ' · wajib untuk undian' : ''}</div>${t.arrears ? `<div style="margin-top:8px;color:var(--danger,#ef4444)"><b>${t.arrears} bulan menunggak · ${esc(rp(t.arrears_total))}</b><div class="st-note" style="margin:2px 0 0">${per(t.arrears_periods)}</div></div>` : ''}</div>`).join('');
+  const draw = `<div class="card st-card" style="margin:0"><b>🎲 Arisan</b><div class="st-note" style="margin:6px 0 0">${!m.active ? 'Anggota nonaktif tidak ikut undian.' : s.can_draw ? '✓ Anda memenuhi syarat undian bulan ini.' : 'Belum memenuhi syarat undian bulan ini — lunasi iuran yang wajib untuk undian.'}</div>${s.won.length ? `<div style="margin-top:8px">🏆 Pernah menang: ${s.won.map(w => esc(MONTH(w.period))).join(', ')}</div>` : ''}</div>`;
+  const hist = s.recent.length ? `<div class="card"><div class="card-head"><h3>Riwayat pembayaran</h3><span>${s.recent.length} TERAKHIR</span></div><div class="tscroll"><table class="table"><thead><tr><th>Periode</th><th>Jenis</th><th>Nominal</th><th>Dibayar</th><th>Metode</th><th>No. kuitansi</th></tr></thead><tbody>${s.recent.map(r => `<tr><td>${esc(MONTH(r.period))}</td><td>${esc(r.type)}</td><td>${esc(rp(r.amount))}</td><td>${esc(fd(r.paid_at, { day: '2-digit', month: 'short', year: 'numeric' }))}</td><td>${esc(r.method)}</td><td><code>${esc(r.receipt_no || '—')}</code></td></tr>`).join('')}</tbody></table></div></div>` : `<div class="card st-card"><span class="st-note">Belum ada pembayaran tercatat.</span></div>`;
+  return `<div style="display:flex;flex-direction:column;gap:14px">${banner}<div style="display:flex;flex-wrap:wrap;gap:14px">${types}${draw}</div>${hist}<p class="st-note">Data ini hanya milik Anda. Pembayaran dicatat oleh admin; hubungi admin bila ada yang tidak sesuai.</p></div>`;
+}
+
 // ---------- Halaman ----------
 const ROLE_TAG = { admin: 'ADMIN', pengelola: 'PENGELOLA', viewer: 'ANGGOTA' };
 R.pengguna = async () => {
-  const admin = isA(); if (!admin) PG_TAB = 'akun';
+  const admin = isA(); if (!admin && PG_TAB === 'kelola') PG_TAB = 'akun';
   const tab = PG_TAB, root = E('pengguna');
-  const TABS = [['akun', '◉', 'Akun Saya'], ['kelola', '⚙', 'Kelola Pengguna']];
-  const tabs = admin ? `<div class="st-tabs" role="tablist">${TABS.map(([k, ic, l]) => `<button class="st-tab ${tab === k ? 'on' : ''}" role="tab" aria-selected="${tab === k}" onclick="goPgTab('${k}')"><span>${ic}</span>${l}</button>`).join('')}</div>` : '';
+  const TABS = [['akun', '◉', 'Akun Saya'], ['iuran', '◈', 'Iuran Saya']].concat(admin ? [['kelola', '⚙', 'Kelola Pengguna']] : []);
+  const tabs = `<div class="st-tabs" role="tablist">${TABS.map(([k, ic, l]) => `<button class="st-tab ${tab === k ? 'on' : ''}" role="tab" aria-selected="${tab === k}" onclick="goPgTab('${k}')"><span>${ic}</span>${l}</button>`).join('')}</div>`;
   root.innerHTML = hero(admin ? 'Akun & Pengguna' : 'Akun Saya',
-    tab === 'kelola' ? 'Atur siapa yang boleh mengubah data keluarga. Anggota baru otomatis menjadi Viewer.' : 'Profil, hak akses, dan keamanan akun Anda.',
+    tab === 'kelola' ? 'Setujui pendaftar baru, atur peran, dan hubungkan akun ke anggota keluarga.' : tab === 'iuran' ? 'Status iuran, tunggakan, dan kuitansi Anda.' : 'Profil, hak akses, dan keamanan akun Anda.',
     `<div class="hero-date"><strong>${esc(ini(ME.name))}</strong><span>${ROLE_TAG[ME.role] || 'ANGGOTA'}</span></div>`) + tabs + '<div id="pgBody"></div>';
   const body = E('pgBody');
   if (tab === 'kelola') {
     body.innerHTML = '<div class="card st-card pg-load">Memuat daftar pengguna…</div>';
     const html = await usersAdminHtml();
     if (page === 'pengguna' && PG_TAB === 'kelola' && E('pgBody') === body) body.innerHTML = html;   // abaikan jika pengguna sudah pindah tab
+  } else if (tab === 'iuran') {
+    body.innerHTML = '<div class="card st-card pg-load">Memuat status iuran…</div>';
+    let html; try { html = await myIuranHtml(); } catch (e) { html = '<div class="card st-card"><span class="st-note">Status iuran belum tersedia. Jalankan patch-013 pada database, lalu muat ulang.</span></div>'; }
+    if (page === 'pengguna' && PG_TAB === 'iuran' && E('pgBody') === body) body.innerHTML = html;
   } else { body.innerHTML = accountHtml(); wirePassword(); }
 };
 })();

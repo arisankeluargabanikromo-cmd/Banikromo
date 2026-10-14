@@ -94,7 +94,8 @@ const openPhotoEditor = guard(async id => {
   });
   const del = $('#peDel'); if (del) del.onclick = guard(async () => {
     if (!confirm('Hapus foto profil ' + m.name + '?')) return;
-    await sb.storage.from('photos').remove(photoFiles(m.photo_path)); const u = await sb.from('members').update({ photo_path: null }).eq('id', id); if (u.error) return toast(u.error.message); await done('Foto dihapus');
+    const u = await sb.from('members').update({ photo_path: null }).eq('id', id); if (u.error) return toast(u.error.message);
+    await sb.storage.from('photos').remove(photoFiles(m.photo_path)); await done('Foto dihapus');
   });
   $('#formModal').classList.add('show');
 });

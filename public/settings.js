@@ -5,7 +5,7 @@
 // (supabase/patch-009-pengaturan.sql): bila gagal, tidak ada data yang berubah.
 // ============================================================
 (() => {
-const VER = '3.10.0', LS = 'fh-brand';
+const VER = '3.13.0', LS = 'fh-brand';
 const DEF = { name: 'FamilyHub', tagline: 'Arisan & Family Network', shape: 'rounded', logo: '' };
 const SAFE_LOGO = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 const ST = { tab: 'umum', ready: null, brand: { ...DEF }, pend: { ...DEF }, last: null, counts: null, rst: null, imp: { ds: 'anggota', res: null, skip: true } };

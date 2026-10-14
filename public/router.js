@@ -5,14 +5,14 @@
 (() => {
 const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const segs = p => { let s = ''; try { s = decodeURIComponent(p || ''); } catch (_) { } return s.replace(/^\/+|\/+$/g, '').toLowerCase().split('/'); };
-const tabOf = p => { const [a, b] = segs(p); return (a === 'pengguna' && b === 'kelola') ? 'kelola' : 'akun'; };   // sub-tab halaman Akun & Pengguna
+const tabOf = p => { const [a, b] = segs(p); return a === 'pengguna' && (b === 'kelola' || b === 'iuran') ? b : 'akun'; };   // sub-tab halaman Akun & Pengguna
 const toId = p => {                                   // '/arisan/' → 'arisan' ; selain itu → null
   const s = segs(p)[0];
   if (s === '' || s === 'dashboard') return 'dashboard';   // alamat utama "/" = Dashboard
   if (s === 'password') return 'pengguna';                 // alamat lama /password → Akun & Pengguna
   return has(titles, s) ? s : null;
 };
-const pathOf = id => id === 'dashboard' ? '/' : id === 'pengguna' && PG_TAB === 'kelola' ? '/pengguna/kelola' : '/' + id;
+const pathOf = id => id === 'dashboard' ? '/' : id === 'pengguna' && PG_TAB !== 'akun' ? '/pengguna/' + PG_TAB : '/' + id;
 
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
