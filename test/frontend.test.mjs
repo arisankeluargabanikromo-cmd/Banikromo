@@ -24,6 +24,21 @@ check('CSP terpasang & mengunci skrip ke domain sendiri', /script-src 'self' 'un
 check('CSP melarang framing & object', /frame-ancestors 'none'/.test(hdr['Content-Security-Policy']) && /object-src 'none'/.test(hdr['Content-Security-Policy']));
 check('header keamanan lain terpasang', ['X-Content-Type-Options', 'X-Frame-Options', 'Referrer-Policy', 'Permissions-Policy'].every(k => hdr[k]));
 
+{
+  const rw = vj.rewrites && vj.rewrites[0], rx = rw && new RegExp('^/' + rw.source.slice(2, -1) + '$');
+  check('Vercel: ada rewrite fallback ke index.html (refresh /arisan tidak 404)', rw && rw.destination === '/index.html');
+  check('rewrite memetakan alamat menu', ['/arisan', '/silsilah', '/pengguna/kelola', '/pengguna/iuran', '/'].every(u => rx.test(u)));
+  check('rewrite TIDAK menelan berkas aset (css/js/png) → aset hilang tetap 404 asli', ['/app.js', '/style.css', '/icon-192.png', '/vendor/supabase-js-2.45.4.js'].every(u => !rx.test(u)));
+  check('Netlify/Cloudflare: public/_redirects berisi fallback 200', /^\/\*\s+\/index\.html\s+200/m.test(fs.readFileSync(path.join(PUB, '_redirects'), 'utf8')));
+  const nf = fs.readFileSync(path.join(PUB, '404.html'), 'utf8');
+  check('GitHub Pages: 404.html menyimpan alamat & memuat ulang "/"', /fh:redirect/.test(nf) && /location\.replace\('\/'\)/.test(nf));
+  check('404.html tidak mengalihkan permintaan berkas (ekstensi) → pesan 404 tampil', /\\\.\[A-Za-z0-9\]\+\$/.test(nf));
+  const { ROUTES } = (await import('node:module')).createRequire(import.meta.url)('../scripts/gen-routes.js');
+  check('salinan rute per menu (/arisan/index.html, dst.) ada & identik dengan index.html (jalan tanpa rewrite)', ROUTES.every(r => { try { return fs.readFileSync(path.join(PUB, r, 'index.html'), 'utf8') === html; } catch { return false; } }), 'jalankan: node scripts/gen-routes.js');
+  check('build Vercel menjalankan gen-routes', /gen-routes/.test(vj.buildCommand));
+  check('semua aset di index.html memakai alamat absolut (aman di /pengguna/kelola)', ![...html.matchAll(/(?:src|href)="([^"#]+)"/g)].some(m => !/^(\/|https?:|data:|mailto:)/.test(m[1])));
+}
+
 // ---- fabrik lingkungan ----
 function makeSb(o) {
   const calls = [];
@@ -43,6 +58,7 @@ function makeSb(o) {
 async function boot(o) {
   const dom = new JSDOM(html, { runScripts: 'dangerously', url: o.url || 'http://localhost/', pretendToBeVisual: true });
   const w = dom.window, sb = makeSb(o); w.supabase = { createClient: () => sb }; w.FH_CONFIG = { SUPABASE_URL: 'https://x.supabase.co', SUPABASE_ANON_KEY: 'k' };
+  if (o.pre) o.pre(w);
   const alerts = []; w.confirm = () => true; w.alert = m => alerts.push(m); w.scrollTo = () => { }; w.matchMedia = w.matchMedia || (() => ({ matches: false, addEventListener() { }, addListener() { } }));
   const errs = []; w.addEventListener('error', e => errs.push(e.message));
   const ctx = dom.getInternalVMContext();
@@ -215,6 +231,23 @@ console.log('\n═══ 9. Tolak semua pendaftar menunggu ═══');
   const e = await boot({ session: null }); e.$('#signupBtn').click();
   check('pesan galat pendaftaran penuh dipetakan ke bahasa yang jelas', /penuh/.test(e.ev("MSG['Database error saving new user']")));
   e.w.close();
+}
+
+console.log('\n═══ 10. Refresh / link langsung & fallback 404.html ═══');
+{
+  const t = await boot({ from: PROFILE('viewer', true), url: 'http://localhost/arisan' }); await wait(100);
+  check('buka langsung /arisan → halaman Arisan aktif, URL tetap /arisan', t.ev('page') === 'arisan' && t.w.location.pathname === '/arisan', t.ev('page') + ' ' + t.w.location.pathname);
+  t.w.close();
+  const r = await boot({ from: PROFILE('viewer', true), pre: w => w.sessionStorage.setItem('fh:redirect', '/silsilah') }); await wait(100);
+  check('alamat dari 404.html dipulihkan → halaman Silsilah, URL /silsilah', r.ev('page') === 'silsilah' && r.w.location.pathname === '/silsilah', r.ev('page') + ' ' + r.w.location.pathname);
+  check('penanda pemulihan dihapus (tidak berulang saat refresh berikutnya)', r.w.sessionStorage.getItem('fh:redirect') === null);
+  r.w.close();
+  const x = await boot({ from: PROFILE('viewer', true), pre: w => w.sessionStorage.setItem('fh:redirect', '//evil.example/x') }); await wait(100);
+  check('alamat pemulihan berbahaya (//host) diabaikan', x.w.location.hostname === 'localhost' && x.w.location.pathname === '/', x.w.location.href);
+  x.w.close();
+  const u = await boot({ from: PROFILE('viewer', true), url: 'http://localhost/tidak-ada' }); await wait(100);
+  check('alamat tak dikenal → Dashboard, URL dikoreksi ke /', u.ev('page') === 'dashboard' && u.w.location.pathname === '/', u.ev('page') + ' ' + u.w.location.pathname);
+  u.w.close();
 }
 
 process.exit(summary() ? 0 : 1);
