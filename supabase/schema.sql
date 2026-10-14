@@ -1,3 +1,7 @@
+-- DIHASILKAN OTOMATIS oleh scripts/build-schema.mjs — JANGAN diedit dengan tangan.
+-- Sumber: supabase/base/schema-v3.9.1.sql + patch-011-keamanan.sql, patch-012-restore-tahan-versi.sql, patch-013-portal-anggota.sql, patch-014-anti-spam.sql
+-- Untuk mengubah database: tambah patch-0NN-*.sql lalu jalankan `npm run build:sql`.
+
 -- ============================================================
 -- FamilyHub — skema Supabase (jalankan di SQL Editor, sekali saja)
 -- ============================================================
@@ -1121,7 +1125,7 @@ revoke execute on function public.is_member_editor(), public.need_member_editor(
 grant  execute on function public.is_member_editor(), public.need_member_editor() to authenticated;
 revoke execute on function public.trg_members_guard() from authenticated;
 
--- ====== v3.10 KEAMANAN & JEJAK AUDIT (sama dengan patch-011-keamanan.sql) ======
+-- ====== patch-011-keamanan.sql ======
 -- ============================================================
 -- PATCH 011 — Keamanan & jejak audit (FamilyHub v3.10)
 --
@@ -1323,3 +1327,200 @@ revoke execute on function public.handle_new_user(), public.ensure_profile() fro
 grant execute on function public.ensure_profile() to authenticated;
 revoke execute on function public.handle_new_user() from authenticated;
 revoke execute on function public.is_admin(), public.is_member_editor(), public.list_users(), public.set_role(uuid,text) from public, anon;
+
+-- ====== patch-012-restore-tahan-versi.sql ======
+-- ============================================================
+-- PATCH 012 — Restore tahan versi & kunci pembatalan (FamilyHub v3.11)
+--  1) restore_backup hanya mengisi kolom yang ADA di berkas backup; kolom yang belum ada di backup lama
+--     (mis. gender, spouse_status, lineage_root, fee_type_id) memakai nilai default. Sebelumnya backup lama
+--     gagal dengan "null value ... violates not-null constraint".
+--  2) void_payment memakai kunci yang sama dengan disburse_arisan (mencegah balapan).
+-- Aman dijalankan berulang. Prasyarat: patch-011 (atau schema.sql v3.10).
+-- ============================================================
+
+-- Pembantu internal: isi satu tabel dari array JSON, hanya kolom yang muncul di data.
+create or replace function public._restore_rows(p_table text,p_rows jsonb) returns void language plpgsql security definer set search_path=public as $$
+declare cols text;
+begin
+ if p_table is null or p_table not in('fee_types','members','payments','transactions','events','announcements','albums','photos','draws','activity') then raise exception 'Tabel tidak dikenal: %',p_table; end if;
+ if p_rows is null or jsonb_typeof(p_rows)<>'array' or jsonb_array_length(p_rows)=0 then return; end if;
+ select string_agg(format('%I',c.column_name),',' order by c.ordinal_position) into cols
+  from information_schema.columns c
+  where c.table_schema='public' and c.table_name=p_table
+    and c.column_name in(select distinct k from jsonb_array_elements(p_rows) e, jsonb_object_keys(e) k);
+ if cols is null then raise exception 'Data % tidak memuat kolom yang dikenal',p_table; end if;
+ execute format('insert into public.%I(%s) select %s from jsonb_populate_recordset(null::public.%I,$1)',p_table,cols,cols,p_table) using p_rows;
+end $$;
+revoke execute on function public._restore_rows(text,jsonb) from public, anon, authenticated;
+
+create or replace function public.restore_backup(p jsonb) returns jsonb language plpgsql security definer set search_path=public set statement_timeout='300s' as $$
+declare d jsonb; t text; n jsonb:='{}'::jsonb;
+ need text[]:=array['settings','fee_types','members','payments','transactions','events','announcements','albums','photos','draws','activity'];
+begin
+ perform need_admin();
+ perform pg_advisory_xact_lock(hashtext('fh_restore'));
+ if p is null or jsonb_typeof(p)<>'object' or p->>'app' is distinct from 'FamilyHub' then raise exception 'Berkas ini bukan backup FamilyHub'; end if;
+ if coalesce(nullif(p->>'format','')::int,0)<>1 then raise exception 'Versi format backup tidak didukung'; end if;
+ d:=p->'data';
+ if d is null or jsonb_typeof(d)<>'object' then raise exception 'Isi backup tidak ditemukan'; end if;
+ foreach t in array need loop
+  if jsonb_typeof(d->t) is distinct from 'array' then raise exception 'Backup tidak lengkap: bagian "%" tidak ada',t; end if;
+ end loop;
+ if jsonb_array_length(d->'fee_types')=0 then raise exception 'Backup tidak memuat jenis iuran — berkas diduga rusak'; end if;
+
+ perform set_config('fh.skip_recalc','1',true);
+ -- 1) kosongkan (urutan mengikuti ketergantungan kunci asing)
+ delete from draws where id is not null;
+ delete from photos where id is not null;
+ delete from albums where id is not null;
+ delete from transactions where id is not null;
+ delete from payments where id is not null;
+ delete from members where id is not null;
+ delete from events where id is not null;
+ delete from announcements where id is not null;
+ delete from activity where id is not null;
+ delete from fee_types where id is not null;
+ -- 2) isi ulang. ID asli dipertahankan sehingga semua relasi tetap utuh
+ insert into settings(k,v) select e->>'k',e->>'v' from jsonb_array_elements(d->'settings') e
+  where e->>'k' is not null and e->>'v' is not null and e->>'k'<>'last_backup_at'
+  on conflict(k) do update set v=excluded.v;
+ foreach t in array array['fee_types','members','payments','transactions','events','announcements','albums','photos','draws'] loop
+  perform public._restore_rows(t,d->t);
+ end loop;
+ -- log aktivitas: buang noise dari trigger, lalu pakai log asli dari backup
+ delete from activity where id is not null;
+ perform public._restore_rows('activity',d->'activity');
+ -- 3) sinkronkan penghitung ID agar data baru tidak bentrok
+ foreach t in array array['members','payments','transactions','events','announcements','albums','photos','draws','activity'] loop
+  execute format('select setval(pg_get_serial_sequence(%L,%L),greatest(coalesce((select max(id) from public.%I),0),1),coalesce((select max(id) from public.%I),0)>0)','public.'||t,'id',t,t);
+ end loop;
+ perform set_config('fh.skip_recalc','0',true);
+ perform public.recalc_generations();
+ foreach t in array need loop n:=n||jsonb_build_object(t,jsonb_array_length(d->t)); end loop;
+ perform log_act('♻','Data dipulihkan dari backup','dibuat '||coalesce(p->>'created_at','?'));
+ return n;
+end $$;
+
+create or replace function public.void_payment(p_id bigint,p_reason text default null) returns void language plpgsql security definer set search_path=public as $$
+declare y payments; f fee_types; m members; coll bigint; disb bigint;
+begin
+ perform need_admin();
+ perform pg_advisory_xact_lock(hashtext('fh_disburse'));   -- sejajar dengan disburse_arisan: cegah balapan pembatalan vs pencairan
+ select * into y from payments where id=p_id; if not found then raise exception 'Pembayaran tidak ditemukan'; end if;
+ select * into f from fee_types where id=y.fee_type_id; select * into m from members where id=y.member_id;
+ if f.fund='arisan' then      -- jangan biarkan dana yang sudah dicairkan "hilang" dari pembukuan
+  select coalesce(sum(p.amount),0) into coll from payments p join fee_types t on t.id=p.fee_type_id where p.period=y.period and t.fund='arisan';
+  select coalesce(sum(amount),0) into disb from transactions where category='Pencairan Arisan' and period=y.period;
+  if coll-y.amount<disb then raise exception 'Dana arisan periode % sudah dicairkan. Batalkan pencairannya terlebih dahulu.',y.period; end if;
+ end if;
+ delete from payments where id=p_id;      -- transaksi terkait ikut terhapus (cascade)
+ perform log_act('✗','Pembayaran dibatalkan: '||y.receipt_no||' • '||m.name,coalesce(nullif(trim(p_reason),''),'tanpa keterangan')||' • Rp '||to_char(y.amount,'FM999G999G999'));
+end $$;
+
+revoke execute on function public.restore_backup(jsonb), public.void_payment(bigint,text) from public, anon;
+grant execute on function public.restore_backup(jsonb), public.void_payment(bigint,text) to authenticated;
+
+-- ====== patch-013-portal-anggota.sql ======
+-- ============================================================
+-- PATCH 013 — Portal anggota "Iuran Saya" (FamilyHub v3.12)
+--  Admin menghubungkan sebuah akun ke satu anggota keluarga. Pemilik akun lalu melihat status iuran, tunggakan,
+--  riwayat & nomor kuitansi, dan riwayat kemenangan arisan MILIKNYA SENDIRI lewat my_status().
+--  Hubungan hanya bisa diubah admin (kolom profiles tidak bisa diubah pengguna biasa) dan tercatat di jejak audit.
+-- Aman dijalankan berulang. Prasyarat: patch-011.
+-- ============================================================
+
+alter table public.profiles add column if not exists member_id bigint references public.members(id) on delete set null;
+create unique index if not exists profiles_member_uidx on public.profiles(member_id) where member_id is not null;   -- satu anggota = satu akun
+
+-- Jejak audit: perubahan hubungan akun↔anggota juga dicatat (selain peran & persetujuan)
+create or replace function public.trg_audit() returns trigger language plpgsql security definer set search_path=public as $$
+declare o jsonb:=case when tg_op<>'INSERT' then to_jsonb(old) end; n jsonb:=case when tg_op<>'DELETE' then to_jsonb(new) end;
+begin
+ if coalesce(current_setting('fh.skip_recalc',true),'')='1' then return null; end if;
+ if tg_table_name='profiles' and tg_op='UPDATE' and o->>'role'=n->>'role' and o->>'approved'=n->>'approved'
+    and (o->>'member_id') is not distinct from (n->>'member_id') then return null; end if;
+ insert into audit_log(actor,actor_name,tbl,op,row_id,old_row,new_row)
+  values(auth.uid(),(select name from profiles where id=auth.uid()),tg_table_name,tg_op,coalesce(n->>'id',o->>'id'),o,n);
+ return null; end $$;
+
+create or replace function public.link_member(p_user uuid,p_member bigint) returns void language plpgsql security definer set search_path=public as $$
+declare nm text; mn text;
+begin
+ perform need_admin();
+ if not exists(select 1 from profiles where id=p_user) then raise exception 'Pengguna tidak ditemukan'; end if;
+ if p_member is not null then
+  select name into mn from members where id=p_member;
+  if not found then raise exception 'Anggota tidak ditemukan'; end if;
+  if exists(select 1 from profiles where member_id=p_member and id<>p_user) then raise exception 'Anggota ini sudah dihubungkan ke akun lain'; end if;
+ end if;
+ update profiles set member_id=p_member where id=p_user returning name into nm;
+ perform log_act('🔗',case when p_member is null then 'Akun dilepas dari anggota' else 'Akun dihubungkan ke anggota' end,coalesce(nm,'?')||coalesce(' → '||mn,''));
+end $$;
+
+create or replace function public.list_users() returns jsonb language plpgsql stable security definer set search_path=public as $$
+begin perform need_admin();
+ return coalesce((select jsonb_agg(jsonb_build_object('id',p.id,'name',p.name,'email',u.email,'role',p.role,'approved',p.approved,'created_at',u.created_at,
+          'member_id',p.member_id,'member_name',mm.name) order by p.approved,u.created_at desc)
+        from profiles p join auth.users u on u.id=p.id left join members mm on mm.id=p.member_id),'[]'::jsonb); end $$;
+
+-- Status iuran milik pemanggil. Hanya data anggota yang terhubung ke akunnya.
+create or replace function public.my_status() returns jsonb language plpgsql stable security definer set search_path=public as $$
+declare pr profiles; m members; cur text:=cur_period();
+begin
+ perform need_approved();
+ select * into pr from profiles where id=auth.uid();
+ if pr.member_id is not null then select * into m from members where id=pr.member_id; end if;
+ if m.id is null then return jsonb_build_object('linked',false,'name',pr.name); end if;
+ return jsonb_build_object('linked',true,'period',cur,
+  'member',jsonb_build_object('id',m.id,'name',m.name,'relation',m.relation,'active',m.active=1),
+  'types',coalesce((select jsonb_agg(jsonb_build_object('id',f.id,'name',f.name,'amount',f.amount,'fund',f.fund,'required_for_draw',f.required_for_draw,
+        'paid_now',exists(select 1 from payments y where y.member_id=m.id and y.fee_type_id=f.id and y.period=cur),
+        'arrears',a.n,'arrears_total',a.n::bigint*f.amount,'arrears_periods',to_jsonb(a.ps)) order by f.sort,f.id)
+     from fee_types f
+     cross join lateral (select count(*)::int n,coalesce(array_agg(g.period order by g.period),'{}'::text[]) ps
+        from (select to_char(d,'YYYY-MM') period from generate_series(to_date(f.start_period||'-01','YYYY-MM-DD'),to_date(cur||'-01','YYYY-MM-DD')-interval '1 month',interval '1 month') d) g
+        where m.active=1 and substr(g.period,1,4)::int>=coalesce(m.joined,0)
+          and not exists(select 1 from payments y where y.member_id=m.id and y.fee_type_id=f.id and y.period=g.period)) a
+     where f.active),'[]'::jsonb),
+  'can_draw',m.active=1 and not exists(select 1 from fee_types f where f.active and f.required_for_draw
+        and not exists(select 1 from payments y where y.member_id=m.id and y.period=cur and y.fee_type_id=f.id)),
+  'recent',coalesce((select jsonb_agg(x.r order by x.ord desc) from (select y.paid_at ord,jsonb_build_object('period',y.period,'type',f.name,'amount',y.amount,'paid_at',y.paid_at,'method',y.method,'receipt_no',y.receipt_no) r
+        from payments y join fee_types f on f.id=y.fee_type_id where y.member_id=m.id order by y.paid_at desc,y.id desc limit 12) x),'[]'::jsonb),
+  'won',coalesce((select jsonb_agg(jsonb_build_object('period',d.period,'at',d.at) order by d.id desc) from draws d where d.winner_id=m.id and d.status='sah'),'[]'::jsonb));
+end $$;
+
+revoke execute on function public.link_member(uuid,bigint), public.my_status(), public.list_users() from public, anon;
+grant execute on function public.link_member(uuid,bigint), public.my_status(), public.list_users() to authenticated;
+
+-- ====== patch-014-anti-spam.sql ======
+-- ============================================================
+-- PATCH 014 — Anti-spam pendaftaran (FamilyHub v3.13)
+--  Pendaftaran publik membuat daftar "menunggu persetujuan" rawan dibanjiri. Kini:
+--   1) Paling banyak 50 pendaftar menunggu sekaligus; pendaftaran ke-51 ditolak sampai admin menyetujui/menolak.
+--   2) reject_all_pending(): admin menolak & menghapus semua pendaftar menunggu sekali klik.
+-- Aman dijalankan berulang. Prasyarat: patch-011.
+-- ============================================================
+
+create or replace function public.handle_new_user() returns trigger language plpgsql security definer set search_path=public as $$
+declare first_user boolean;
+begin
+ perform pg_advisory_xact_lock(hashtext('fh_first_user'));
+ first_user:=not exists(select 1 from profiles);
+ if not first_user and (select count(*) from profiles where not approved)>=50 then
+  raise exception 'Pendaftaran sedang penuh: terlalu banyak pendaftar menunggu persetujuan. Hubungi admin keluarga.';
+ end if;
+ insert into profiles(id,name,role,approved)
+  values(new.id, left(coalesce(nullif(trim(new.raw_user_meta_data->>'name'),''),split_part(new.email,'@',1)),80), case when first_user then 'admin' else 'viewer' end, first_user);
+ return new; end $$;
+
+create or replace function public.reject_all_pending() returns int language plpgsql security definer set search_path=public as $$
+declare n int;
+begin
+ perform need_admin();
+ with d as (delete from auth.users where id in(select id from profiles where not approved) returning 1) select count(*) into n from d;
+ if n>0 then perform log_act('✗','Semua pendaftar menunggu ditolak',n||' akun'); end if;
+ return n; end $$;
+
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+revoke execute on function public.reject_all_pending() from public, anon;
+grant execute on function public.reject_all_pending() to authenticated;
