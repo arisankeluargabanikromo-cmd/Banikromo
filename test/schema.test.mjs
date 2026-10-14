@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SCHEMA = path.join(ROOT, 'supabase/schema.sql'), PATCH = path.join(ROOT, 'supabase/patch-011-keamanan.sql');
-const OLD = path.join(ROOT, 'tests/fixtures/schema-v3.9.1.sql');   // skema sebelum patch-011 (untuk uji upgrade)
+const OLD = path.join(ROOT, 'supabase/base/schema-v3.9.1.sql');   // skema dasar v3.9.1, sebelum patch-011 (untuk uji upgrade)
 
 async function seed(db) {
   const admin = await signup(db, 'admin@keluarga.id', 'Admin');
@@ -193,4 +193,132 @@ console.log('\n═══ C. Kontrol: baseline lama masih terbukti bermasalah, ta
   const db = await freshDb([OLD]); await seed(db); const o = await signup(db, 'x@mail.com', 'X');
   await as(db, o, async () => check('(kontrol) tanpa patch pendaftar publik membaca anggota', (await tryQ(db, `select 1 from members`)).rows.length === 3));
 }
+
+console.log('\n═══ D. Restore tahan versi (patch-012) ═══');
+{
+  const db = await freshDb([SCHEMA]);
+  const admin = await seed(db);
+  const strip = (arr, drop) => arr.map(r => Object.fromEntries(Object.entries(r).filter(([k]) => !drop.includes(k))));
+  const m = (await db.query(`select * from members`)).rows, ft = (await db.query(`select * from fee_types`)).rows;
+  const old = { app: 'FamilyHub', format: 1, data: { settings: [{ k: 'iuran', v: '350000' }], fee_types: ft,
+    members: strip(m, ['gender', 'spouse_id', 'spouse_status', 'birth_year', 'death_year', 'lineage_root', 'photo_path', 'marital_status', 'address']),
+    payments: [], transactions: [], events: [], announcements: [], albums: [], photos: [], draws: [], activity: [] } };
+  await as(db, admin, async () => {
+    const r = await tryQ(db, `select restore_backup($1::jsonb) r`, [JSON.stringify(old)]);
+    check('backup bergaya LAMA (tanpa kolom baru) berhasil dipulihkan', r.ok, r.err);
+  });
+  const row = (await db.query(`select name,spouse_status,lineage_root from members order by id limit 1`)).rows[0];
+  check('kolom yang tak ada di backup memakai DEFAULT (spouse_status=menikah, lineage_root=false)', row && row.spouse_status === 'menikah' && row.lineage_root === false, JSON.stringify(row));
+  check('jumlah anggota kembali 3', (await db.query(`select count(*)::int c from members`)).rows[0].c === 3);
+  await as(db, admin, async () => {
+    check('pembantu internal _restore_rows tidak bisa dipanggil dari browser', !(await tryQ(db, `select _restore_rows('members','[]'::jsonb)`)).ok);
+    const bad = await tryQ(db, `select restore_backup($1::jsonb)`, [JSON.stringify({ ...old, data: { ...old.data, members: [{ id: 1, nama_ngawur: 'x' }] } })]);
+    check('backup dengan kolom tak dikenal ditolak rapi (tanpa merusak data)', !bad.ok);
+  });
+  check('data tetap utuh setelah restore gagal (transaksi dibatalkan)', (await db.query(`select count(*)::int c from members`)).rows[0].c === 3);
+  const pa = await signup(db, 'pa@x.id', 'PA');
+  await as(db, pa, async () => { check('pendaftar menunggu tidak bisa restore', !(await tryQ(db, `select restore_backup($1::jsonb)`, [JSON.stringify(old)])).ok); });
+}
+
+console.log('\n═══ E. Upgrade berantai v3.9.1 → patch-011 → patch-012 ═══');
+{
+  const fsx = await import('node:fs');
+  const db = await freshDb([OLD]); await seed(db);
+  await db.exec(fsx.readFileSync(PATCH, 'utf8')); await db.exec(fsx.readFileSync(path.join(ROOT, 'supabase/patch-012-restore-tahan-versi.sql'), 'utf8'));
+  await db.exec(fsx.readFileSync(path.join(ROOT, 'supabase/patch-012-restore-tahan-versi.sql'), 'utf8'));
+  check('patch 011 + 012 (012 dijalankan 2x) berurutan tanpa galat', true);
+  const admin = (await db.query(`select id from profiles where role='admin'`)).rows[0].id;
+  await as(db, admin, async () => {
+    const b = await mid(db, 'Budi'); check('void_payment bekerja setelah patch-012', (await pay(db, b)).ok && (await tryQ(db, `select void_payment((select id from payments limit 1)::bigint,'uji'::text)`)).ok);
+  });
+}
+
+console.log('\n═══ F. Portal anggota: Iuran Saya (patch-013) ═══');
+{
+  const db = await freshDb([SCHEMA]);
+  const admin = await seed(db);
+  await db.exec(`update fee_types set start_period='2026-01'`);
+  const ub = await signup(db, 'budi@x.id', 'Budi'), us = await signup(db, 'siti@x.id', 'Siti'), up = await signup(db, 'pending@x.id', 'Pending');
+  await as(db, admin, async () => { await tryQ(db, `select approve_user('${ub}','viewer')`); await tryQ(db, `select approve_user('${us}','viewer')`); });
+  const b = await mid(db, 'Budi'), si = await mid(db, 'Siti');
+
+  await as(db, ub, async () => {
+    const r = await tryQ(db, `select my_status() s`);
+    check('akun belum dihubungkan → linked=false (bukan galat)', r.ok && r.rows[0].s.linked === false, JSON.stringify(r));
+    check('viewer tidak bisa menghubungkan akun', !(await tryQ(db, `select link_member('${ub}',${b}::bigint)`)).ok);
+    await tryQ(db, `update profiles set member_id=${si} where id='${ub}'`);
+  });
+  check('viewer tidak bisa mengubah member_id dirinya lewat API (RLS)', (await db.query(`select member_id from profiles where id=$1`, [ub])).rows[0].member_id === null);
+  await as(db, up, async () => { check('akun menunggu tidak bisa my_status', !(await tryQ(db, `select my_status()`)).ok); });
+
+  await as(db, admin, async () => {
+    check('admin menghubungkan akun Budi ke anggota Budi', (await tryQ(db, `select link_member('${ub}',${b}::bigint)`)).ok);
+    check('anggota yang sama tidak bisa dihubungkan ke akun kedua', !(await tryQ(db, `select link_member('${us}',${b}::bigint)`)).ok);
+    check('anggota tak ada ditolak', !(await tryQ(db, `select link_member('${us}',99999::bigint)`)).ok);
+    check('pengguna tak ada ditolak', !(await tryQ(db, `select link_member('00000000-0000-0000-0000-000000000000'::uuid,${b}::bigint)`)).ok);
+    check('akun Siti dihubungkan ke Siti', (await tryQ(db, `select link_member('${us}',${si}::bigint)`)).ok);
+    const lu = (await tryQ(db, `select list_users() u`)).rows[0].u;
+    check('list_users memuat member_id & member_name', lu.find(x => x.email === 'budi@x.id').member_name === 'Budi');
+    const per = (await tryQ(db, `select cur_period() p`)).rows[0].p;
+    check('admin mencatat iuran Budi (bulan ini) & Siti (bulan ini)', (await tryQ(db, `select record_payment(${b}::bigint,'${per}'::text,1::smallint,'Tunai'::text)`)).ok && (await tryQ(db, `select record_payment(${si}::bigint,'${per}'::text,1::smallint,'Transfer'::text)`)).ok);
+  });
+
+  let mine;
+  await as(db, ub, async () => {
+    const r = await tryQ(db, `select my_status() s`); mine = r.rows[0].s;
+    check('linked=true & nama anggota benar', mine.linked === true && mine.member.name === 'Budi', JSON.stringify(mine.member));
+    const t1 = mine.types.find(t => t.id === 1);
+    check('iuran bulan ini tampil LUNAS', t1.paid_now === true);
+    check('riwayat hanya milik Budi (1 baris, tidak bocor data Siti)', mine.recent.length === 1 && mine.recent.every(x => x.receipt_no), JSON.stringify(mine.recent));
+    check('tunggakan: ada & konsisten (n × tarif = total)', t1.arrears > 0 && t1.arrears_total === t1.arrears * t1.amount && t1.arrears_periods.length === t1.arrears, JSON.stringify(t1));
+  });
+  await as(db, admin, async () => {
+    const all = (await tryQ(db, `select iuran_arrears() a`)).rows[0].a.filter(x => x.member_id === b);
+    const mineT = Object.fromEntries(mine.types.map(t => [t.id, t.arrears_total]));
+    const same = all.every(x => mineT[x.type_id] === x.total) && mine.types.filter(t => t.arrears > 0).length === all.length;
+    check('SILANG-CEK: tunggakan di my_status = hasil iuran_arrears() milik admin', same, JSON.stringify({ all, mineT }));
+    check('can_draw = semua iuran wajib-undian bulan ini lunas', mine.can_draw === !mine.types.some(t => t.required_for_draw && !t.paid_now), JSON.stringify(mine.types.map(t => [t.id, t.required_for_draw, t.paid_now])));
+  });
+  const audit = (await db.query(`select count(*)::int c from audit_log where tbl='profiles' and (new_row->>'member_id') is not null`)).rows[0].c;
+  check('penghubungan akun tercatat di jejak audit', audit >= 2, String(audit));
+
+  await as(db, admin, async () => { check('admin melepas hubungan (null)', (await tryQ(db, `select link_member('${ub}',null::bigint)`)).ok); });
+  await as(db, ub, async () => { check('setelah dilepas → linked=false lagi', (await tryQ(db, `select my_status() s`)).rows[0].s.linked === false); });
+  await as(db, admin, async () => { await tryQ(db, `select link_member('${ub}',${b}::bigint)`); await tryQ(db, `delete from members where id=${b}`); });
+  await as(db, ub, async () => { check('anggota dihapus → akun tetap ada, linked=false (tanpa galat)', (await tryQ(db, `select my_status() s`)).rows[0].s.linked === false); });
+
+  // upgrade berantai penuh
+  const fsx = await import('node:fs'); const db2 = await freshDb([OLD]); await seed(db2);
+  for (const f of ['patch-011-keamanan.sql', 'patch-012-restore-tahan-versi.sql', 'patch-013-portal-anggota.sql', 'patch-013-portal-anggota.sql']) await db2.exec(fsx.readFileSync(path.join(ROOT, 'supabase', f), 'utf8'));
+  check('upgrade berantai v3.9.1 → 011 → 012 → 013 (013 dua kali) tanpa galat', true);
+}
+
+console.log('\n═══ G. Anti-spam pendaftaran (patch-014) ═══');
+{
+  const db = await freshDb([SCHEMA]);
+  const admin = await seed(db);
+  const ok = await signup(db, 'sah@x.id', 'Sah'); await as(db, admin, () => tryQ(db, `select approve_user('${ok}','viewer')`));
+  let last = null; for (let i = 0; i < 50; i++) last = await tryQ(db, `insert into auth.users(email,raw_user_meta_data) values('spam${i}@x.id','{"name":"Spam"}'::jsonb)`);
+  check('50 pendaftar menunggu masih diterima', (await db.query(`select count(*)::int c from profiles where not approved`)).rows[0].c === 50 && last.ok);
+  const over = await tryQ(db, `insert into auth.users(email,raw_user_meta_data) values('spam51@x.id','{"name":"Spam"}'::jsonb)`);
+  check('pendaftar ke-51 DITOLAK dengan pesan jelas', !over.ok && /sedang penuh/.test(over.err), over.err);
+  check('akun ke-51 tidak tertinggal setengah jadi (auth.users & profiles konsisten)', (await db.query(`select (select count(*) from auth.users)::int u,(select count(*) from profiles)::int p`)).rows.every(r => r.u === r.p));
+  await as(db, ok, async () => { check('viewer tidak bisa reject_all_pending', !(await tryQ(db, `select reject_all_pending()`)).ok); });
+  await as(db, null, async () => { check('anon tidak bisa reject_all_pending', !(await tryQ(db, `select reject_all_pending()`)).ok); });
+  await as(db, admin, async () => {
+    const r = await tryQ(db, `select reject_all_pending() n`);
+    check('admin: reject_all_pending menghapus 50 pendaftar', r.ok && +r.rows[0].n === 50, JSON.stringify(r));
+    check('dicatat di log aktivitas', (await db.query(`select count(*)::int c from activity where text like 'Semua pendaftar menunggu ditolak%'`)).rows[0].c === 1);
+    check('tanpa pendaftar menunggu → 0 & tidak galat', (await tryQ(db, `select reject_all_pending() n`)).rows[0].n === 0);
+  });
+  const left = (await db.query(`select name from profiles order by name`)).rows.map(r => r.name);
+  check('akun yang sudah disetujui (admin & Sah) TIDAK ikut terhapus', left.length === 2 && left.includes('Admin') && left.includes('Sah'), JSON.stringify(left));
+  check('setelah dibersihkan pendaftaran baru diterima lagi', (await tryQ(db, `insert into auth.users(email) values('baru@x.id')`)).ok);
+  const long = await signup(db, 'panjang@x.id', 'N'.repeat(200));
+  check('nama pendaftar dipangkas maksimal 80 karakter', (await db.query(`select length(name)::int l from profiles where id=$1`, [long])).rows[0].l === 80);
+  const fsx = await import('node:fs'); const db2 = await freshDb([OLD]); await seed(db2);
+  for (const f of ['patch-011-keamanan.sql', 'patch-012-restore-tahan-versi.sql', 'patch-013-portal-anggota.sql', 'patch-014-anti-spam.sql', 'patch-014-anti-spam.sql']) await db2.exec(fsx.readFileSync(path.join(ROOT, 'supabase', f), 'utf8'));
+  check('upgrade berantai 011 → 012 → 013 → 014 (014 dua kali) tanpa galat', true);
+}
+
 process.exit(summary() ? 0 : 1);

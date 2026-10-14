@@ -30,7 +30,7 @@ function makeSb(o) {
   const qb = t => {
     const st = { t, cols: '', f: {} };
     const r = () => Promise.resolve(o.from ? o.from(st) : { data: [], error: null });
-    const q = { select(c) { st.cols = c; return q; }, eq(k, v) { st.f[k] = v; return q; }, order() { return q; }, range() { return q; }, limit() { return q; }, in() { return q; },
+    const q = { delete() { calls.push('delete:' + t); return q; }, select(c) { st.cols = c; return q; }, eq(k, v) { st.f[k] = v; return q; }, order() { return q; }, range() { return q; }, limit() { return q; }, in() { return q; },
       maybeSingle: () => r(), then: (a, b) => r().then(a, b) };
     return q;
   };
@@ -38,10 +38,10 @@ function makeSb(o) {
     auth: { getSession: async () => ({ data: { session: o.session === undefined ? { user: { id: 'u1', email: 'u@x.id' } } : o.session } }), signOut: async () => ({}),
       signInWithPassword: async () => ({ data: { user: { id: 'u1', email: 'u@x.id' } }, error: null }),
       signUp: async a => { calls.push('signUp'); calls.signUpArg = a; return { data: { session: null }, error: null }; } },
-    storage: { from: () => ({ createSignedUrls: async () => ({ data: [] }), remove: async () => ({}) }) } };
+    storage: { from: () => ({ createSignedUrls: async () => ({ data: [] }), remove: async p => { calls.push('storage.remove'); return {}; } }) } };
 }
 async function boot(o) {
-  const dom = new JSDOM(html, { runScripts: 'dangerously', url: 'http://localhost/', pretendToBeVisual: true });
+  const dom = new JSDOM(html, { runScripts: 'dangerously', url: o.url || 'http://localhost/', pretendToBeVisual: true });
   const w = dom.window, sb = makeSb(o); w.supabase = { createClient: () => sb }; w.FH_CONFIG = { SUPABASE_URL: 'https://x.supabase.co', SUPABASE_ANON_KEY: 'k' };
   const alerts = []; w.confirm = () => true; w.alert = m => alerts.push(m); w.scrollTo = () => { }; w.matchMedia = w.matchMedia || (() => ({ matches: false, addEventListener() { }, addListener() { } }));
   const errs = []; w.addEventListener('error', e => errs.push(e.message));
@@ -128,4 +128,93 @@ console.log('\n═══ 6. Form pendaftaran ═══');
   check('tombol Kembali memulihkan mode masuk', t.$('#nameRow').style.display === 'none' && t.$('#loginBtn').style.display === '');
   t.w.close();
 }
+console.log('\n═══ 7. Urutan hapus: baris database dulu, berkas sesudahnya ═══');
+{
+  const ok = await boot({ from: st => st.t === 'profiles' ? { data: { name: 'B', role: 'admin', approved: true }, error: null } : st.t === 'photos' ? { data: [{ path: '5/a.jpg' }], error: null } : { data: null, error: null },
+    rpc: fn => ({ data: fn === 'dashboard' ? { members: 0, paid: 0, saldo: 0, masuk: 0, keluar: 0, cashflow: [], activity: [], recent: [], period: '2026-10', next: null, funds: { arisan: 0, kas: 0 }, types: [] } : null, error: null }) });
+  ok.sb.calls.length = 0; await ok.ev("api('albums/5','DELETE')"); 
+  const i = ok.sb.calls.indexOf('delete:albums'), j = ok.sb.calls.indexOf('storage.remove');
+  check('hapus album: baris dihapus SEBELUM berkas Storage', i >= 0 && j > i, ok.sb.calls.join(','));
+  ok.w.close();
+  const bad = await boot({ from: st => st.t === 'profiles' ? { data: { name: 'B', role: 'admin', approved: true }, error: null } : st.t === 'photos' ? { data: [{ path: '5/a.jpg' }], error: null } : st.t === 'albums' ? { data: null, error: { message: 'ditolak', status: 403 } } : { data: null, error: null },
+    rpc: fn => ({ data: fn === 'dashboard' ? { members: 0, paid: 0, saldo: 0, masuk: 0, keluar: 0, cashflow: [], activity: [], recent: [], period: '2026-10', next: null, funds: { arisan: 0, kas: 0 }, types: [] } : null, error: null }) });
+  bad.sb.calls.length = 0; try { await bad.ev("api('albums/5','DELETE')"); } catch (e) { }
+  check('bila penghapusan baris DITOLAK, berkas Storage TIDAK dihapus', bad.sb.calls.includes('delete:albums') && !bad.sb.calls.includes('storage.remove'), bad.sb.calls.join(','));
+  bad.w.close();
+}
+console.log('\n═══ 8. Portal anggota "Iuran Saya" ═══');
+{
+  const EVIL = `<img src=x onerror=alert(3)>`;
+  const DASH = { members: 0, paid: 0, saldo: 0, masuk: 0, keluar: 0, cashflow: [], activity: [], recent: [], period: '2026-10', next: null, funds: { arisan: 0, kas: 0 }, types: [] };
+  const linked = { linked: true, period: '2026-10', member: { id: 7, name: 'Budi ' + EVIL, relation: 'Anak', active: true },
+    types: [{ id: 1, name: 'Iuran Arisan', amount: 350000, fund: 'arisan', required_for_draw: true, paid_now: false, arrears: 2, arrears_total: 700000, arrears_periods: ['2026-08', '2026-09'] },
+            { id: 2, name: 'Kas ' + EVIL, amount: 50000, fund: 'kas', required_for_draw: false, paid_now: true, arrears: 0, arrears_total: 0, arrears_periods: [] }],
+    can_draw: false, won: [{ period: '2026-03', at: '2026-03-20T00:00:00Z' }],
+    recent: [{ period: '2026-07', type: 'Iuran Arisan', amount: 350000, paid_at: '2026-07-05T00:00:00Z', method: 'Tunai', receipt_no: 'KW-2026-0001' + EVIL }] };
+  const mk = (role, my, extra = {}) => boot({ from: st => st.t === 'profiles' ? { data: { name: 'Budi', role, approved: true }, error: null } : st.t === 'members' ? { data: extra.members || [], error: null } : { data: [], error: null },
+    rpc: (fn, a) => ({ data: fn === 'dashboard' ? DASH : fn === 'my_status' ? my : fn === 'list_users' ? (extra.users || []) : null, error: null }), url: extra.url });
+
+  const t = await mk('viewer', linked);
+  t.ev("PG_TAB='iuran'"); t.ev("showPage('pengguna')"); await wait(100);
+  const box = t.$('#pengguna'), tabs = [...box.querySelectorAll('.st-tab')].map(b => b.textContent.trim());
+  check('viewer melihat tab "Akun Saya" & "Iuran Saya" (tanpa Kelola Pengguna)', tabs.length === 2 && /Iuran Saya/.test(tabs[1]), JSON.stringify(tabs));
+  check('alamat URL = /pengguna/iuran', t.w.location.pathname === '/pengguna/iuran', t.w.location.pathname);
+  check('banner: ada tunggakan Rp 700.000 (2 bulan)', /700\.000/.test(box.textContent) && /2 bulan/.test(box.textContent), box.textContent.slice(0, 300));
+  check('kartu per jenis iuran: Belum dibayar / Lunas bulan ini', /Belum dibayar/.test(box.textContent) && /Lunas bulan ini/.test(box.textContent));
+  check('periode tunggakan ditulis (Agustus & September 2026)', /Agustus 2026/.test(box.textContent) && /September 2026/.test(box.textContent));
+  check('arisan: belum memenuhi syarat + pernah menang Maret 2026', /Belum memenuhi syarat/.test(box.textContent) && /Maret 2026/.test(box.textContent));
+  check('riwayat menampilkan nomor kuitansi', /KW-2026-0001/.test(box.textContent));
+  check('XSS: nama anggota / jenis iuran / kuitansi berisi HTML tidak dieksekusi', !box.querySelector('img[src="x"]') && !box.querySelector('[onerror]') && t.alerts.length === 0, JSON.stringify(t.alerts));
+  check('payload tampil sebagai teks biasa', box.textContent.includes('<img src=x onerror=alert(3)>'));
+  t.ev("goPgTab('akun')"); await wait(60); check('pindah tab kembali ke Akun Saya → URL /pengguna', t.w.location.pathname === '/pengguna', t.w.location.pathname);
+  t.w.close();
+
+  const u = await mk('viewer', { linked: false, name: 'Budi' }); u.ev("PG_TAB='iuran'"); u.ev("showPage('pengguna')"); await wait(80);
+  check('akun belum dihubungkan → pesan jelas, tanpa angka', /belum dihubungkan/i.test(u.$('#pengguna').textContent) && !/Rp/.test(u.$('#pengguna').textContent));
+  u.w.close();
+
+  const d = await mk('viewer', linked, { url: 'http://localhost/pengguna/iuran' }); await wait(100);
+  check('buka langsung /pengguna/iuran → tab Iuran Saya aktif', d.ev('PG_TAB') === 'iuran' && /Iuran Arisan/.test(d.$('#pengguna').textContent), d.ev('PG_TAB'));
+  d.w.close();
+
+  const kv = await mk('viewer', linked, { url: 'http://localhost/pengguna/kelola' }); await wait(100);
+  check('viewer yang membuka /pengguna/kelola dialihkan ke tab Akun', kv.ev('PG_TAB') === 'akun', kv.ev('PG_TAB'));
+  kv.w.close();
+
+  const users = [{ id: '11111111-1111-1111-1111-111111111111', name: 'Admin', email: 'u@x.id', role: 'admin', approved: true, member_id: null },
+                 { id: '33333333-3333-3333-3333-333333333333', name: 'Siti', email: 's@x.id', role: 'viewer', approved: true, member_id: 8 }];
+  const a = await mk('admin', linked, { users, members: [{ id: 7, name: 'Budi ' + EVIL, relation: 'Anak', active: 1 }, { id: 8, name: 'Siti', relation: 'Anak', active: 1 }] });
+  a.ev("PG_TAB='kelola'"); a.ev("showPage('pengguna')"); await wait(120);
+  const sels = [...a.$('#pengguna').querySelectorAll('select[aria-label="Hubungkan ke anggota"]')];
+  check('admin: kolom "Anggota keluarga" ada untuk tiap pengguna', sels.length === 2, String(sels.length));
+  const s0 = sels[0]; const taken = [...s0.options].find(o => o.value === '8');
+  check('anggota yang sudah terhubung ke akun lain tidak bisa dipilih (disabled)', taken && taken.disabled, taken && taken.outerHTML);
+  check('XSS: nama anggota di <option> tidak dieksekusi', !a.$('#pengguna').querySelector('img[src="x"]') && a.alerts.length === 0);
+  s0.value = '7'; s0.dispatchEvent(new a.w.Event('change')); await wait(80);
+  check('memilih anggota → link_member(user, member_id)', a.sb.calls.args.link_member && a.sb.calls.args.link_member.p_user === '11111111-1111-1111-1111-111111111111' && a.sb.calls.args.link_member.p_member === 7, JSON.stringify(a.sb.calls.args.link_member));
+  const s1 = [...a.$('#pengguna').querySelectorAll('select[aria-label="Hubungkan ke anggota"]')][1]; s1.value = ''; s1.dispatchEvent(new a.w.Event('change')); await wait(80);
+  check('memilih "belum dihubungkan" → melepas (member null)', a.sb.calls.args.link_member.p_member === null, JSON.stringify(a.sb.calls.args.link_member));
+  a.w.close();
+}
+
+console.log('\n═══ 9. Tolak semua pendaftar menunggu ═══');
+{
+  const DASH = { members: 0, paid: 0, saldo: 0, masuk: 0, keluar: 0, cashflow: [], activity: [], recent: [], period: '2026-10', next: null, funds: { arisan: 0, kas: 0 }, types: [] };
+  const users = [{ id: '1', name: 'Admin', email: 'u@x.id', role: 'admin', approved: true }, { id: '2', name: 'P1', email: 'p1@x.id', role: 'viewer', approved: false }, { id: '3', name: 'P2', email: 'p2@x.id', role: 'viewer', approved: false }];
+  const t = await boot({ from: PROFILE('admin', true), rpc: fn => ({ data: fn === 'dashboard' ? DASH : fn === 'list_users' ? users : fn === 'reject_all_pending' ? 2 : null, error: null }) });
+  t.ev("PG_TAB='kelola'"); t.ev("showPage('pengguna')"); await wait(100);
+  const b = [...t.$('#pengguna').querySelectorAll('button')].find(x => /Tolak semua/.test(x.textContent));
+  check('tombol "Tolak semua (2)" tampil', !!b && /\(2\)/.test(b.textContent), b && b.textContent);
+  let asked = ''; t.w.confirm = m => (asked = m, true);
+  b && b.click(); await wait(80);
+  check('meminta konfirmasi menyebut jumlah (2)', /2/.test(asked), asked);
+  check('klik → reject_all_pending dipanggil', t.sb.calls.includes('rpc:reject_all_pending'));
+  t.w.confirm = () => false; t.sb.calls.length = 0; const b2 = [...t.$('#pengguna').querySelectorAll('button')].find(x => /Tolak semua/.test(x.textContent)); b2 && b2.click(); await wait(60);
+  check('batal di konfirmasi → tidak memanggil server', !t.sb.calls.includes('rpc:reject_all_pending'));
+  t.w.close();
+  const e = await boot({ session: null }); e.$('#signupBtn').click();
+  check('pesan galat pendaftaran penuh dipetakan ke bahasa yang jelas', /penuh/.test(e.ev("MSG['Database error saving new user']")));
+  e.w.close();
+}
+
 process.exit(summary() ? 0 : 1);
