@@ -114,3 +114,30 @@ em.new{font-style:normal;background:var(--danger);color:#fff;font-size:9.5px;fon
 .dr-ok{background:rgba(34,199,169,.14);color:#12907a}
 body.dark .dr-ok{color:#5fe0bc}
 @media(prefers-reduced-motion:reduce){.dr-pill.wait{animation:none}}
+/* ---- Periode arisan manual (v3.14) ---- */
+.per-warn{margin:0 20px 12px;padding:10px 12px;border-radius:12px;background:rgba(255,180,94,.18);color:#8a5200;font-size:12.5px;line-height:1.7}
+body.dark .per-warn{color:#ffc27a}
+.per-warn button{margin-left:6px;padding:3px 11px;border-radius:999px;background:var(--panel);color:var(--text);font-size:12px;font-weight:700;box-shadow:0 0 0 1px var(--line)}
+.per-now{display:grid;gap:2px;margin:0 0 12px;padding:14px 16px;border-radius:14px;background:var(--panel2)}
+.per-now small{font-size:10.5px;font-weight:800;letter-spacing:.08em;color:var(--muted)}
+.per-now b{font-size:22px}.per-now span{font-size:12.5px;color:var(--muted)}
+.per-form{display:grid;gap:10px;margin:0 0 16px;padding:14px;border-radius:14px;background:var(--panel2);box-shadow:0 0 0 1px var(--line)}
+.per-form label{display:grid;gap:5px;font-size:12.5px;font-weight:700}
+.per-form input[type=month],.per-form input[type=date],.per-form input[type=text],.per-form select,.per-form textarea{width:100%;padding:9px 11px;border-radius:10px;font:inherit;font-weight:500;background:var(--panel);color:var(--text);box-shadow:0 0 0 1px var(--line)}
+.per-form .per-chk{display:flex;align-items:center;gap:8px;font-weight:600}
+.per-hint{min-height:20px;font-size:12.5px;line-height:1.6;color:var(--muted)}
+.per-hint.bad{color:var(--danger)}
+.per-form button[disabled]{opacity:.55;cursor:not-allowed}
+
+/* Putaran arisan (v3.16) */
+.rd-meta{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 20px 12px;font-size:12.5px;color:var(--muted)}
+.rd-note{margin:0 0 12px;font-size:12.5px;line-height:1.7;color:var(--muted)}
+.rd-top{display:flex;justify-content:flex-end;margin:0 0 10px}
+.rd-msg{margin:0 0 12px;line-height:1.7}
+.rd-f{display:grid;gap:5px;margin:0 0 12px;font-size:12.5px;font-weight:700}
+.rd-f textarea{width:100%;padding:9px 11px;border-radius:10px;font:inherit;font-weight:500;background:var(--panel);color:var(--text);box-shadow:0 0 0 1px var(--line)}
+.rd-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
+.rd-btns button[disabled]{opacity:.55;cursor:not-allowed}
+.rd-acts{white-space:nowrap}.rd-acts .btn-s{margin:0 3px 3px 0}
+.per-form label small{font-weight:500;color:var(--muted)}
+button.danger{background:var(--danger,#e5484d)!important;color:#fff!important}

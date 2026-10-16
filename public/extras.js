@@ -63,7 +63,7 @@ titles.pengguna = 'Akun & Pengguna';
 async function usersAdminHtml() {
   try { await ensureMembers(); } catch (e) { }   // daftar anggota untuk menghubungkan akun
   const all = await api('users'), pend = all.filter(u => u.approved === false), us = all.filter(u => u.approved !== false), cnt = r => us.filter(u => u.role === r).length;
-  CACHE.pend = pend; PENDING_N = pend.length; { const d = $('#notifDot'); if (d) d.hidden = !PENDING_N; }   // sinkronkan titik notifikasi
+  CACHE.pend = pend; CACHE.users = us; PENDING_N = pend.length; { const d = $('#notifDot'); if (d) d.hidden = !PENDING_N; }   // sinkronkan titik notifikasi
   const RC = [['admin', '👑', 'Admin', 'Akses penuh: keuangan, arisan & pengocokan, agenda, pengumuman, album, pengaturan, pengguna, serta anggota & silsilah.'],
     ['pengelola', '🌳', 'Pengelola Silsilah', 'Mengelola <b>anggota & silsilah</b>: tambah/ubah anggota, hubungan keluarga, foto profil, impor CSV, dan leluhur. Juga bisa melihat semua data. Tidak menyentuh keuangan, arisan, atau pengaturan.'],
     ['viewer', '👁', 'Viewer', 'Hanya melihat seluruh data keluarga. Peran awal setiap pendaftar baru.']];
@@ -71,7 +71,7 @@ async function usersAdminHtml() {
   const pendHtml = pend.length ? `<div class="card pend-card"><div class="card-head"><h3>⏳ Menunggu persetujuan</h3><span>${pend.length} PENDAFTAR</span></div><div style="padding:0 20px 8px"><button class="btn-s d" onclick="rejectAll()">Tolak semua (${pend.length})</button></div><p class="st-note" style="margin:0 20px 8px">Orang-orang ini sudah mendaftar tetapi <b>belum bisa melihat data apa pun</b> sampai Anda menyetujuinya. Tolak bila Anda tidak mengenalnya.</p><table class="table"><thead><tr><th>Nama</th><th>Email</th><th>Mendaftar</th><th>Peran</th><th></th></tr></thead><tbody>${pend.map(u => `<tr><td><b>${esc(u.name)}</b></td><td>${esc(u.email)}</td><td>${u.created_at ? ft(u.created_at) : '—'}</td><td><select class="select" id="apr_${esc(u.id)}"><option value="viewer">Viewer</option><option value="pengelola">Pengelola Silsilah</option><option value="admin">Admin</option></select></td><td style="white-space:nowrap"><button class="btn-s" onclick="approveUser('${esc(u.id)}')">Setujui</button> <button class="btn-s d" onclick="rejectUser('${esc(u.id)}')">Tolak</button></td></tr>`).join('')}</tbody></table></div>` : '';
   const auditHtml = `<div class="card" id="auditCard"><div class="card-head"><h3>Jejak audit</h3><span>PERUBAHAN PENTING</span></div><div id="auditBody" style="padding:0 20px 20px"><p class="st-note" style="margin:0 0 10px">Mencatat perubahan buku kas, pembatalan pembayaran, perubahan tarif iuran, serta peran/persetujuan pengguna — lengkap dengan nilai lama dan baru. Tidak bisa diubah atau dihapus dari aplikasi.</p><button class="btn-s" onclick="loadAudit(this)">Tampilkan 50 catatan terbaru</button></div></div>`;
   return pendHtml + `<div class="roles">${RC.map(([k, ic, t, d]) => `<div class="card role-card r-${k}"><div class="rc-h"><span class="rc-i">${ic}</span><div><b>${t}</b><small>${cnt(k)} pengguna</small></div></div><p>${d}</p></div>`).join('')}</div>
-    <div class="card"><div class="card-head"><h3>Daftar pengguna</h3><span>${us.length} AKUN</span></div><table class="table"><thead><tr><th>Nama</th><th>Email</th><th>Peran</th><th>Anggota keluarga</th></tr></thead><tbody>${us.map(u => `<tr><td><b>${esc(u.name)}</b>${ME && u.email === ME.username ? ' <span class="pg-you">Anda</span>' : ''}</td><td>${esc(u.email)}</td><td><select class="select" onchange="setRole('${u.id}',this.value)">${opt(u, 'admin', 'Admin')}${opt(u, 'pengelola', 'Pengelola Silsilah')}${opt(u, 'viewer', 'Viewer')}</select></td><td>${memberSel(u, us)}</td></tr>`).join('')}</tbody></table></div>
+    <div class="card"><div class="card-head"><h3>Daftar pengguna</h3><span>${us.length} AKUN</span></div><table class="table"><thead><tr><th>Nama</th><th>Email</th><th>Peran</th><th>Anggota keluarga</th><th>Aksi</th></tr></thead><tbody>${us.map(u => `<tr><td><b>${esc(u.name)}</b>${ME && u.email === ME.username ? ' <span class="pg-you">Anda</span>' : ''}</td><td>${esc(u.email)}</td><td><select class="select" onchange="setRole('${u.id}',this.value)">${opt(u, 'admin', 'Admin')}${opt(u, 'pengelola', 'Pengelola Silsilah')}${opt(u, 'viewer', 'Viewer')}</select></td><td>${memberSel(u, us)}</td><td>${ME && u.email === ME.username ? `<button class="btn-s" aria-label="Ubah pengguna" onclick="editUser('${esc(u.id)}')">Ubah</button> <span class="muted" title="Akun yang sedang dipakai tidak bisa dihapus">—</span>` : `<button class="btn-s" aria-label="Ubah pengguna" onclick="editUser('${esc(u.id)}')">Ubah</button> <button class="btn-s d" aria-label="Hapus pengguna" onclick="deleteUser('${esc(u.id)}')">Hapus</button>`}</td></tr>`).join('')}</tbody></table></div>
     ${auditHtml}
     <p class="st-note">Password pengguna lain tidak dapat dilihat atau diubah dari sini. Jika ada yang lupa password, ia bisa menggantinya sendiri di tab <b>Akun Saya</b> setelah masuk, atau admin mengatur ulang lewat dashboard Supabase (Authentication → Users).</p>`;
 }
@@ -85,6 +85,28 @@ const approveUser = async id => { const sel = document.getElementById('apr_' + i
 // Nama pendaftar TIDAK pernah disisipkan ke atribut HTML (hanya id) — mencegah XSS tersimpan.
 const rejectAll = async () => { const n = (CACHE.pend || []).length; if (!n || !confirm(`Tolak dan hapus SEMUA ${n} pendaftar yang menunggu? Akun mereka akan dihapus.`)) return; try { const c = await api('users/reject_all', 'POST'); toast(`${c} pendaftaran ditolak`); } catch (e) { } reload(); };
 const rejectUser = async id => { const u = (CACHE.pend || []).find(x => x.id === id); if (!confirm(`Tolak dan hapus pendaftaran "${u ? u.name : 'ini'}"? Akunnya akan dihapus.`)) return; try { await api('users/reject', 'POST', { id }); toast('Pendaftaran ditolak'); } catch (e) { } reload(); };
+// Ubah pengguna: nama, peran, dan hubungan ke anggota dalam satu form. Hanya bagian yang berubah yang dikirim ke server.
+const editUser = id => {
+  const us = CACHE.users || [], u = us.find(x => x.id === id); if (!u) return;
+  const taken = new Set(us.filter(x => x.id !== id && x.member_id).map(x => x.member_id));
+  const ms = [...(MEMBERS || [])].filter(m => !taken.has(m.id)).sort((a, b) => String(a.name).localeCompare(String(b.name), 'id')).map(m => [m.id, m.name]);
+  const f = [{ k: 'info', t: 'note', l: `Email: <b>${esc(u.email)}</b> (email & password dikelola lewat Supabase → Authentication → Users)` },
+    { k: 'name', l: 'Nama', req: 1 }, { k: 'role', l: 'Peran', t: 'select', o: [['admin', 'Admin'], ['pengelola', 'Pengelola Silsilah'], ['viewer', 'Viewer']] },
+    { k: 'member_id', l: 'Anggota keluarga', t: 'pick', o: ms }];
+  openForm('Ubah Pengguna', f, { name: u.name, role: u.role, member_id: u.member_id || '' }, async b => {
+    const name = String(b.name || '').trim(); if (!name) { toast('Nama tidak boleh kosong'); throw 0; }
+    const mem = b.member_id === '' ? null : +b.member_id;
+    if (b.role !== u.role) await api('users/' + id, 'PUT', { role: b.role });
+    if (mem !== (u.member_id || null)) await api('users/link', 'POST', { id, member_id: mem });
+    if (name !== u.name) await api('users/rename', 'POST', { id, name });
+  });
+};
+// Hapus akun pengguna yang sudah aktif. Hanya id yang masuk ke atribut HTML; nama diambil dari CACHE saat konfirmasi.
+const deleteUser = async id => {
+  const u = (CACHE.users || []).find(x => x.id === id); if (!u) return;
+  if (!confirm(`Hapus pengguna \"${u.name}\" (${u.email})?\n\nAkun ini tidak akan bisa masuk lagi dan tindakan ini tidak dapat dibatalkan. Data keluarga (anggota, iuran, kas) tidak ikut terhapus.`)) return;
+  try { await api('users/delete', 'POST', { id }); toast('Pengguna dihapus'); } catch (e) { } reload();
+};
 const AUD_T = { transactions: 'Buku kas', payments: 'Pembayaran iuran', fee_types: 'Jenis iuran', profiles: 'Pengguna' }, AUD_O = { INSERT: 'Ditambah', UPDATE: 'Diubah', DELETE: 'Dihapus' };
 const audVal = v => v == null ? '—' : String(typeof v === 'object' ? JSON.stringify(v) : v).slice(0, 40);
 function audRow(a) {

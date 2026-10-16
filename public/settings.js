@@ -5,15 +5,16 @@
 // (supabase/patch-009-pengaturan.sql): bila gagal, tidak ada data yang berubah.
 // ============================================================
 (() => {
-const VER = '3.13.0', LS = 'fh-brand';
+const VER = '3.16.2', LS = 'fh-brand';
 const DEF = { name: 'FamilyHub', tagline: 'Arisan & Family Network', shape: 'rounded', logo: '' };
 const SAFE_LOGO = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 const ST = { tab: 'umum', ready: null, brand: { ...DEF }, pend: { ...DEF }, last: null, counts: null, rst: null, imp: { ds: 'anggota', res: null, skip: true } };
 
 // Tabel yang ikut backup: [kunci, tabel, kolom urut]
 const BK = [['settings', 'settings', 'k'], ['fee_types', 'fee_types', 'id'], ['members', 'members', 'id'], ['payments', 'payments', 'id'], ['transactions', 'transactions', 'id'],
-  ['events', 'events', 'id'], ['announcements', 'announcements', 'id'], ['albums', 'albums', 'id'], ['photos', 'photos', 'id'], ['draws', 'draws', 'id'], ['activity', 'activity', 'id']];
-const TL = { members: 'Anggota', payments: 'Pembayaran iuran', transactions: 'Transaksi kas', fee_types: 'Jenis iuran', draws: 'Pengocokan', events: 'Agenda', announcements: 'Pengumuman', albums: 'Album', photos: 'Foto', activity: 'Log aktivitas', settings: 'Pengaturan' };
+  ['events', 'events', 'id'], ['announcements', 'announcements', 'id'], ['albums', 'albums', 'id'], ['photos', 'photos', 'id'], ['draws', 'draws', 'id'], ['activity', 'activity', 'id'], ['arisan_rounds', 'arisan_rounds', 'id']];
+const OPT = new Set(['arisan_rounds']);   // bagian opsional: backup sebelum v3.16 tidak memilikinya (server membentuk putaran dari data lama / arisan_periods)
+const TL = { members: 'Anggota', payments: 'Pembayaran iuran', transactions: 'Transaksi kas', fee_types: 'Jenis iuran', draws: 'Pengocokan', events: 'Agenda', announcements: 'Pengumuman', albums: 'Album', photos: 'Foto', activity: 'Log aktivitas', settings: 'Pengaturan', arisan_rounds: 'Putaran arisan' };
 
 // ---------- Utilitas ----------
 const E = id => document.getElementById(id), nf = n => Number(n || 0).toLocaleString('id-ID'), pad = n => String(n).padStart(2, '0');
@@ -163,7 +164,7 @@ function sheetOf(X, cols, rows, money = []) {
   money.forEach(c => { const ci = cols.indexOf(c); rows.forEach((_, i) => { const cell = ws[X.utils.encode_cell({ r: i + 1, c: ci })]; if (cell && typeof cell.v === 'number') cell.z = '#,##0'; }); });
   return ws;
 }
-const ctx = () => { const m = {}, once = (k, f) => () => m[k] ??= f(); return { members: once('m', () => fetchAll('members', 'id,name')), fees: once('f', () => fetchAll('fee_types', 'id,name')) }; };
+const ctx = () => { const m = {}, once = (k, f) => () => m[k] ??= f(); return { members: once('m', () => fetchAll('members', 'id,name')), fees: once('f', () => fetchAll('fee_types', 'id,name,schedule')) }; };
 const byDate = (a, b) => (a.date || '').localeCompare(b.date || '') || a.id - b.id;
 const D = {
   anggota: { t: 'Anggota & Silsilah', i: '♙', tb: 'members', sheet: 'Anggota', d: 'Data anggota lengkap: orang tua, pasangan, tahun lahir/wafat, alamat. Formatnya sama dengan impor.',
@@ -171,15 +172,15 @@ const D = {
     load: async () => (await fetchAll('members')).map(x => ({ kode: x.id, nama: x.name, jk: x.gender || '', status_nikah: (x.marital_status || '').replace(/_/g, ' '), kode_ortu: x.parent_id ?? '', kode_pasangan: x.spouse_id ?? '', status_pasangan: x.spouse_id ? (x.spouse_status || '') : '', lahir: x.birth_year ?? '', wafat: x.death_year ?? '', hubungan: x.relation || '', telepon: x.phone || '', alamat: x.address || '', aktif: x.active ? 'ya' : 'tidak', generasi: x.generation })) },
   iuran: { t: 'Pembayaran Iuran', i: '◎', tb: 'payments', sheet: 'Iuran', money: ['jumlah'], d: 'Seluruh pembayaran iuran arisan & wajib beserta nomor kuitansi dan metode bayar.',
     cols: ['kuitansi', 'anggota', 'jenis_iuran', 'periode', 'jumlah', 'metode', 'dibayar'],
-    load: async c => { const [p, m, f] = await Promise.all([fetchAll('payments'), c.members(), c.fees()]), mn = new Map(m.map(x => [x.id, x.name])), fn = new Map(f.map(x => [x.id, x.name]));
-      return p.map(x => ({ kuitansi: x.receipt_no || '', anggota: mn.get(x.member_id) || '', jenis_iuran: fn.get(x.fee_type_id) || '', periode: x.period, jumlah: x.amount, metode: x.method || '', dibayar: wib(x.paid_at) })); } },
+    load: async c => { const [p, m, f] = await Promise.all([fetchAll('payments'), c.members(), c.fees()]), mn = new Map(m.map(x => [x.id, x.name])), fn = new Map(f.map(x => [x.id, x.name])), fs = new Map(f.map(x => [x.id, x.schedule])); try { await getCfg(); } catch (_) { }   // getCfg memuat daftar putaran untuk label
+      return p.map(x => ({ kuitansi: x.receipt_no || '', anggota: mn.get(x.member_id) || '', jenis_iuran: fn.get(x.fee_type_id) || '', periode: fs.get(x.fee_type_id) === 'putaran' ? PER(x.period) : x.period, jumlah: x.amount, metode: x.method || '', dibayar: wib(x.paid_at) })); } },
   kas: { t: 'Buku Kas', i: '◈', tb: 'transactions', sheet: 'Buku Kas', money: ['jumlah'], d: 'Semua transaksi pemasukan & pengeluaran dua dana (Arisan dan Kas Wajib). Bisa diimpor kembali.',
     cols: ['tanggal', 'keterangan', 'jenis', 'jumlah', 'dana', 'kategori', 'periode', 'anggota'],
     load: async c => { const [t, m] = await Promise.all([fetchAll('transactions'), c.members()]), mn = new Map(m.map(x => [x.id, x.name]));
       return t.sort(byDate).map(x => ({ tanggal: x.date, keterangan: x.description, jenis: x.type, jumlah: x.amount, dana: x.fund, kategori: x.category || '', periode: x.period || '', anggota: mn.get(x.member_id) || '' })); } },
-  kocokan: { t: 'Riwayat Pengocokan', i: '✦', tb: 'draws', sheet: 'Pengocokan', d: 'Hasil pengocokan arisan: siklus, periode, pemenang, dan status pengesahan.',
-    cols: ['siklus', 'periode', 'waktu', 'pemenang', 'status', 'percobaan'],
-    load: async () => (await fetchAll('draws')).map(x => ({ siklus: x.cycle, periode: x.period, waktu: wib(x.at), pemenang: x.winner_name, status: x.status, percobaan: x.attempt })) },
+  kocokan: { t: 'Riwayat Pengocokan', i: '✦', tb: 'draws', sheet: 'Pengocokan', d: 'Hasil pengocokan arisan: siklus, putaran, pemenang, dan status pengesahan.',
+    cols: ['siklus', 'putaran', 'waktu', 'pemenang', 'status', 'percobaan'],
+    load: async () => (await fetchAll('draws')).map(x => ({ siklus: x.cycle, putaran: PER(x.period), waktu: wib(x.at), pemenang: x.winner_name, status: x.status, percobaan: x.attempt })) },
   agenda: { t: 'Agenda', i: '◫', tb: 'events', sheet: 'Agenda', d: 'Daftar acara keluarga beserta lokasi dan status. Bisa diimpor kembali.',
     cols: ['tanggal', 'jam', 'kegiatan', 'lokasi', 'status'],
     load: async () => (await fetchAll('events')).sort(byDate).map(x => ({ tanggal: x.date, jam: x.time || '', kegiatan: x.title, lokasi: x.location || '', status: x.status })) },
@@ -214,7 +215,7 @@ async function exportAll(btn) {
 // ---------- Backup & pemulihan ----------
 async function backupDownload(busy, tag) {
   const data = {};
-  for (let i = 0; i < BK.length; i++) { const [k, t, o] = BK[i]; busy && busy.set(`Mengambil ${TL[k].toLowerCase()}…`, i / BK.length); data[k] = await fetchAll(t, '*', o); }
+  for (let i = 0; i < BK.length; i++) { const [k, t, o] = BK[i]; busy && busy.set(`Mengambil ${TL[k].toLowerCase()}…`, i / BK.length); try { data[k] = await fetchAll(t, '*', o); } catch (e) { if (!OPT.has(k)) throw e; data[k] = []; } }
   data.settings = data.settings.filter(x => x.k !== 'last_backup_at');
   busy && busy.set('Menyusun berkas backup…', .96);
   const counts = Object.fromEntries(BK.map(([k]) => [k, data[k].length])), org = (data.settings.find(x => x.k === 'org_name') || {}).v || 'FamilyHub';
@@ -236,14 +237,14 @@ async function analyzeBackup(file) {
   let j; try { j = JSON.parse(await readText(file)); } catch { out.errs.push('Berkas bukan JSON yang valid.'); return out; }
   if (!j || j.app !== 'FamilyHub' || typeof j.data !== 'object' || !j.data) { out.errs.push('Ini bukan berkas backup FamilyHub.'); return out; }
   if (j.format !== 1) out.errs.push(`Format backup versi ${esc(j.format)} tidak didukung aplikasi ini.`);
-  for (const [k] of BK) if (!Array.isArray(j.data[k])) out.errs.push(`Bagian "${TL[k]}" tidak ada di dalam backup.`);
+  for (const [k] of BK) if (!OPT.has(k) && !Array.isArray(j.data[k])) out.errs.push(`Bagian "${TL[k]}" tidak ada di dalam backup.`);
   if (!out.errs.length) {
     if (!j.data.fee_types.length) out.errs.push('Backup tidak memuat jenis iuran — berkas diduga rusak.');
     if (j.checksum) { const sum = await sha256(JSON.stringify(j.data)); if (sum && sum !== j.checksum) out.errs.push('Checksum tidak cocok — berkas rusak atau sudah diubah. Pemulihan dibatalkan demi keamanan.'); }
     else out.warns.push('Backup ini tidak memiliki checksum, keutuhannya tidak dapat diverifikasi.');
     if (j.version && parseInt(j.version) > parseInt(VER)) out.warns.push(`Backup dibuat oleh versi lebih baru (${esc(j.version)}) daripada aplikasi ini (${VER}).`);
     if (j.data.photos.length) out.warns.push('Berkas foto (Storage) tidak ikut backup. Data album tetap dipulihkan, tetapi foto yang berkasnya sudah terhapus akan tampil kosong.');
-    out.counts = Object.fromEntries(BK.map(([k]) => [k, j.data[k].length]));
+    out.counts = Object.fromEntries(BK.map(([k]) => [k, (j.data[k] || []).length]));
   }
   out.j = j; return out;
 }
@@ -396,7 +397,7 @@ async function doImport() {
 // ---------- Reset ----------
 const RS = {
   keuangan: { i: '◈', t: 'Keuangan', d: 'Seluruh pembayaran iuran, kuitansi, dan buku kas (termasuk pencairan arisan). Saldo kembali nol.', tb: ['payments', 'transactions'] },
-  arisan: { i: '◎', t: 'Pengocokan Arisan', d: 'Riwayat pengocokan dan pemenang. Siklus arisan kembali ke 1. Anggota & keuangan tidak berubah.', tb: ['draws'] },
+  arisan: { i: '◎', t: 'Pengocokan Arisan', d: 'Riwayat pengocokan, pemenang, dan daftar putaran dihapus; siklus arisan kembali ke 1 dan nomor putaran berikutnya tetap melanjutkan (tidak bentrok dengan iuran lama). Anggota & keuangan tidak berubah.', tb: ['draws'] },
   agenda: { i: '◫', t: 'Agenda', d: 'Seluruh acara di kalender dan daftar agenda.', tb: ['events'] },
   pengumuman: { i: '◌', t: 'Pengumuman', d: 'Seluruh pengumuman keluarga.', tb: ['announcements'] },
   galeri: { i: '▧', t: 'Dokumentasi', d: 'Seluruh album dan foto, termasuk berkas gambarnya di penyimpanan.', tb: ['albums', 'photos'] },

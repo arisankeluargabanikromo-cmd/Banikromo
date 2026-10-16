@@ -15,7 +15,7 @@ const dl = rows => `<dl class="fbp-dl">${rows.filter(r => r[1]).map(([k, v]) => 
 
 async function openProfile(id) {
   await ensureMembers(); const m = FAM.byId.get(id); if (!m) return;
-  const hist = await api('history/' + id), cur = new Date().toISOString().slice(0, 7), paid = hist.pays.some(x => x.period === cur && x.fee_type_id === 1), paidW = hist.pays.some(x => x.period === cur && x.fee_type_id === 2), hl = t => hist.pays.filter(x => x.fee_type_id === t).slice(0, 12).map(x => '✓ ' + MONTH(x.period).slice(0, 3) + ' ' + x.period.slice(2, 4)).join(' · ') || 'Belum ada';
+  const hist = await api('history/' + id), cfg0 = (await getCfg().catch(() => null)) || {}, cur = cfg0.period || null, curM = cfg0.ref_month || new Date().toISOString().slice(0, 7), TY = cfg0.types || [], sch = t => ((TY.find(x => x.id === t) || {}).schedule === 'putaran' ? 'putaran' : t === 1 ? 'putaran' : 'bulanan'), keyFor = t => sch(t) === 'putaran' ? cur : curM, paid = !!keyFor(1) && hist.pays.some(x => x.period === keyFor(1) && x.fee_type_id === 1), paidW = !!keyFor(2) && hist.pays.some(x => x.period === keyFor(2) && x.fee_type_id === 2), hl = t => hist.pays.filter(x => x.fee_type_id === t).slice(0, 12).map(x => '✓ ' + (sch(t) === 'putaran' ? PER(x.period) : MONTH(x.period).slice(0, 3) + ' ' + x.period.slice(2, 4))).join(' · ') || 'Belum ada';
   const par = FAM.byId.get(m.parent_id), u = FAM.unitOf.get(id), sp = spousesOf(id), kids = childrenOf(id), pU = par && FAM.unitOf.get(par.id), age = ageOf(m), stt = FAM.mar.get(id);
   const sibAll = pU ? MEMBERS.filter(x => pU.members.some(pm => pm.id === x.parent_id) && !pU.members.some(pm => pm.id === x.id)).sort((a, b) => (a.birth_year || 9999) - (b.birth_year || 9999) || a.id - b.id) : [], sib = sibAll.filter(x => x.id !== id);
   const lab = x => x.gender === 'L' ? 'Ayah' : x.gender === 'P' ? 'Ibu' : 'Orang tua', other = par && pU.members.length === 2 ? pU.members.find(x => x.id !== par.id) : null;
@@ -57,9 +57,9 @@ async function openProfile(id) {
     <section class="fbp-sec"><h3>Pernikahan &amp; posisi dalam silsilah</h3><div class="detail-grid"><div class="detail" style="grid-column:span 2"><span>Status pernikahan</span><b>${stt.t ? `<em class="st st-${stt.k || 'x'} big">${stt.t}</em>` : 'Belum diisi'}</b>${edges.length ? `<div class="rtxt">${edges.join(' · ')}</div>` : ''}</div>${kinBlock(m)}</div></section></div>`;
 
   const arsPane = `<div data-pane="ars" hidden><section class="fbp-sec"><h3>Arisan &amp; iuran</h3><div class="detail-grid">
-    <div class="detail"><span>Status Arisan</span><b>${m.active ? '✓ Aktif' : 'Nonaktif'}</b></div><div class="detail"><span>Iuran Bulan Ini</span><b style="font-size:12px">Arisan ${paid ? '✓' : '✗'} · Wajib ${paidW ? '✓' : '✗'}</b></div>
+    <div class="detail"><span>Status Arisan</span><b>${m.active ? '✓ Aktif' : 'Nonaktif'}</b></div><div class="detail"><span>Iuran Saat Ini</span><b style="font-size:12px">Arisan ${cur ? (paid ? '✓' : '✗') : '—'} · Wajib ${paidW ? '✓' : '✗'}</b></div>
     <div class="detail" style="grid-column:span 2"><span>Riwayat iuran</span><b style="font-size:12px;line-height:1.8">Arisan: ${hl(1)}<br>Wajib: ${hl(2)}</b></div>
-    <div class="detail" style="grid-column:span 2"><span>Menang arisan</span><b>${hist.wins.map(w => MONTH(w.period)).join(', ') || 'Belum pernah'}</b></div></div></section></div>`;
+    <div class="detail" style="grid-column:span 2"><span>Menang arisan</span><b>${hist.wins.map(w => PER(w.period)).join(', ') || 'Belum pernah'}</b></div></div></section></div>`;
 
   $('#profileBox').className = 'modal-box fbp-box';
   $('#profileBox').innerHTML = `<div class="fbp-cover cv-${gCls(m)}"><div class="cvbg"${m.photo_path ? ` data-pp="${esc(m.photo_path)}" data-sz="l"` : ''}></div><div class="cvtag">Profil Keluarga</div><button class="close fbp-x" onclick="closeProfile()" aria-label="Tutup">×</button></div>

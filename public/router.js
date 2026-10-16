@@ -65,7 +65,7 @@ showPage = function (id, btn) {
   firstNav = false;
 
   closeForm(); closeProfile();                        // jangan biarkan modal terbuka menumpuk di halaman lain
-  if (changed) { CACHE = {}; MEMBERS = []; if (window.resetCfg) resetCfg(); }   // pindah halaman = data diambil ulang
+  if (changed) { CACHE = {}; MEMBERS = []; if (window.resetCfg) resetCfg(); if (window.finResetView) finResetView(); }   // pindah halaman = data diambil ulang
   const r = _show(id, btn);                           // set page, ganti section aktif, ambil data
   paintTitle();
   return r;
@@ -84,7 +84,7 @@ let hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { hiddenAt = Date.now(); return; }
   if (hiddenAt && Date.now() - hiddenAt > 5 * 60 * 1000 && ME && !document.querySelector('#formModal.show,#profileModal.show')) {
-    CACHE = {}; MEMBERS = []; if (window.resetCfg) resetCfg(); reload();
+    CACHE = {}; MEMBERS = []; if (window.resetCfg) resetCfg(); if (window.finResetView) finResetView(); reload();
   }
   hiddenAt = 0;
 });

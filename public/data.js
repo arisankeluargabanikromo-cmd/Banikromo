@@ -29,7 +29,7 @@ async function profile(u) {
   return { username: u.email, name: data.name, role: data.role, approved: data.approved !== false };
 }
 async function api(p, m = 'GET', b = {}) {
-  const [t, id] = p.split('/'), rpc = async (fn, a) => { const r = await sb.rpc(fn, a); return r.error ? fail(r.error) : r.data; };
+  const [t, id] = p.split('/'), rpc = async (fn, a) => { const r = await sb.rpc(fn, a); if (r.error) return fail(r.error); if (r.data && Array.isArray(r.data.rounds) && typeof setRounds === 'function') setRounds(r.data.rounds); return r.data; };   // respons yang memuat daftar putaran memperbarui label "Putaran N"
   if (t === 'login') { const r = await sb.auth.signInWithPassword({ email: b.username.trim(), password: b.password }); return r.error ? fail(r.error, MSG[r.error.message] || r.error.message) : profile(r.data.user); }
   if (t === 'logout') { await sb.auth.signOut(); return {}; }
   if (t === 'me') { const { data: { session } } = await sb.auth.getSession(); if (!session) { showLogin(); throw 0; } return profile(session.user); }
@@ -37,7 +37,7 @@ async function api(p, m = 'GET', b = {}) {
   if (t === 'payments') {   // iuran: tiap jenis (arisan/wajib) dicatat per anggota per periode
     if (id === 'bulk') return rpc('record_payments', { p_member: +b.member_id, p_type: +b.type, p_periods: b.periods, p_method: b.method || 'Tunai' });
     return m === 'POST' ? rpc('record_payment', { p_member: +b.member_id, p_period: b.period, p_type: +(b.type || 1), p_method: b.method || 'Tunai' })
-      : m === 'DELETE' ? rpc('void_payment', { p_id: +id, p_reason: b.reason || null }) : rpc('get_payments', { p_period: b.period || null });
+      : m === 'DELETE' ? rpc('void_payment', { p_id: +id, p_reason: b.reason || null }) : rpc('get_payments', { p_period: b.period || null, p_month: b.month || null });
   }
   if (t === 'fin') {        // keuangan & laporan
     if (id === 'config') return rpc('fee_config');
@@ -47,7 +47,7 @@ async function api(p, m = 'GET', b = {}) {
     if (id === 'recap') return rpc('iuran_recap', { p_from: b.from, p_to: b.to });
     if (id === 'arrears') return rpc('iuran_arrears', { p_type: b.type ? +b.type : null, p_include_current: !!b.cur });
     if (id === 'matrix') return rpc('compliance_matrix', { p_year: +b.year, p_type: +b.type });
-    if (id === 'feetype') return rpc('set_fee_type', { p_id: +b.id, p_name: b.name, p_amount: +b.amount, p_required: !!b.required, p_active: !!b.active, p_start: b.start });
+    if (id === 'feetype') return rpc('set_fee_type', { p_id: +b.id, p_name: b.name, p_amount: +b.amount, p_required: !!b.required, p_active: !!b.active, p_start: b.start, p_schedule: b.schedule || null });
     if (id === 'meta') return rpc('set_report_meta', { p_org: b.org, p_treasurer: b.treasurer, p_chair: b.chair });
     if (id === 'disburse') return rpc('disburse_arisan', { p_period: b.period || null });
     if (id === 'undisburse') return rpc('cancel_disbursement', { p_id: +b.id });
@@ -56,11 +56,13 @@ async function api(p, m = 'GET', b = {}) {
     if (id === 'link') return rpc('link_member', { p_user: b.id, p_member: b.member_id ?? null });   // hubungkan akun ↔ anggota (admin)
     if (id === 'approve') return rpc('approve_user', { p_id: b.id, p_role: b.role || 'viewer' });   // setujui pendaftar baru
     if (id === 'reject_all') return rpc('reject_all_pending');                                         // tolak semua pendaftar menunggu
-    if (id === 'reject') return rpc('reject_user', { p_id: b.id });                                  // tolak pendaftar yang belum disetujui
+    if (id === 'reject') return rpc('reject_user', { p_id: b.id });
+    if (id === 'delete') return rpc('delete_user', { p_id: b.id });                                  // hapus akun pengguna aktif (admin)                                  // tolak pendaftar yang belum disetujui
+    if (id === 'rename') return rpc('rename_user', { p_id: b.id, p_name: b.name });                    // ubah nama pengguna (admin)
     if (id === 'audit') return rpc('audit_recent', { p_limit: +b.limit || 100 });                    // jejak audit (admin)
     return m === 'PUT' ? rpc('set_role', { p_id: id, p_role: b.role }) : rpc('list_users');
   }
-  if (t === 'history') { const [a, w] = await Promise.all([sb.from('payments').select('period,fee_type_id').eq('member_id', +id).order('period', { ascending: false }).limit(36), sb.from('draws').select('period').eq('winner_id', +id).eq('status', 'sah').order('period')]); return { pays: a.data || [], wins: w.data || [] }; }
+  if (t === 'history') { const [a, w, rr] = await Promise.all([sb.from('payments').select('period,fee_type_id').eq('member_id', +id).order('period', { ascending: false }).limit(36), sb.from('draws').select('period').eq('winner_id', +id).eq('status', 'sah').order('period'), sb.from('arisan_rounds').select('period,seq,title,status,held_on').order('seq', { ascending: false })]); if (rr.data && typeof setRounds === 'function') setRounds(rr.data); return { pays: a.data || [], wins: w.data || [] }; }
   if (t === 'members' && m === 'DELETE') {      // hapus baris dulu; berkas foto baru dibersihkan bila berhasil (penghapusan bisa ditolak pagar database)
     const { data } = await sb.from('members').select('photo_path').eq('id', +id).maybeSingle(), r = await sb.from('members').delete().eq('id', +id);
     if (r.error) return fail(r.error);
@@ -79,6 +81,15 @@ async function api(p, m = 'GET', b = {}) {
   if (t === 'lineage') return rpc('set_lineage_roots', { p_ids: b.ids || [] });          // leluhur utama garis keturunan asli
   if (t === 'memactive') return rpc('set_members_active', { p_ids: b.ids || [], p_active: +b.active });
   if (t === 'settings') return rpc('set_iuran', { p: +b.iuran });
+  if (t === 'round') {   // putaran arisan: dijadwalkan & dibuka manual oleh admin, tidak terikat bulan
+    const f = { p_title: b.title || null, p_held_on: b.held_on || null, p_place: b.place || null, p_requested_by: b.requested_by ? +b.requested_by : null, p_note: b.note || null };
+    if (id === 'create') return rpc('create_round', f);
+    if (id === 'update') return rpc('update_round', { p_id: +b.id, ...f });
+    if (id === 'open') return rpc('open_round', { p_id: +b.id, p_note: b.note || null, p_force: !!b.force });
+    if (id === 'close') return rpc('close_round', { p_note: b.note || null, p_force: !!b.force });
+    if (id === 'cancel') return rpc('cancel_round', { p_id: +b.id, p_reason: b.reason || null });
+    return rpc('round_state');
+  }
   if (t === 'draw') {   // pengocokan: kocok -> (sahkan | tidak hadir -> kocok ulang)
     if (id === 'new-cycle') return rpc('new_cycle');
     if (id === 'confirm') return rpc('confirm_draw', { p_id: +b.id });

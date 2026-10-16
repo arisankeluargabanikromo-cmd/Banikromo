@@ -122,7 +122,7 @@ const STATUS = { idle: 'SIAGA', spin: 'MENGOCOK', stopping: 'MEMILIH', reveal: '
 function setMode(m) { DS.st = m; DS.el.className = 'ds show ' + m + (fsEl() === DS.el ? ' fs' : ''); const l = q('#dsStat'); if (l) l.innerHTML = '<i></i>' + (STATUS[m] || ''); renderCtrl(); }
 function header() {
   const d = DS.d, w = d.winner, p = DS.pend || d.pending;
-  q('#dsPeriod').textContent = `${MONTH(d.period)} · Siklus ${d.cycle}`;
+  q('#dsPeriod').textContent = `${d.period ? PER(d.period) : 'Belum ada putaran'} · Siklus ${d.cycle}`;
   q('#dsAttempt').textContent = w ? `Disahkan di kocokan ke-${w.attempt}` : p ? `Kocokan ke-${p.attempt}` : `Kocokan ke-${(+d.attempts || 0) + 1}`;
   q('#dsAbsent').innerHTML = d.absent.length ? `<small>Dilewati (tidak hadir):</small>` + d.absent.map(a => `<span>${esc(a.name)}</span>`).join('') : '';
 }
@@ -209,7 +209,7 @@ async function onYes() {
   if (DS.busy || !DS.pend) return; DS.busy = true;
   try {
     await api('draw/confirm', 'POST', { id: DS.pend.id }); const w = DS.pend; DS.pend = null; await refresh();
-    showWinner({ id: w.winner_id, name: w.winner_name }, { label: `PEMENANG ARISAN <b>${esc(MONTH(DS.d.period).toUpperCase())}</b>`, badge: '✓ DISAHKAN — SELAMAT!', ok: 1, sub: w.attempt > 1 ? `Disahkan pada kocokan ke-${w.attempt}` : '' });
+    showWinner({ id: w.winner_id, name: w.winner_name }, { label: `PEMENANG ARISAN <b>${esc(PER(DS.d.period).toUpperCase())}</b>`, badge: '✓ DISAHKAN — SELAMAT!', ok: 1, sub: w.attempt > 1 ? `Disahkan pada kocokan ke-${w.attempt}` : '' });
     setMode('done'); msg('Pemenang telah tercatat di riwayat pengundian beserta kode bukti.'); DS.rain = performance.now() + 7000; burst(FX.W / 2, FX.H * .4, 220); snd.win(); toast('Pemenang disahkan: ' + w.winner_name, true);
   } catch (e) { if (e) console.error(e); } finally { DS.busy = false; }
 }
@@ -297,9 +297,10 @@ async function initState() {
   try { await refresh(); } catch (e) { if (e === null) return; return closeStage(); }   // null = database lama (pesan sudah tampil)
   const d = DS.d; buildRing(); DS.pos = rnd(DS.ring.length); sizeReel(); q('#dsLabel').innerHTML = 'PEMENANG <b>ARISAN</b>';
   if (d.winner) {
-    showWinner({ id: d.winner.winner_id, name: d.winner.winner_name }, { label: `PEMENANG ARISAN <b>${esc(MONTH(d.period).toUpperCase())}</b>`, badge: '✓ DISAHKAN', ok: 1, sub: d.winner.attempt > 1 ? `Disahkan pada kocokan ke-${d.winner.attempt}` : '' });
-    setMode('done'); msg('Pengundian bulan ini sudah selesai.'); burst(FX.W / 2, FX.H * .4, 90);
+    showWinner({ id: d.winner.winner_id, name: d.winner.winner_name }, { label: `PEMENANG ARISAN <b>${esc(PER(d.period).toUpperCase())}</b>`, badge: '✓ DISAHKAN', ok: 1, sub: d.winner.attempt > 1 ? `Disahkan pada kocokan ke-${d.winner.attempt}` : '' });
+    setMode('done'); msg('Pengundian putaran ini sudah selesai.'); burst(FX.W / 2, FX.H * .4, 90);
   } else if (d.pending) resumePending();
+  else if (!d.period) { setMode('empty'); msg('Belum ada putaran arisan aktif. Admin perlu membuka putaran lebih dulu (Arisan → 📅 Kelola putaran).'); }
   else if (!d.eligible.length) { setMode('empty'); msg(d.absent.length ? 'Semua peserta yang memenuhi syarat sudah dilewati karena tidak hadir.' : `Belum ada peserta yang memenuhi syarat${d.unpaid ? ` (${d.unpaid} anggota belum bayar iuran)` : ''}.`); }
   else { setMode('idle'); msg(isA() ? `${d.eligible.length} peserta siap diundi${d.unpaid ? ` · ${d.unpaid} belum bayar (tidak ikut)` : ''}` : `${d.eligible.length} peserta siap diundi — menunggu admin memulai.`); }
   header();
@@ -320,40 +321,40 @@ window.closeStage = closeStage;
 // Pengocokan sendiri tetap berjalan di panggung layar penuh (openStage).
 const STAT = { sah: ['Sah', ''], menunggu: ['Menunggu', 'pending'], tidak_hadir: ['Tidak hadir', 'bad'], dipanggil: ['Tidak hadir · dipanggil ulang', 'bad'] };
 const cnt = h => { try { return JSON.parse(h.participants).length; } catch (_) { return '—'; } };
-const RULES = [['Hanya anggota aktif', 'Peserta harus terdaftar sebagai anggota arisan.'], ['Sudah bayar iuran bulan ini', 'Yang belum lunas otomatis tidak ikut diundi.'], ['Satu kali menang per siklus', 'Pemenang sebelumnya tidak ikut sampai siklus baru dimulai.'], ['Konfirmasi kehadiran', 'Pemenang sementara harus dikonfirmasi hadir. Bila tidak hadir, dicatat lalu diundi ulang; ia tidak dihitung menang dan tetap bisa ikut bulan berikutnya.'], ['Acak aman & tercatat', 'Diundi di server (crypto random), setiap kocokan disimpan beserta kode bukti.']];
+const RULES = [['Hanya anggota aktif', 'Peserta harus terdaftar sebagai anggota arisan.'], ['Sudah bayar iuran putaran ini', 'Yang belum lunas otomatis tidak ikut diundi. Putaran dijadwalkan & dibuka manual oleh admin sesuai permintaan anggota (Kelola putaran) — tidak harus sebulan sekali.'], ['Satu kali menang per siklus', 'Pemenang sebelumnya tidak ikut sampai siklus baru dimulai.'], ['Konfirmasi kehadiran', 'Pemenang sementara harus dikonfirmasi hadir. Bila tidak hadir, dicatat lalu diundi ulang; ia tidak dihitung menang dan tetap bisa ikut putaran berikutnya.'], ['Acak aman & tercatat', 'Diundi di server (crypto random), setiap kocokan disimpan beserta kode bukti.']];
 let PD = null;                                               // data terakhir untuk dialog "lihat semua"
 const dpChip = (n, cls = '') => `<span class="dp-chip ${cls}"><i>${esc(ini(n))}</i><span class="n">${esc(n)}</span></span>`;
 // ---- Kartu dashboard: anatomi sama dengan Agenda Keluarga (kepala → hero → tab → baris → "Lihat semua") ----
-let DRD, DRT = null, DRP = null;                             // data terakhir, tab aktif, foto pemenang
-const mAbbr = p => MONTH(p).split(' ')[0].slice(0, 3).toUpperCase();
+let DRD, DRT = null, DRP = null, RST = null;                             // data terakhir, tab aktif, foto pemenang
+const rn = k => ROUNDS[k] ? ROUNDS[k].seq : '·';
 const SHORT = { sah: 'Sah', menunggu: 'Menunggu', tidak_hadir: 'Tidak hadir', dipanggil: 'Dipanggil ulang' };
 function drInner(d) {
   const head = (sub, tools = '') => `<div class="card-head"><div><h3>Pengocokan Arisan</h3><span>${sub}</span></div>${tools}</div>`;
   if (d === undefined) return head('TIDAK DAPAT DIMUAT') + `<p class="dc-empty">Data pengocokan tidak dapat dimuat saat ini. <button class="btn-s" onclick="reload()">Coba lagi</button></p>`;
   if (stale(d)) return head('PERLU PEMBARUAN') + `<p class="dc-empty">⚠ <b>Pengocokan perlu pembaruan database.</b> ${STALE_MSG}</p>`;
-  PD = d; const w = d.winner, p = d.pending, n = d.eligible.length, A = isA(), st = w ? 'done' : p ? 'wait' : n ? 'ready' : 'none', who = w ? w.winner_name : p ? p.winner_name : '';
-  const pill = { done: '✓ Sah', wait: '⏳ Menunggu', ready: 'Siap diundi', none: 'Belum siap' }[st];
-  const cta = w ? '🏆 Lihat pemenang' : p ? '▶ Lanjutkan konfirmasi' : d.attempts > 0 ? '🎲 Lanjut kocok ulang' : A ? '🎬 Mulai pengocokan' : '👁 Tonton pengocokan';
-  const label = w ? 'PEMENANG PERIODE INI' : p ? 'PEMENANG SEMENTARA' : n ? 'SIAP DIKOCOK' : 'BELUM BISA DIKOCOK';
-  const name = who ? esc(who) : n ? `${n} peserta` : 'Belum ada peserta';
-  const sub = w ? (w.attempt > 1 ? `Disahkan pada kocokan ke-${w.attempt}` : 'Disahkan pada kocokan pertama') : p ? 'Menunggu konfirmasi kehadiran oleh admin' : n ? `memenuhi syarat${d.unpaid ? ` · ${d.unpaid} anggota belum bayar iuran (tidak ikut)` : ''}` : (d.unpaid ? `${d.unpaid} anggota belum bayar iuran` : 'Pastikan ada anggota aktif yang sudah membayar iuran');
+  PD = d; const w = d.winner, p = d.pending, n = d.eligible.length, A = isA(), noR = !d.period, st = w ? 'done' : p ? 'wait' : n ? 'ready' : 'none', who = w ? w.winner_name : p ? p.winner_name : '';
+  const pill = noR ? '⏸ Jeda' : { done: '✓ Sah', wait: '⏳ Menunggu', ready: 'Siap diundi', none: 'Belum siap' }[st];
+  const cta = noR ? (A ? '📅 Kelola putaran' : 'Menunggu putaran dibuka') : w ? '🏆 Lihat pemenang' : p ? '▶ Lanjutkan konfirmasi' : d.attempts > 0 ? '🎲 Lanjut kocok ulang' : A ? '🎬 Mulai pengocokan' : '👁 Tonton pengocokan';
+  const label = noR ? 'ARISAN JEDA' : w ? 'PEMENANG PUTARAN INI' : p ? 'PEMENANG SEMENTARA' : n ? 'SIAP DIKOCOK' : 'BELUM BISA DIKOCOK';
+  const name = noR ? 'Belum ada putaran aktif' : who ? esc(who) : n ? `${n} peserta` : 'Belum ada peserta';
+  const sub = noR ? (A ? 'Jadwalkan & buka putaran saat ada permintaan arisan berikutnya' : 'Menunggu admin membuka putaran berikutnya') : w ? (w.attempt > 1 ? `Disahkan pada kocokan ke-${w.attempt}` : 'Disahkan pada kocokan pertama') : p ? 'Menunggu konfirmasi kehadiran oleh admin' : n ? `memenuhi syarat${d.unpaid ? ` · ${d.unpaid} anggota belum bayar iuran (tidak ikut)` : ''}` : (d.unpaid ? `${d.unpaid} anggota belum bayar iuran` : 'Pastikan ada anggota aktif yang sudah membayar iuran');
   const av = who ? `<div class="dr-av" id="dpAv">${esc(ini(who))}${w ? '<span class="dr-crown">👑</span>' : ''}</div>` : `<div class="dr-av die">🎲</div>`;
   const tab = DRT || (w ? 'riwayat' : 'peserta'), row = (nm, sb, tail, cls = '') => `<div class="ag-row dr-row${cls}"><span class="dr-ini">${esc(ini(nm))}</span><div class="ag-t"><b>${esc(nm)}</b><small>${sb}</small></div>${tail}</div>`;
   let list, foot;
   if (tab === 'peserta') {
-    const abs = d.absent.slice(0, 2).map(a => row(a.name, 'Dilewati pada periode ini', '<span class="status bad">Tidak hadir</span>', ' abs')), ok = d.eligible.slice(0, 4 - abs.length).map(e => row(e.name, 'Memenuhi syarat', '<span class="ag-rel dr-ok">✓ Lunas</span>'));
+    const abs = d.absent.slice(0, 2).map(a => row(a.name, 'Dilewati pada putaran ini', '<span class="status bad">Tidak hadir</span>', ' abs')), ok = d.eligible.slice(0, 4 - abs.length).map(e => row(e.name, 'Memenuhi syarat', '<span class="ag-rel dr-ok">✓ Lunas</span>'));
     list = abs.concat(ok).join('') || `<p class="dc-empty">Belum ada peserta yang memenuhi syarat.${d.unpaid ? ` ${d.unpaid} anggota belum membayar iuran.` : ''}</p>`;
     foot = n ? `<button class="dc-all" onclick="openDrawList()">Lihat semua peserta (${n}) →</button>` : `<button class="dc-all" onclick="openDrawRules()">Aturan pengundian →</button>`;
   } else {
     list = d.history.slice(0, 4).map(h => { const s = STAT[h.status] || STAT.sah, mut = h.status === 'sah' || h.status === 'menunggu' ? '' : ' dr-mut';
-      return `<div class="ag-row dr-row${mut}"><div class="dbx dr-mb"><small>${h.period.slice(0, 4)}</small><b>${mAbbr(h.period)}</b></div><div class="ag-t"><b>${esc(h.winner_name)}</b><small>Kocokan ke-${h.attempt || 1} · ${cnt(h)} peserta</small></div><span class="status ${s[1]}">${SHORT[h.status] || s[0]}</span></div>`; }).join('') || '<p class="dc-empty">Belum ada pengundian tercatat.</p>';
+      return `<div class="ag-row dr-row${mut}"><div class="dbx dr-mb"><small>PUTARAN</small><b>${rn(h.period)}</b></div><div class="ag-t"><b>${esc(h.winner_name)}</b><small>Kocokan ke-${h.attempt || 1} · ${cnt(h)} peserta</small></div><span class="status ${s[1]}">${SHORT[h.status] || s[0]}</span></div>`; }).join('') || '<p class="dc-empty">Belum ada pengundian tercatat.</p>';
     foot = d.history.length ? '<button class="dc-all" onclick="openDrawHistory()">Lihat semua riwayat →</button>' : '<button class="dc-all" onclick="openDrawRules()">Aturan pengundian →</button>';
   }
-  const tools = `<div class="dc-ibs">${A ? '<button class="dc-ib" onclick="newCycle()" title="Mulai siklus baru (semua anggota bisa menang lagi)" aria-label="Siklus baru">↻</button>' : ''}<button class="dc-ib" onclick="openDrawRules()" title="Aturan pengundian &amp; transparansi" aria-label="Aturan pengundian">ℹ</button></div>`;
-  return `${head(`${esc(MONTH(d.period).toUpperCase())} · SIKLUS ${d.cycle}`, tools)}
+  const tools = `<div class="dc-ibs">${A ? '<button class="dc-ib" onclick="newCycle()" title="Mulai siklus baru (semua anggota bisa menang lagi)" aria-label="Siklus baru">↻</button>' : ''}<button class="dc-ib" onclick="openRounds()" title="Kelola putaran arisan" aria-label="Kelola putaran">📅</button><button class="dc-ib" onclick="openDrawRules()" title="Aturan pengundian &amp; transparansi" aria-label="Aturan pengundian">ℹ</button></div>`;
+  return `${head(`${noR ? 'JEDA' : esc(PER(d.period).toUpperCase())} · SIKLUS ${d.cycle}`, tools)}${roundMeta(d.round)}
   <div class="dr-hero st-${st}"><div class="ah-top"><span class="ah-k">${label}</span><span class="ah-rel dr-pill ${st}">${pill}</span></div>
     <div class="dr-body">${av}<div class="dr-txt"><b>${name}</b><span>${sub}</span></div></div>
-    <div class="dr-act"><button class="dr-go" onclick="openStage()">${cta}</button><button class="dr-fs" onclick="openStage(true)" title="Layar penuh — cocok untuk proyektor / TV" aria-label="Layar penuh">⛶</button></div>
+    <div class="dr-act"><button class="dr-go" onclick="${noR ? (A ? 'openRounds()' : 'void 0') : 'openStage()'}">${cta}</button>${noR ? '' : '<button class="dr-fs" onclick="openStage(true)" title="Layar penuh — cocok untuk proyektor / TV" aria-label="Layar penuh">⛶</button>'}</div>
     ${w && A ? '<button class="dr-minor" onclick="reopenDraw()">↩ Pemenang tidak hadir? Batalkan &amp; kocok ulang</button>' : ''}</div>
   <div class="ag-tabs"><div class="seg sm"><button class="${tab === 'peserta' ? 'on' : ''}" onclick="drTab('peserta')">Peserta (${n})</button><button class="${tab === 'riwayat' ? 'on' : ''}" onclick="drTab('riwayat')">Riwayat</button></div></div>
   <div class="ag-list">${list}</div>${foot}`;
@@ -369,9 +370,93 @@ window.drAfter = () => drPhoto(DRD);
 const dlg = (id, title, body, cls = '') => modal2(id, `<div class="modal-top"><b>${title}</b><button class="close" onclick="closeModal2('${id}')">×</button></div><div class="dp-dlg">${body}</div>`, cls);
 window.openDrawList = () => PD && dlg('drawListModal', `Peserta undian (${PD.eligible.length})`, `<div class="dp-people all">${PD.eligible.map(e => dpChip(e.name)).join('')}</div>`, 'dp-box');
 window.openDrawRules = () => dlg('drawRulesModal', 'Aturan pengundian', RULES.map(a => `<div class="activity-row"><div class="activity-icon">✓</div><div class="activity-text"><b>${a[0]}</b><span>${a[1]}</span></div></div>`).join(''), 'dp-box');
-window.openDrawHistory = () => PD && dlg('drawHistModal', 'Histori pengundian', `<div class="tscroll"><table class="table"><thead><tr><th>Periode</th><th>Waktu</th><th>Kocokan</th><th>Peserta</th><th>Pemenang</th><th>Status</th><th>Kode bukti</th></tr></thead><tbody>${PD.history.map(h => { const s = STAT[h.status] || STAT.sah; return `<tr class="${h.status === 'sah' || h.status === 'menunggu' ? '' : 'dp-mut'}"><td>${MONTH(h.period)}</td><td>${ft(h.at)}</td><td>ke-${h.attempt || 1}</td><td>${cnt(h)}</td><td><b>${esc(h.winner_name)}</b></td><td><span class="status ${s[1]}">${s[0]}</span></td><td class="proof">${esc((h.proof || '').slice(0, 16))}…</td></tr>`; }).join('')}</tbody></table></div>`, 'dp-box wide');
+window.openDrawHistory = () => PD && dlg('drawHistModal', 'Histori pengundian', `<div class="tscroll"><table class="table"><thead><tr><th>Putaran</th><th>Waktu</th><th>Kocokan</th><th>Peserta</th><th>Pemenang</th><th>Status</th><th>Kode bukti</th></tr></thead><tbody>${PD.history.map(h => { const s = STAT[h.status] || STAT.sah; return `<tr class="${h.status === 'sah' || h.status === 'menunggu' ? '' : 'dp-mut'}"><td>${esc(PERX(h.period))}</td><td>${ft(h.at)}</td><td>ke-${h.attempt || 1}</td><td>${cnt(h)}</td><td><b>${esc(h.winner_name)}</b></td><td><span class="status ${s[1]}">${s[0]}</span></td><td class="proof">${esc((h.proof || '').slice(0, 16))}…</td></tr>`; }).join('')}</tbody></table></div>`, 'dp-box wide');
 const _dash = R.dashboard;                                   // dashboard dasar (app.js); kartu pengocokan ditempatkan oleh dashcards.js bersama kartu lainnya
-R.dashboard = async () => { const dp = api('draw').catch(() => undefined); DRT = null; await _dash(); DRD = await dp; };
+R.dashboard = async () => { const dp = api('draw').catch(() => undefined), pp = sb.rpc('round_state').then(r => !r.error && r.data && Array.isArray(r.data.rows) ? r.data : null, () => null); DRT = null; await _dash(); DRD = await dp; RST = await pp; };   // round_state: diam bila database belum di-patch (018)
+// ---------------- Putaran arisan: dijadwalkan & dibuka manual oleh admin (tidak terikat bulan) ----------------
+// Arisan digelar mengikuti permintaan anggota, jadi satuannya PUTARAN, bukan bulan: bisa dua putaran dalam sebulan, bisa jeda berbulan-bulan.
+// Admin menjadwalkan putaran (tanggal boleh belum pasti), membukanya saat penagihan/pengocokan dimulai, lalu menutupnya.
+// Server (create_round / open_round / close_round / cancel_round) yang memvalidasi; layar ini hanya memberi petunjuk.
+const rdate = d => d ? fd(d, { day: 'numeric', month: 'short', year: 'numeric' }) : 'Tanggal belum pasti';
+const rname = r => 'Putaran ' + r.seq + (r.title ? ' · ' + r.title : '');
+const RSTAT = { rencana: ['Rencana', 'pending'], aktif: ['Aktif', ''], selesai: ['Selesai', 'done'], batal: ['Batal', 'bad'] };
+const roundMeta = r => r ? `<div class="rd-meta"><span>📅 ${esc(rdate(r.held_on))}</span>${r.place ? `<span>📍 ${esc(r.place)}</span>` : ''}${r.requester ? `<span>🙋 diminta ${esc(r.requester)}</span>` : ''}</div>` : '';
+let ASK = null;                                                       // penyelesai janji untuk dialog konfirmasi putaran
+window.roundAskDone = v => { closeModal2('roundAskModal'); const r = ASK; ASK = null; if (r) r(v === null ? null : { note: (($('#raNote') || {}).value || '').trim() }); };
+window.roundAskChk = () => { const b = $('#raOk'), n = $('#raNote'); if (b && n) b.disabled = !n.value.trim(); };
+function roundAsk({ title, msg, noteLabel, noteReq, ok, cls = 'primary' }) {
+  if (ASK) ASK(null);
+  return new Promise(res => {
+    ASK = res;
+    modal2('roundAskModal', `<div class="modal-top"><b>${esc(title)}</b><button class="close" onclick="roundAskDone(null)">×</button></div><div class="dp-dlg"><p class="rd-msg">${msg}</p>
+      ${noteLabel ? `<label class="rd-f">${esc(noteLabel)}<textarea id="raNote" rows="2" maxlength="300" oninput="roundAskChk()"></textarea></label>` : ''}
+      <div class="rd-btns"><button class="ghost" onclick="roundAskDone(null)">Batal</button><button class="${cls}" id="raOk" onclick="roundAskDone(true)" ${noteReq ? 'disabled' : ''}>${esc(ok)}</button></div></div>`, 'dp-box');
+  });
+}
+function renderRounds(s) {
+  RST = s; const A = isA(), act = s.rows.find(r => r.status === 'aktif');
+  const st = !act ? 'Arisan sedang jeda — belum ada putaran yang dibuka.' : act.winner ? `✓ Pemenang: <b>${esc(act.winner)}</b>` : act.pending ? '⏳ Pemenang menunggu konfirmasi kehadiran' : act.attempts ? 'Belum ada pemenang yang disahkan' : 'Belum diundi';
+  const btn = (k, id, lbl, cls = 'btn-s') => `<button class="${cls}" onclick="rdAct('${k}',${id})">${lbl}</button>`;
+  const acts = r => !A ? '' : r.status === 'rencana' ? btn('open', r.id, 'Buka') + btn('form', r.id, 'Ubah') + btn('cancel', r.id, 'Batalkan', 'btn-s x')
+    : r.status === 'aktif' ? btn('close', r.id, 'Tutup') + btn('form', r.id, 'Ubah') + btn('cancel', r.id, 'Batalkan', 'btn-s x')
+    : r.status === 'selesai' ? btn('open', r.id, 'Buka kembali') + btn('form', r.id, 'Ubah') : '';
+  const rows = s.rows.map(r => `<tr class="${r.status === 'aktif' || r.status === 'rencana' ? '' : 'dp-mut'}"><td><b>${esc(rname(r))}</b>${r.note ? `<br><small>${esc(r.note)}</small>` : ''}</td>
+    <td>${esc(rdate(r.held_on))}${r.place ? `<br><small>📍 ${esc(r.place)}</small>` : ''}</td><td>${r.requester ? esc(r.requester) : '—'}</td>
+    <td><span class="status ${RSTAT[r.status][1]}">${RSTAT[r.status][0]}</span>${r.close_note ? `<br><small>${esc(r.close_note)}</small>` : ''}</td>
+    <td>${r.winner ? esc(r.winner) : '—'}</td><td>${r.status === 'rencana' ? '—' : `${rp(r.collected)}<br><small>cair ${rp(r.disbursed)} · ${r.paid} bayar</small>`}</td><td class="rd-acts">${acts(r)}</td></tr>`).join('');
+  dlg('roundModal', 'Kelola putaran arisan', `<div class="per-now"><small>PUTARAN AKTIF</small><b>${act ? esc(rname(act)) : 'Belum ada — arisan jeda'}</b><span>${st}</span>${act ? roundMeta(act).replace('class="rd-meta"', 'class="rd-meta" style="margin:6px 0 0"') : ''}</div>
+    <p class="rd-note">Arisan tidak harus sebulan sekali. Jadwalkan putaran saat ada permintaan anggota (tanggal boleh belum pasti), buka bila penagihan & pengocokan dimulai, lalu tutup setelah selesai. Bulan tanpa putaran <b>tidak</b> dihitung tunggakan.</p>
+    ${A ? '<div class="rd-top"><button class="primary" onclick="rdAct(\'form\')">＋ Jadwalkan putaran</button></div>' : ''}
+    <div class="tscroll"><table class="table"><thead><tr><th>Putaran</th><th>Jadwal</th><th>Diminta oleh</th><th>Status</th><th>Pemenang</th><th>Dana arisan</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="7" class="dc-empty">Belum ada putaran. Jadwalkan putaran pertama.</td></tr>'}</tbody></table></div>`, 'dp-box wide');
+}
+const afterRound = async () => { if (window.resetCfg) resetCfg(); if (window.finResetView) finResetView(); reload(); renderRounds(await api('round')); };
+window.openRounds = guard(async () => renderRounds(await api('round')));
+window.openPeriods = window.openRounds;                              // nama lama (kompatibilitas)
+window.rdAct = guard(async (kind, id) => {
+  const s = RST, r = id ? s.rows.find(x => x.id === id) : null, act = s.rows.find(x => x.status === 'aktif');
+  if (kind === 'form') return rdForm(r);
+  if (kind === 'open') {
+    const closing = act && act.id !== id ? act : null;
+    if (closing && closing.pending > 0) return toast(`⛔ ${rname(closing)} masih punya pemenang yang menunggu konfirmasi kehadiran. Selesaikan dulu di pengocokan.`);
+    const noWin = !!closing && !closing.winner;
+    const a = await roundAsk({ title: r.status === 'selesai' ? 'Buka kembali putaran?' : 'Buka putaran?', ok: 'Buka putaran',
+      msg: `Buka <b>${esc(rname(r))}</b>. Penagihan iuran dan pengocokan akan mengikuti putaran ini.${closing ? `<br>${esc(rname(closing))} akan ditutup${noWin ? ' <b>tanpa pemenang</b>' : ''}.` : ''}`,
+      noteLabel: noWin ? `Alasan menutup ${rname(closing)} tanpa pemenang (wajib)` : closing ? 'Catatan penutupan (opsional)' : '', noteReq: noWin });
+    if (!a) return;
+    await api('round/open', 'POST', { id, note: a.note, force: noWin }); toast(`${rname(r)} dibuka`, true);
+  } else if (kind === 'close') {
+    if (act.pending > 0) return toast('⛔ Masih ada pemenang yang menunggu konfirmasi kehadiran. Selesaikan dulu di pengocokan.');
+    const noWin = !act.winner;
+    const a = await roundAsk({ title: 'Tutup putaran?', ok: 'Tutup putaran', msg: `Tutup <b>${esc(rname(act))}</b>${noWin ? ' <b>tanpa pemenang</b>' : ''}. Arisan jeda sampai putaran berikutnya dibuka. Iuran susulan putaran ini tetap bisa dicatat.`,
+      noteLabel: noWin ? 'Alasan menutup tanpa pemenang (wajib)' : 'Catatan penutupan (opsional)', noteReq: noWin });
+    if (!a) return;
+    await api('round/close', 'POST', { note: a.note, force: noWin }); toast(`${rname(act)} ditutup`, true);
+  } else if (kind === 'cancel') {
+    const need = r.status !== 'rencana';
+    const a = await roundAsk({ title: 'Batalkan putaran?', ok: 'Batalkan putaran', cls: 'primary danger', msg: `Batalkan <b>${esc(rname(r))}</b> karena tidak jadi digelar. Putaran yang dibatalkan tidak dihitung sebagai tunggakan dan tidak bisa dibuka lagi. (Hanya bisa bila belum ada pembayaran & pengocokan.)`,
+      noteLabel: need ? 'Alasan pembatalan (wajib)' : 'Alasan (opsional)', noteReq: need });
+    if (!a) return;
+    await api('round/cancel', 'POST', { id, reason: a.note }); toast(`${rname(r)} dibatalkan`, true);
+  }
+  await afterRound();
+});
+window.rdForm = guard(async r => {
+  let mem = []; try { mem = (await api('members')).filter(m => m.active === 1).sort((a, b) => a.name.localeCompare(b.name, 'id')); } catch (_) { }
+  modal2('roundFormModal', `<div class="modal-top"><b>${r ? 'Ubah ' + esc(rname(r)) : 'Jadwalkan putaran baru'}</b><button class="close" onclick="closeModal2('roundFormModal')">×</button></div>
+    <div class="dp-dlg"><div class="per-form" style="margin:0">
+    <label>Judul (opsional)<input type="text" id="rfTitle" maxlength="80" value="${esc(r ? r.title || '' : '')}" placeholder="mis. Arisan Lebaran"></label>
+    <label>Tanggal pelaksanaan <small>(kosongkan bila belum pasti)</small><input type="date" id="rfDate" value="${esc(r && r.held_on ? r.held_on : '')}"></label>
+    <label>Tempat / tuan rumah<input type="text" id="rfPlace" maxlength="120" value="${esc(r ? r.place || '' : '')}" placeholder="mis. Rumah Bu Rina"></label>
+    <label>Diminta oleh<select id="rfReq"><option value="">— tidak dicatat —</option>${mem.map(m => `<option value="${m.id}" ${r && r.requested_by === m.id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select></label>
+    <label>Catatan (opsional)<textarea id="rfNote" rows="2" maxlength="500" placeholder="mis. dipercepat karena kebutuhan biaya sekolah">${esc(r ? r.note || '' : '')}</textarea></label>
+    <div class="rd-btns"><button class="ghost" onclick="closeModal2('roundFormModal')">Batal</button><button class="primary" id="rfGo" onclick="rdSave(${r ? r.id : 0})">${r ? 'Simpan perubahan' : 'Jadwalkan'}</button></div></div></div>`, 'dp-box');
+});
+window.rdSave = guard(async id => {
+  const b = $('#rfGo'); b.disabled = true;
+  const body = { id, title: $('#rfTitle').value.trim(), held_on: $('#rfDate').value, place: $('#rfPlace').value.trim(), requested_by: $('#rfReq').value, note: $('#rfNote').value.trim() };
+  try { await api('round/' + (id ? 'update' : 'create'), 'POST', body); } catch (e) { b.disabled = false; throw e; }
+  closeModal2('roundFormModal'); toast(id ? 'Putaran diperbarui' : 'Putaran dijadwalkan', true); await afterRound();
+});
 window.reopenDraw = guard(async () => {
   const w = (await api('draw')).winner; if (!w) return;
   if (confirm(`Batalkan ${w.winner_name} sebagai pemenang karena tidak hadir, lalu buka pengocokan ulang?\nBeliau dicatat tidak hadir dan tidak dihitung menang.`)) { await api('draw/reopen', 'POST'); openStage(); }

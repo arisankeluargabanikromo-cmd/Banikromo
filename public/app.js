@@ -3,7 +3,15 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const ini = n => String(n).split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 const fd = (d, o = { day: '2-digit', month: 'short' }) => d ? new Date(d.length > 10 ? d : d + 'T00:00:00').toLocaleDateString('id-ID', o) : '—';
 const ft = d => new Date(d).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-const MONTH = m => new Date(m + '-01T00:00:00').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+// Arisan berjalan per PUTARAN (bukan per bulan). Kunci periode: 'YYYY-MM' = bulan (iuran bulanan); selain itu / kunci putaran = nomor putaran.
+let ROUNDS = {};                       // kunci putaran -> {period, seq, title, status, held_on}; diisi dari setiap respons server yang memuat 'rounds'
+const setRounds = a => { if (Array.isArray(a)) { ROUNDS = {}; a.forEach(r => { ROUNDS[r.period] = r; }); } };
+const isMonthKey = k => /^\d{4}-\d{2}$/.test(k || '');
+const PER = k => ROUNDS[k] ? 'Putaran ' + ROUNDS[k].seq : (k || '—');                                    // "Putaran 7"
+const PERX = k => { const r = ROUNDS[k]; return r ? 'Putaran ' + r.seq + (r.title ? ' · ' + r.title : '') : (k || '—'); };
+const MONTH = m => isMonthKey(m) ? new Date(m + '-01T00:00:00').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) : PER(m);
+const FP = (t, k) => t && t.schedule === 'putaran' ? PER(k) : MONTH(k);                                    // label periode menurut jadwal jenis iuran
+const UNIT = t => t && t.schedule === 'putaran' ? 'putaran' : 'bulan';                                    // satuan tagihan
 const hero = (t, p, extra = '') => `<div class="hero"><div><h1>${t}</h1><p>${p}</p></div>${extra}</div>`;
 let ME = null, MEMBERS = [], page = 'dashboard';
 const isA = () => ME && ME.role === 'admin';
@@ -106,8 +114,8 @@ R.dashboard = async () => {
   const d = await api('dashboard'), pct = d.members ? Math.round(d.paid / d.members * 100) : 0, cf = d.cashflow, mx = Math.max(1, ...cf.flatMap(c => [c.masuk, c.keluar]));
   const pts = k => cf.map((c, i) => `${cf.length > 1 ? i * 700 / (cf.length - 1) : 350},${200 - c[k] / mx * 180}`);
   const line = k => 'M' + pts(k).join(' L'), n = d.next;
-  $('#dashboard').innerHTML = hero(`Selamat datang, ${esc(ME.name)} 👋`, 'Satu tempat untuk menjaga silaturahmi, transparansi arisan, dan cerita keluarga.', `<div class="hero-date"><strong>${String(new Date().getDate()).padStart(2, '0')}</strong><span>${MONTH(d.period).toUpperCase()}</span></div>`) + `
-  <div class="grid4">${[['Saldo Kas', rp(d.saldo), '◆', d.funds ? `Arisan ${rp(d.funds.arisan)} • Wajib ${rp(d.funds.kas)}` : `Pemasukan ${rp(d.masuk)}`], ['Anggota Aktif', d.members, '♙', 'terdaftar di arisan'], ['Iuran ' + MONTH(d.period).split(' ')[0], pct + '%', '✓', `${d.paid} dari ${d.members} lunas arisan${(d.types || []).filter(x => x.code === 'wajib').map(x => ` • wajib ${x.paid}/${d.members}`).join('')}`], ['Arisan Berikutnya', n ? fd(n.date) : '—', '◷', n ? esc(n.title) : 'Belum ada agenda']]
+  $('#dashboard').innerHTML = hero(`Selamat datang, ${esc(ME.name)} 👋`, 'Satu tempat untuk menjaga silaturahmi, transparansi arisan, dan cerita keluarga.', `<div class="hero-date"><strong>${String(new Date().getDate()).padStart(2, '0')}</strong><span>${MONTH(d.month).toUpperCase()}</span></div>`) + `
+  <div class="grid4">${[['Saldo Kas', rp(d.saldo), '◆', d.funds ? `Arisan ${rp(d.funds.arisan)} • Wajib ${rp(d.funds.kas)}` : `Pemasukan ${rp(d.masuk)}`], ['Anggota Aktif', d.members, '♙', 'terdaftar di arisan'], [d.round ? 'Iuran ' + PER(d.period) : 'Iuran Arisan', d.round ? pct + '%' : '—', '✓', !d.round ? 'Belum ada putaran aktif' : `${d.paid} dari ${d.members} lunas arisan${(d.types || []).filter(x => x.code === 'wajib').map(x => ` • wajib ${x.paid}/${d.members}`).join('')}`], ['Arisan Berikutnya', n ? fd(n.date) : '—', '◷', n ? esc(n.title) : 'Belum ada agenda']]
       .map(s => `<div class="card stat"><div class="stat-top"><span class="stat-label">${s[0]}</span><div class="stat-icon">${s[2]}</div></div><h2>${s[1]}</h2><small>${s[3]}</small><div class="wave"></div></div>`).join('')}</div>
   <div class="content2"><div class="card chart-card"><div class="card-head"><h3>Arus Kas Arisan</h3><span>${cf.length} bulan terakhir</span></div><div class="chart">${cf.length ? `<svg viewBox="0 0 700 210" preserveAspectRatio="none"><path d="${line('masuk')}" fill="none" stroke="#6957ff" stroke-width="4"/><path d="${line('keluar')}" fill="none" stroke="#22c7a9" stroke-width="3" stroke-dasharray="7 6"/></svg>` : ''}</div><div class="legend"><span><i></i>Pemasukan</span><span><i class="g"></i>Pengeluaran</span></div></div>
   <div class="card next"><div class="card-head" style="padding:0 0 18px"><h3>Arisan berikutnya</h3></div>${n ? `<div class="event-date"><div class="datebox"><small>${fd(n.date, { month: 'short' }).toUpperCase()}</small><b>${n.date.slice(8)}</b></div><div><h4>${esc(n.title)}</h4><p>${esc(n.location || '')} • ${esc(n.time || '')}</p></div></div>` : '<p>Belum ada agenda mendatang.</p>'}<div class="progress"><span style="width:${pct}%"></span></div><div class="split"><span>${d.paid}/${d.members} iuran masuk</span><b style="color:#22a98f">${pct}%</b></div><button class="primary" style="width:100%;margin-top:18px" onclick="showPage('arisan')">Lihat detail arisan</button></div></div>

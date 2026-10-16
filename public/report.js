@@ -8,7 +8,9 @@ const FUND = { arisan: 'Dana Arisan', kas: 'Kas Wajib' };
 const pad = n => String(n).padStart(2, '0'), num = n => Number(n || 0).toLocaleString('id-ID');
 const lastDay = p => { const [y, m] = p.split('-').map(Number); return p + '-' + pad(new Date(y, m, 0).getDate()); };
 const addM = (p, n) => { const [y, m] = p.split('-').map(Number), d = new Date(y, m - 1 + n, 1); return d.getFullYear() + '-' + pad(d.getMonth() + 1); };
-const monS = p => MONTH(p).slice(0, 3) + ' ' + p.slice(2, 4);
+const monS = p => isMonthKey(p) ? MONTH(p).slice(0, 3) + ' ' + p.slice(2, 4) : PER(p);
+const arrLbl = (a, p) => a.schedule === 'putaran' ? PER(p) : monS(p);                                    // label tunggakan menurut jadwal iuran
+const rLab = r => r.schedule === 'putaran' ? 'Putaran ' + r.seq + (r.held_on ? ' (' + fd(r.held_on, { day: 'numeric', month: 'short', year: 'numeric' }) + ')' : '') : MONTH(r.period);
 const MS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 let CFG = null;
 window.getCfg = async () => CFG || (CFG = await api('fin/config'));
@@ -130,14 +132,14 @@ async function buildRep(kind, o) {
       rows: cm.map(c => [c.type === 'masuk' ? 'Penerimaan' : 'Pengeluaran', FUND[c.fund], c.category, c.n, c.total]), empty: 'Tidak ada transaksi pada periode ini',
       foot: [['Total Penerimaan', '', '', sum(cm.filter(c => c.type === 'masuk'), c => c.n), tm], ['Total Pengeluaran', '', '', sum(cm.filter(c => c.type === 'keluar'), c => c.n), tk], ['Surplus / (Defisit)', '', '', '', tm - tk]] });
     const tgt = r => r.members * r.amount;
-    const rows = rc.map(r => [MONTH(r.period), r.name, tgt(r), r.realized, Math.max(0, tgt(r) - r.realized), `${r.paid}/${r.members}`, r.members ? Math.min(1, r.paid / r.members) : 0]);
+    const rows = rc.map(r => [rLab(r), r.name, tgt(r), r.realized, Math.max(0, tgt(r) - r.realized), `${r.paid}/${r.members}`, r.members ? Math.min(1, r.paid / r.members) : 0]);
     const types = [...new Set(rc.map(r => r.type_id))], foot = types.map(id => { const x = rc.filter(r => r.type_id === id), t = sum(x, tgt), re = sum(x, r => r.realized), p = sum(x, r => r.paid), m = sum(x, r => r.members); return ['Total ' + x[0].name, '', t, re, Math.max(0, t - re), `${p}/${m}`, m ? Math.min(1, p / m) : 0]; });
-    rep.sections.push({ title: 'C. Realisasi Iuran per Periode', cols: [{ h: 'Periode', k: 't' }, { h: 'Jenis Iuran', k: 't' }, { h: 'Target', k: 'rp' }, { h: 'Realisasi', k: 'rp' }, { h: 'Kurang', k: 'rp' }, { h: 'Lunas', k: 'c' }, { h: 'Kepatuhan', k: 'pct' }], rows, foot,
-      note: 'Target = jumlah anggota aktif × tarif iuran berlaku. Realisasi memuat seluruh pembayaran yang tercatat untuk periode tersebut (termasuk pembayaran susulan).', empty: 'Belum ada periode iuran dalam rentang ini' });
-    rep.sections.push({ title: 'D. Pencairan Dana Arisan kepada Pemenang (Rp)', cols: [{ h: 'Tanggal', k: 't' }, { h: 'Periode Arisan', k: 't' }, { h: 'Penerima', k: 't' }, { h: 'Jumlah', k: 'rp' }],
-      rows: pc.rows.map(r => [fd(r.date, { day: '2-digit', month: 'short', year: 'numeric' }), r.period ? MONTH(r.period) : '-', r.description.split(' - ').slice(1).join(' - ') || r.description, r.amount]), foot: pc.rows.length ? [['Total pencairan', '', '', sum(pc.rows, r => r.amount)]] : [], empty: 'Tidak ada pencairan pada periode ini' });
-    rep.sections.push({ title: 'E. Tunggakan Iuran Anggota (posisi saat laporan dicetak)', cols: [{ h: 'Anggota', k: 't' }, { h: 'Jenis Iuran', k: 't' }, { h: 'Bulan', k: 'n' }, { h: 'Periode belum dibayar', k: 't' }, { h: 'Jumlah (Rp)', k: 'rp' }],
-      rows: ar.map(a => [a.name, a.type_name, a.n, a.periods.map(monS).join(', '), a.total]), foot: ar.length ? [['Total tunggakan', '', sum(ar, a => a.n), '', sum(ar, a => a.total)]] : [], empty: 'Tidak ada tunggakan 🎉', note: 'Tunggakan dihitung untuk periode sebelum bulan berjalan, sejak iuran mulai berlaku.' });
+    rep.sections.push({ title: 'C. Realisasi Iuran per Putaran / Bulan', cols: [{ h: 'Putaran / Bulan', k: 't' }, { h: 'Jenis Iuran', k: 't' }, { h: 'Target', k: 'rp' }, { h: 'Realisasi', k: 'rp' }, { h: 'Kurang', k: 'rp' }, { h: 'Lunas', k: 'c' }, { h: 'Kepatuhan', k: 'pct' }], rows, foot,
+      note: 'Target = jumlah anggota aktif × tarif iuran berlaku. Realisasi memuat seluruh pembayaran yang tercatat untuk periode tersebut (termasuk pembayaran susulan).', empty: 'Belum ada putaran atau bulan iuran dalam rentang ini' });
+    rep.sections.push({ title: 'D. Pencairan Dana Arisan kepada Pemenang (Rp)', cols: [{ h: 'Tanggal', k: 't' }, { h: 'Putaran Arisan', k: 't' }, { h: 'Penerima', k: 't' }, { h: 'Jumlah', k: 'rp' }],
+      rows: pc.rows.map(r => [fd(r.date, { day: '2-digit', month: 'short', year: 'numeric' }), r.period ? PER(r.period) : '-', r.description.split(' - ').slice(1).join(' - ') || r.description, r.amount]), foot: pc.rows.length ? [['Total pencairan', '', '', sum(pc.rows, r => r.amount)]] : [], empty: 'Tidak ada pencairan pada periode ini' });
+    rep.sections.push({ title: 'E. Tunggakan Iuran Anggota (posisi saat laporan dicetak)', cols: [{ h: 'Anggota', k: 't' }, { h: 'Jenis Iuran', k: 't' }, { h: 'Tagihan', k: 'n' }, { h: 'Belum dibayar', k: 't' }, { h: 'Jumlah (Rp)', k: 'rp' }],
+      rows: ar.map(a => [a.name, a.type_name, a.n, a.periods.map(p => arrLbl(a, p)).join(', '), a.total]), foot: ar.length ? [['Total tunggakan', '', sum(ar, a => a.n), '', sum(ar, a => a.total)]] : [], empty: 'Tidak ada tunggakan 🎉', note: 'Tunggakan iuran arisan = putaran yang sudah selesai tetapi belum dibayar; iuran bulanan = bulan sebelum bulan berjalan. Bulan tanpa arisan tidak dihitung.' });
     ['Posisi Kas', 'Per Kategori', 'Realisasi Iuran', 'Pencairan Arisan', 'Tunggakan'].forEach((n, i) => { rep.sections[i].sn = n; });
   } else if (kind === 'bukukas') {
     const fundTxt = o.fund ? FUND[o.fund] : 'Semua Dana (konsolidasi)'; rep.title = 'Buku Kas — ' + fundTxt;
@@ -149,16 +151,18 @@ async function buildRep(kind, o) {
   } else if (kind === 'kepatuhan') {
     const year = +to.slice(0, 4); rep.title = 'Rekap Kepatuhan Iuran'; rep.subtitle = 'Tahun ' + year; rep.from = year + '-01-01'; rep.to = year + '-12-31';
     for (const t of cfg.types.filter(t => t.active)) {
-      const mx = await api('fin/matrix', 'GET', { year, type: t.id }), mk = c => c === '1' ? '✓' : c === '0' ? '✗' : '–';
-      const per = i => [...mx].reduce((s, r) => s + (r.m[i] === '1' ? 1 : 0), 0), tot = sum(mx, r => [...r.m].filter(c => c === '1').length);
-      rep.sections.push({ sn: t.name.replace('Iuran', 'Kepatuhan'), title: `${t.name} — ${FUND[t.fund]} (Rp ${num(t.amount)}/bulan)`, cols: [{ h: 'Anggota', k: 't' }, ...MS.map(m => ({ h: m, k: 'c' })), { h: 'Lunas', k: 'n' }],
-        rows: mx.map(r => [r.name, ...[...r.m].map(mk), [...r.m].filter(c => c === '1').length]), foot: [['Lunas per bulan', ...MS.map((m, i) => per(i)), tot]], note: '✓ lunas   ✗ belum dibayar   – belum berlaku / belum jatuh tempo' });
+      const mr = await api('fin/matrix', 'GET', { year, type: t.id }), mx = mr.rows, byR = mr.schedule === 'putaran', mk = c => c === '1' ? '✓' : c === '0' ? '✗' : '–';
+      const heads = byR ? mr.cols.map(c => 'P' + c.seq) : MS, per = i => [...mx].reduce((s, r) => s + (r.m[i] === '1' ? 1 : 0), 0), tot = sum(mx, r => [...r.m].filter(c => c === '1').length);
+      const legend = byR && mr.cols.length ? '   ' + mr.cols.map(c => `P${c.seq} = Putaran ${c.seq}${c.title ? ' ' + c.title : ''}${c.held_on ? ' (' + fd(c.held_on, { day: 'numeric', month: 'short' }) + ')' : ''}`).join('; ') : '';
+      rep.sections.push({ sn: t.name.replace('Iuran', 'Kepatuhan'), title: `${t.name} — ${FUND[t.fund]} (Rp ${num(t.amount)}/${UNIT(t)})`, cols: [{ h: 'Anggota', k: 't' }, ...heads.map(m => ({ h: m, k: 'c' })), { h: 'Lunas', k: 'n' }],
+        rows: byR && !heads.length ? [] : mx.map(r => [r.name, ...[...r.m].map(mk), [...r.m].filter(c => c === '1').length]), foot: byR && !heads.length ? [] : [[byR ? 'Lunas per putaran' : 'Lunas per bulan', ...heads.map((m, i) => per(i)), tot]], empty: 'Belum ada putaran arisan pada tahun ini',
+        note: '✓ lunas   ✗ belum dibayar   – belum berlaku / belum jatuh tempo' + legend });
     }
   } else if (kind === 'tunggakan') {
-    rep.title = 'Daftar Tunggakan Iuran'; rep.subtitle = 'Posisi per ' + fd(new Date().toISOString().slice(0, 10), { day: 'numeric', month: 'long', year: 'numeric' }) + (o.cur ? ' (termasuk bulan berjalan)' : '');
+    rep.title = 'Daftar Tunggakan Iuran'; rep.subtitle = 'Posisi per ' + fd(new Date().toISOString().slice(0, 10), { day: 'numeric', month: 'long', year: 'numeric' }) + (o.cur ? ' (termasuk putaran/bulan berjalan)' : '');
     const ar = await api('fin/arrears', 'GET', { cur: !!o.cur }), by = {}; ar.forEach(a => { const x = by[a.type_name] = by[a.type_name] || { m: 0, n: 0, t: 0 }; x.m++; x.n += a.n; x.t += a.total; });
-    rep.sections.push({ sn: 'Ringkasan', title: 'Ringkasan per Jenis Iuran', cols: [{ h: 'Jenis Iuran', k: 't' }, { h: 'Anggota menunggak', k: 'n' }, { h: 'Jumlah bulan', k: 'n' }, { h: 'Nilai (Rp)', k: 'rp' }], rows: Object.entries(by).map(([k, v]) => [k, v.m, v.n, v.t]), foot: ar.length ? [['Total', new Set(ar.map(a => a.member_id)).size, sum(ar, a => a.n), sum(ar, a => a.total)]] : [], empty: 'Tidak ada tunggakan 🎉' });
-    rep.sections.push({ sn: 'Rincian', title: 'Rincian per Anggota', cols: [{ h: 'Anggota', k: 't' }, { h: 'No. HP', k: 't' }, { h: 'Jenis Iuran', k: 't' }, { h: 'Bulan', k: 'n' }, { h: 'Periode belum dibayar', k: 't' }, { h: 'Jumlah (Rp)', k: 'rp' }], rows: ar.map(a => [a.name, a.phone || '', a.type_name, a.n, a.periods.map(monS).join(', '), a.total]), foot: ar.length ? [['Total tunggakan', '', '', sum(ar, a => a.n), '', sum(ar, a => a.total)]] : [], empty: 'Tidak ada tunggakan 🎉' });
+    rep.sections.push({ sn: 'Ringkasan', title: 'Ringkasan per Jenis Iuran', cols: [{ h: 'Jenis Iuran', k: 't' }, { h: 'Anggota menunggak', k: 'n' }, { h: 'Jumlah tagihan', k: 'n' }, { h: 'Nilai (Rp)', k: 'rp' }], rows: Object.entries(by).map(([k, v]) => [k, v.m, v.n, v.t]), foot: ar.length ? [['Total', new Set(ar.map(a => a.member_id)).size, sum(ar, a => a.n), sum(ar, a => a.total)]] : [], empty: 'Tidak ada tunggakan 🎉' });
+    rep.sections.push({ sn: 'Rincian', title: 'Rincian per Anggota', cols: [{ h: 'Anggota', k: 't' }, { h: 'No. HP', k: 't' }, { h: 'Jenis Iuran', k: 't' }, { h: 'Tagihan', k: 'n' }, { h: 'Belum dibayar', k: 't' }, { h: 'Jumlah (Rp)', k: 'rp' }], rows: ar.map(a => [a.name, a.phone || '', a.type_name, a.n, a.periods.map(p => arrLbl(a, p)).join(', '), a.total]), foot: ar.length ? [['Total tunggakan', '', '', sum(ar, a => a.n), '', sum(ar, a => a.total)]] : [], empty: 'Tidak ada tunggakan 🎉' });
   }
   return rep;
 }
@@ -177,7 +181,7 @@ function presetRange(p, cur) {   // cur = periode berjalan 'YYYY-MM' dari server
   return null;
 }
 R.laporan = async () => {
-  const cfg = await getCfg(); if (RP.preset !== 'custom' || !RP.from) { const r = presetRange(RP.preset === 'custom' ? 'bulan' : RP.preset, cfg.period); RP.from = r[0]; RP.to = r[1]; }
+  const cfg = await getCfg(); if (RP.preset !== 'custom' || !RP.from) { const r = presetRange(RP.preset === 'custom' ? 'bulan' : RP.preset, cfg.month); RP.from = r[0]; RP.to = r[1]; }
   $('#laporan').innerHTML = `<div class="no-print">${hero('Laporan Keuangan', 'Laporan profesional siap cetak (PDF), Excel, dan CSV — dari pembukuan Dana Arisan & Kas Wajib.')}</div>
   <div class="card no-print rpt-ctl"><div class="rpt-row">
     <label>Jenis laporan<select class="select" id="rpKind">${KINDS.map(k => `<option value="${k[0]}" ${RP.kind === k[0] ? 'selected' : ''}>${k[1]}</option>`).join('')}</select></label>
@@ -185,11 +189,11 @@ R.laporan = async () => {
     <label class="${RP.preset === 'custom' ? '' : 'hid'}" id="rpFromL">Dari<input type="date" id="rpFrom" value="${RP.from}"></label>
     <label class="${RP.preset === 'custom' ? '' : 'hid'}" id="rpToL">Sampai<input type="date" id="rpTo" value="${RP.to}"></label>
     <label class="${RP.kind === 'bukukas' ? '' : 'hid'}" id="rpFundL">Dana<select class="select" id="rpFund"><option value="">Semua dana</option><option value="arisan" ${RP.fund === 'arisan' ? 'selected' : ''}>Dana Arisan</option><option value="kas" ${RP.fund === 'kas' ? 'selected' : ''}>Kas Wajib</option></select></label>
-    <label class="chk ${RP.kind === 'tunggakan' ? '' : 'hid'}" id="rpCurL"><input type="checkbox" id="rpCur" ${RP.cur ? 'checked' : ''}> Sertakan bulan berjalan</label>
+    <label class="chk ${RP.kind === 'tunggakan' ? '' : 'hid'}" id="rpCurL"><input type="checkbox" id="rpCur" ${RP.cur ? 'checked' : ''}> Sertakan putaran/bulan berjalan</label>
   </div><div class="rpt-act"><button class="primary" id="rpPrint">🖨 Cetak / PDF</button><button class="primary" id="rpXls">▦ Excel</button><button class="ghost" id="rpCsv">CSV</button>${adm('<button class="ghost" id="rpMeta">⚙ Identitas laporan</button>')}</div></div>
   <div id="rptDoc" class="rpt-wrap"><div class="rpt-load">Menyusun laporan…</div></div>`;
   const ch = () => { RP.kind = $('#rpKind').value; RP.preset = $('#rpPre').value; RP.fund = $('#rpFund').value; RP.cur = $('#rpCur').checked;
-    if (RP.preset === 'custom') { RP.from = $('#rpFrom').value || RP.from; RP.to = $('#rpTo').value || RP.to; } else { const r = presetRange(RP.preset, cfg.period); RP.from = r[0]; RP.to = r[1]; }
+    if (RP.preset === 'custom') { RP.from = $('#rpFrom').value || RP.from; RP.to = $('#rpTo').value || RP.to; } else { const r = presetRange(RP.preset, cfg.month); RP.from = r[0]; RP.to = r[1]; }
     if (RP.from > RP.to) { toast('Tanggal "Dari" harus sebelum "Sampai"'); return; } reload(); };
   ['rpKind', 'rpPre', 'rpFund', 'rpCur', 'rpFrom', 'rpTo'].forEach(id => $('#' + id).onchange = ch);
   const doc = $('#rptDoc');
