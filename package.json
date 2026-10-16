@@ -1,6 +1,6 @@
 {
   "name": "familyhub",
-  "version": "3.13.2",
+  "version": "3.16.2",
   "private": true,
   "scripts": {
     "dev": "npx serve -s public",

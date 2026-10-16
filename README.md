@@ -4,7 +4,7 @@ Frontend statis (HTML/CSS/JS) + **Supabase** (Postgres, Auth, RLS) · deploy via
 ```
 public/            index.html, app.js (tampilan), data.js (lapisan Supabase), config.js
 supabase/          schema.sql (wajib, sudah mencakup semua fitur), seed.sql (opsional),
-                   patch-001 … patch-014 (HANYA untuk yang sudah terlanjur memakai versi lama),
+                   patch-001 … patch-015 (HANYA untuk yang sudah terlanjur memakai versi lama),
                    demo-500-keluarga.sql (opsional, data uji 500 orang)
 scripts/           gen-config.js (isi config.js dari env var saat build Vercel)
 supabase/base/      skema dasar v3.9.1 (beku); supabase/migrations/ = format Supabase CLI (dihasilkan otomatis)
@@ -306,6 +306,98 @@ Setiap menu kini punya alamat sendiri, sehingga tombol **Back/Forward** browser,
 - Judul tab ikut berubah, misalnya *Arisan · FamilyHub*.
 - **File baru**: `public/router.js`. **Diubah**: `vercel.json` (rewrite ke `index.html`), `index.html` (memuat router.js), `topbar.css` (bilah progres), `package.json` (`npm run dev` memakai `serve -s`), serta `public/_redirects` (cadangan untuk Netlify).
 - **Upgrade dari v3.6**: cukup timpa file lalu deploy ulang. Tidak ada perubahan database.
+
+## Input iuran saat periode berganti (v3.16.2)
+Perbaikan di `supabase/patch-020-periode-iuran.sql` (jalankan sekali, aman diulang) dan frontend:
+
+| # | Masalah | Perbaikan |
+|---|---|---|
+| 1 | **Bulan acuan Iuran Wajib ikut bulan kalender** bila putaran tidak bertanggal. Putaran yang dibuka 28 Okt lalu dikocok 2 Nov berpindah acuan ke November: yang sudah bayar Oktober mendadak "belum bayar" dan **gugur dari syarat kocok**. | Acuan kini tetap: tanggal pelaksanaan → bulan kunci putaran lama → bulan putaran dibuka. |
+| 2 | **Memilih putaran lain tidak memindahkan bulan Iuran Wajib** (tetap bulan putaran aktif) sehingga pembayaran bisa tercatat di bulan yang keliru. | Bulan mengikuti putaran yang dipilih; bulan yang dipilih manual tetap dihormati. |
+| 3 | **Pilihan putaran/bulan menempel** (masih terbawa setelah putaran baru dibuka, pindah halaman, atau tab lama ditinggal) → admin mengira mencatat ke putaran aktif. | Pilihan di-reset saat putaran berubah, pindah halaman, atau tab kembali aktif; pilihan ke putaran yang sudah dibatalkan otomatis dilepas. |
+| 4 | Tidak ada pengaman saat mencatat untuk periode bukan-berjalan. | Dialog *Catat Pembayaran* menampilkan peringatan: putaran sudah selesai (susulan), bukan putaran aktif, atau bukan bulan berjalan. |
+
+## Perbaikan integritas arisan (v3.16.1)
+Audit modul arisan setelah perubahan ke *putaran* menemukan lima masalah; semuanya diperbaiki di `supabase/patch-019-integritas-arisan.sql` (jalankan sekali di SQL Editor, aman diulang, lalu deploy ulang frontend).
+
+| # | Masalah | Perbaikan |
+|---|---|---|
+| 1 | **Pemenang bisa diganti ("tidak hadir") setelah dananya dicairkan** — uang sudah keluar ke orang pertama, pemenang pengganti tak bisa dicairkan (sisa dana 0). | `reopen_draw` ditolak bila putaran sudah ada pencairannya; batalkan pencairan dulu (Keuangan). |
+| 2 | **Putaran yang ditutup tanpa pemenang** (mis. arisan ditiadakan) tetap dihitung **tunggakan semua anggota** dan 0% di rekap/matriks. | Hanya putaran yang benar-benar berjalan (ada pemenang sah *atau* ada iuran masuk) yang ditagih & direkap. |
+| 3 | **Reset "Pengocokan Arisan"** menghapus putaran tetapi mempertahankan iuran; nomor mulai dari 1 lagi sehingga `P001` baru **mewarisi iuran & pencairan lama** (tampak lunas). | Nomor putaran berikutnya melewati semua kunci yang sudah dipakai iuran/pencairan/kocokan. Di database kosong tetap mulai dari 1. |
+| 4 | `cancel_disbursement` tanpa kunci (pencairan & pembatalan iuran memakainya) → balapan. | Kunci `fh_disburse` disamakan; `void_payment` juga mengunci. |
+| 5 | Log & pesan memakai kunci mentah (`P003`). | Kini "Putaran 3" (sahkan, tidak hadir, buka ulang, panggil ulang, batal iuran). |
+
+Teks kecil: "Pengundian bulan ini sudah selesai" → "putaran ini"; deskripsi Reset Arisan dijelaskan. Tes baru: bagian **K** (SQL); tes lama "putaran baru bernomor 1 setelah reset" diganti karena justru mengunci perilaku bermasalah no. 3.
+
+## Putaran arisan fleksibel — tidak harus sebulan sekali (v3.16.0)
+Arisan keluarga digelar **mengikuti permintaan anggota**: kadang dua kali dalam sebulan, kadang libur berbulan-bulan. Sampai v3.15 sistem menganggap arisan berjalan tiap bulan (periode = `YYYY-MM`), sehingga bulan tanpa arisan tetap dihitung **tunggakan** dan satu bulan hanya muat satu pengocokan. Kini satuannya adalah **putaran** (sesi arisan), bukan bulan.
+
+**Cara pakai** — halaman *Dashboard* → ikon 📅 pada kartu Pengocokan → **Kelola putaran arisan**:
+1. **Jadwalkan putaran** saat ada permintaan: judul (opsional), tanggal (boleh dikosongkan = belum pasti), tempat/tuan rumah, *diminta oleh* (anggota), catatan. Status awal *Rencana*.
+2. **Buka** putaran saat penagihan & pengocokan dimulai. Putaran aktif sebelumnya otomatis ditutup (dengan pemeriksaan yang sama seperti sebelumnya).
+3. Catat iuran, kocok, sahkan pemenang, cairkan dana — semuanya per putaran.
+4. **Tutup** putaran. Boleh tidak ada putaran aktif (arisan *jeda*) sampai ada permintaan berikutnya. **Batalkan** untuk putaran yang tidak jadi (hanya bila belum ada pembayaran & pengocokan).
+
+**Perubahan perilaku yang penting**
+- **Tunggakan** Iuran Arisan = putaran yang *sudah selesai* dan belum dibayar. Bulan tanpa arisan **tidak** menunggak.
+- Tiap jenis iuran punya **jadwal**: *putaran* (Iuran Arisan, selalu) atau *bulanan* (Iuran Wajib/kas — bawaan tetap bulanan, ikut bulan kalender). Admin bisa mengubah jadwal Iuran Wajib di *Atur iuran* selama belum ada pembayarannya.
+- Halaman Iuran punya dua pemilih: **putaran** (untuk iuran putaran) dan **bulan** (untuk iuran bulanan).
+- Dua putaran dalam satu bulan, atau putaran dengan tanggal belum pasti, kini didukung. Pemenang tetap tidak boleh menang dua kali dalam satu siklus.
+- Laporan: realisasi per *putaran/bulan*; matriks kepatuhan iuran putaran = satu kolom per putaran dalam tahun itu (P1, P2, …); portal *Iuran Saya*, profil anggota, dashboard, WhatsApp pengingat, dan ekspor ikut memakai nama "Putaran N".
+
+**Dijaga di database** (bukan hanya di layar): paling banyak **satu** putaran aktif (indeks unik); putaran tak bisa ditutup bila ada pemenang menunggu; tanpa pemenang sah hanya bisa ditutup dengan alasan tertulis; iuran hanya bisa dicatat pada putaran *aktif* atau *selesai* (susulan), tidak pada *rencana/batal*; tulis langsung ke tabel ditolak (hanya lewat `create_round`, `update_round`, `open_round`, `close_round`, `cancel_round`); semua perubahan masuk jejak audit & log aktivitas.
+
+**Upgrade dari v3.15:** jalankan `supabase/patch-018-putaran-arisan.sql` sekali di SQL Editor (aman diulang) lalu deploy ulang frontend. Data lama utuh: tiap periode lama menjadi *Putaran 1, 2, 3…* berurutan (kunci lama `YYYY-MM` tetap dipakai secara internal, tanggalnya diambil dari pemenang sah). **Catatan:** periode aktif bentukan otomatis yang masih kosong (tanpa iuran/kocokan) tidak dijadikan putaran — setelah upgrade arisan berstatus *jeda* sampai admin menjadwalkan & membuka putaran. Backup lama (termasuk yang memuat `arisan_periods`) tetap bisa di-Restore: putaran dibentuk ulang. Backup baru memuat `arisan_rounds`.
+- **Tanpa patch:** tampilan baru memerlukan patch ini; jalankan patch dulu, baru deploy frontend.
+- **Perbaikan kecil:** penghapusan akun (v3.15) kini benar-benar tercatat di jejak audit (sebelumnya satu tes gagal).
+- **Berkas:** baru `patch-018-putaran-arisan.sql`; diubah `app.js` (label putaran), `data.js`, `draw.js` (Kelola putaran), `finance.js`, `report.js`, `account.js`, `profile.js`, `settings.js`, `dashcards.css`, `seed.sql`; tes bagian H (SQL, ditulis ulang) dan 11–12 (UI).
+
+## Hapus pengguna (v3.15.0)
+Admin kini bisa **menghapus akun pengguna yang sudah aktif**. Sebelumnya hanya pendaftar yang belum disetujui yang bisa ditolak.
+
+**Cara pakai** — *Akun & Pengguna* → tab **Kelola Pengguna** → tabel *Daftar pengguna* → kolom **Aksi** → **Hapus** → konfirmasi.
+
+**Aturan (dipaksa di database lewat `delete_user()`, bukan hanya di layar):**
+- Hanya **admin**. Akun yang sedang dipakai **tidak bisa** menghapus dirinya sendiri (tombolnya diganti tanda “—”).
+- Harus tersisa **minimal satu admin**.
+- Yang dihapus hanya **akun login & profilnya**. Data keluarga (anggota, iuran, kas, kocokan) **tidak ikut terhapus**; anggota yang tadinya terhubung ke akun itu otomatis menjadi “belum dihubungkan”.
+- Tercatat di log aktivitas dan *jejak audit*. Tindakan ini tidak dapat dibatalkan; orangnya harus mendaftar ulang bila ingin masuk lagi.
+
+**Ubah pengguna:** tombol **Ubah** di kolom Aksi membuka form untuk **nama, peran, dan hubungan ke anggota keluarga** sekaligus (hanya bagian yang berubah yang dikirim). Email & password tidak diubah dari sini — gunakan Supabase → Authentication → Users. Perlu `patch-017-ubah-pengguna.sql`.
+
+**Upgrade dari v3.14:** jalankan `supabase/patch-016-hapus-pengguna.sql` dan `patch-017-ubah-pengguna.sql` sekali di SQL Editor (aman diulang; atau pakai `schema.sql` / `migrations/` terbaru), lalu deploy ulang frontend. Tanpa patch, tombol Hapus akan menampilkan galat dari server.
+- **Berkas:** baru `patch-016-hapus-pengguna.sql`; diubah `extras.js` (kolom Aksi & `deleteUser`), `data.js` (`users/delete`), `schema.sql` & `migrations/` (dihasilkan ulang), tes bagian I (SQL) & 9b (UI).
+
+## Periode arisan ditentukan manual (v3.14.0) — digantikan oleh Putaran arisan (v3.16.0)
+> Riwayat: bagian ini menjelaskan v3.14. Sejak v3.16 "periode" diganti **putaran** (lihat di atas); `set_active_period()`/`arisan_periods` tidak ada lagi.
+
+Sebelumnya periode arisan otomatis = bulan kalender, sehingga tanggal 1 setiap bulan periode berganti sendiri walau arisan bulan lalu belum diundi atau dicairkan. Kini **admin yang menentukan periode aktif**.
+
+**Cara pakai** — halaman *Arisan* → ikon 📅 pada kartu Pengocokan → **Kelola periode arisan**:
+1. Pilih bulan periode yang akan diaktifkan (bawaan: bulan setelah periode terakhir).
+2. Isi catatan penutupan (opsional) lalu klik **Tutup periode berjalan & aktifkan**.
+3. Seluruh pengocokan, penagihan iuran, tunggakan, dashboard, laporan "periode berjalan", dan portal anggota *Iuran Saya* langsung mengikuti periode aktif.
+
+**Aturan (dipaksa di database, bukan hanya di layar):**
+- Hanya **satu** periode aktif (indeks unik). Format `YYYY-MM`, maksimal 12 bulan ke depan.
+- Periode tidak bisa ditutup bila masih ada pemenang berstatus *menunggu konfirmasi*.
+- Periode **tanpa pemenang sah** hanya bisa ditutup dengan centang *tutup tanpa pemenang* **dan alasan tertulis** (mis. arisan ditiadakan).
+- Periode lama boleh **dibuka kembali** untuk koreksi (jejak penutupan sebelumnya tersimpan di jejak audit).
+- Bila bulan kalender sudah melewati periode aktif, admin melihat peringatan di kartu pengocokan — periode **tidak** berganti sendiri.
+- Setiap pergantian tercatat di *jejak audit* (pelaku, waktu, nilai lama/baru) dan log aktivitas. Tulis langsung ke tabel ditolak; hanya lewat `set_active_period()`.
+- Ikut **Backup/Restore** (bagian opsional, backup lama tetap bisa dipulihkan) dan **Reset** (reset Arisan/Anggota/Semua membuka ulang periode = bulan kalender).
+
+**Upgrade:** jalankan `supabase/patch-015-periode-manual.sql` sekali di SQL Editor (atau pakai `schema.sql` / `migrations/` terbaru), lalu deploy ulang frontend. Periode aktif awal = bulan kalender saat patch dijalankan, dan periode dari riwayat kocokan dicatat *selesai* — tidak ada perubahan tampilan hari itu. **Mulai bulan berikutnya, periode tidak lagi berganti otomatis**; ganti lewat Kelola periode saat arisan baru dimulai.
+- **Tanpa patch:** aplikasi tetap jalan (tombol Kelola periode memberi galat jelas); periode kembali mengikuti kalender.
+- **Berkas:** baru `patch-015-periode-manual.sql`; diubah `draw.js`, `data.js`, `profile.js` (kini memakai periode aktif), `settings.js` (backup), `dashcards.css`; tes bagian H (SQL) & 11 (UI).
+
+## Perbaikan Silsilah & Anggota kosong / refresh jatuh ke Dashboard (v3.13.3)
+**Penyebab (race condition):** `app.js` memanggil `api('me')` begitu ia selesai dimuat, padahal `tree.js` (Silsilah), `members.js` (Anggota), `finance.js`, dan `router.js` baru dimuat sesudahnya. Bila respons Supabase tiba lebih cepat daripada pemuatan skrip-skrip itu (terutama saat refresh, jaringan lambat, atau skrip dari cache), `boot()` berjalan sebelum `R.silsilah` / `R.anggota` ada, galatnya ditelan `.catch(() => {})`, sehingga halaman **kosong** atau alamat `/silsilah` salah menampilkan **Dashboard**. Halaman yang kodenya ada di `app.js` (Dashboard, Agenda, Pengumuman) tampak normal, jadi masalahnya terasa acak.
+
+**Perbaikan:** pemanggilan awal dipindah ke fungsi `startApp()` yang dijalankan dari **akhir `router.js`** (skrip terakhir), sehingga selalu terjadi setelah semua halaman terdaftar. Galat start kini dicatat di konsol (tidak lagi ditelan), dan `showPage` memberi tahu bila halaman belum terdaftar. Nama di tabel Anggota juga kini bisa diklik untuk membuka profil.
+
+**Diuji** di Chrome sungguhan dengan pemuatan skrip diperlambat: sebelum perbaikan `/silsilah` dan `/anggota` menampilkan Dashboard kosong; sesudahnya keduanya tampil benar, termasuk refresh berulang, tombol Pohon/Daftar, pencarian, form tambah/ubah, dan profil. Tes regresi ditambahkan di `tests/frontend.test.mjs`.
 
 ## Perbaikan refresh halaman: "This page doesn't exist" (v3.13.1)
 **Penyebab:** aplikasi ini satu halaman (`index.html`) dengan alamat bersih seperti `/arisan`. Saat menu diklik, router mengubah URL tanpa meminta ke server, jadi terlihat normal. Tetapi saat **refresh / buka link langsung**, browser meminta `/arisan` ke server. Bila hosting tidak punya aturan "kembalikan `index.html` untuk alamat yang tidak ada berkas", server menjawab 404. Aturan itu hanya ada di `vercel.json` (dibaca Vercel **hanya bila berada di root repositori / Root Directory proyek**); `_redirects` untuk Netlify/Cloudflare sempat dihapus di v3.10.
