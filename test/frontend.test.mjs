@@ -36,6 +36,10 @@ check('header keamanan lain terpasang', ['X-Content-Type-Options', 'X-Frame-Opti
   const { ROUTES } = (await import('node:module')).createRequire(import.meta.url)('../scripts/gen-routes.js');
   check('salinan rute per menu (/arisan/index.html, dst.) ada & identik dengan index.html (jalan tanpa rewrite)', ROUTES.every(r => { try { return fs.readFileSync(path.join(PUB, r, 'index.html'), 'utf8') === html; } catch { return false; } }), 'jalankan: node scripts/gen-routes.js');
   check('build Vercel menjalankan gen-routes', /gen-routes/.test(vj.buildCommand));
+  const appJs = fs.readFileSync(path.join(PUB, 'app.js'), 'utf8'), routerJs = fs.readFileSync(path.join(PUB, 'router.js'), 'utf8');
+  check('app.js TIDAK memulai sesi saat dimuat (api("me") tidak dipanggil di tingkat atas)', !/^api\('me'\)/m.test(appJs) && /function startApp\(/.test(appJs));
+  check('router.js (skrip terakhir) memanggil startApp() setelah semua skrip siap', /\nstartApp\(\);/.test(routerJs) && /router\.js"><\/script>\s*(<\/body>|<!--|$)/m.test(html + '\n'));
+  check('baris tabel Anggota: nama bisa diklik membuka profil', /class="mcell[^>]*onclick="openProfile\(\$\{m\.id\}\)"/.test(fs.readFileSync(path.join(PUB, 'members.js'), 'utf8')));
   check('semua aset di index.html memakai alamat absolut (aman di /pengguna/kelola)', ![...html.matchAll(/(?:src|href)="([^"#]+)"/g)].some(m => !/^(\/|https?:|data:|mailto:)/.test(m[1])));
 }
 
@@ -162,11 +166,11 @@ console.log('\n═══ 8. Portal anggota "Iuran Saya" ═══');
 {
   const EVIL = `<img src=x onerror=alert(3)>`;
   const DASH = { members: 0, paid: 0, saldo: 0, masuk: 0, keluar: 0, cashflow: [], activity: [], recent: [], period: '2026-10', next: null, funds: { arisan: 0, kas: 0 }, types: [] };
-  const linked = { linked: true, period: '2026-10', member: { id: 7, name: 'Budi ' + EVIL, relation: 'Anak', active: true },
-    types: [{ id: 1, name: 'Iuran Arisan', amount: 350000, fund: 'arisan', required_for_draw: true, paid_now: false, arrears: 2, arrears_total: 700000, arrears_periods: ['2026-08', '2026-09'] },
-            { id: 2, name: 'Kas ' + EVIL, amount: 50000, fund: 'kas', required_for_draw: false, paid_now: true, arrears: 0, arrears_total: 0, arrears_periods: [] }],
+  const linked = { linked: true, period: 'P003', rounds: [{ period: '2026-08', seq: 1, status: 'selesai' }, { period: '2026-09', seq: 2, status: 'selesai' }, { period: '2026-03', seq: 0, status: 'selesai' }, { period: 'P003', seq: 3, status: 'aktif' }], member: { id: 7, name: 'Budi ' + EVIL, relation: 'Anak', active: true },
+    types: [{ id: 1, name: 'Iuran Arisan', amount: 350000, fund: 'arisan', schedule: 'putaran', required_for_draw: true, paid_now: false, arrears: 2, arrears_total: 700000, arrears_periods: ['2026-08', '2026-09'] },
+            { id: 2, name: 'Kas ' + EVIL, amount: 50000, fund: 'kas', schedule: 'bulanan', required_for_draw: false, paid_now: true, arrears: 0, arrears_total: 0, arrears_periods: [] }],
     can_draw: false, won: [{ period: '2026-03', at: '2026-03-20T00:00:00Z' }],
-    recent: [{ period: '2026-07', type: 'Iuran Arisan', amount: 350000, paid_at: '2026-07-05T00:00:00Z', method: 'Tunai', receipt_no: 'KW-2026-0001' + EVIL }] };
+    recent: [{ period: '2026-07', schedule: 'bulanan', type: 'Iuran Arisan', amount: 350000, paid_at: '2026-07-05T00:00:00Z', method: 'Tunai', receipt_no: 'KW-2026-0001' + EVIL }] };
   const mk = (role, my, extra = {}) => boot({ from: st => st.t === 'profiles' ? { data: { name: 'Budi', role, approved: true }, error: null } : st.t === 'members' ? { data: extra.members || [], error: null } : { data: [], error: null },
     rpc: (fn, a) => ({ data: fn === 'dashboard' ? DASH : fn === 'my_status' ? my : fn === 'list_users' ? (extra.users || []) : null, error: null }), url: extra.url });
 
@@ -175,10 +179,10 @@ console.log('\n═══ 8. Portal anggota "Iuran Saya" ═══');
   const box = t.$('#pengguna'), tabs = [...box.querySelectorAll('.st-tab')].map(b => b.textContent.trim());
   check('viewer melihat tab "Akun Saya" & "Iuran Saya" (tanpa Kelola Pengguna)', tabs.length === 2 && /Iuran Saya/.test(tabs[1]), JSON.stringify(tabs));
   check('alamat URL = /pengguna/iuran', t.w.location.pathname === '/pengguna/iuran', t.w.location.pathname);
-  check('banner: ada tunggakan Rp 700.000 (2 bulan)', /700\.000/.test(box.textContent) && /2 bulan/.test(box.textContent), box.textContent.slice(0, 300));
-  check('kartu per jenis iuran: Belum dibayar / Lunas bulan ini', /Belum dibayar/.test(box.textContent) && /Lunas bulan ini/.test(box.textContent));
-  check('periode tunggakan ditulis (Agustus & September 2026)', /Agustus 2026/.test(box.textContent) && /September 2026/.test(box.textContent));
-  check('arisan: belum memenuhi syarat + pernah menang Maret 2026', /Belum memenuhi syarat/.test(box.textContent) && /Maret 2026/.test(box.textContent));
+  check('banner: ada tunggakan Rp 700.000 (2 tagihan)', /700\.000/.test(box.textContent) && /2 tagihan/.test(box.textContent), box.textContent.slice(0, 300));
+  check('kartu per jenis iuran: Belum dibayar / Lunas bulan ini', /Belum dibayar/.test(box.textContent) && /Lunas bulan ini/.test(box.textContent) && /\/ putaran/.test(box.textContent));
+  check('putaran yang menunggak ditulis (Putaran 1 & Putaran 2)', /Putaran 1/.test(box.textContent) && /Putaran 2/.test(box.textContent));
+  check('arisan: belum memenuhi syarat + pernah menang (Putaran 0)', /Belum memenuhi syarat/.test(box.textContent) && /Putaran 0/.test(box.textContent));
   check('riwayat menampilkan nomor kuitansi', /KW-2026-0001/.test(box.textContent));
   check('XSS: nama anggota / jenis iuran / kuitansi berisi HTML tidak dieksekusi', !box.querySelector('img[src="x"]') && !box.querySelector('[onerror]') && t.alerts.length === 0, JSON.stringify(t.alerts));
   check('payload tampil sebagai teks biasa', box.textContent.includes('<img src=x onerror=alert(3)>'));
@@ -233,6 +237,43 @@ console.log('\n═══ 9. Tolak semua pendaftar menunggu ═══');
   e.w.close();
 }
 
+console.log('\n═══ 9b. Hapus pengguna aktif ═══');
+{
+  const DASH = { members: 0, paid: 0, saldo: 0, masuk: 0, keluar: 0, cashflow: [], activity: [], recent: [], period: '2026-10', next: null, funds: { arisan: 0, kas: 0 }, types: [] };
+  const users = [{ id: '11111111-1111-1111-1111-111111111111', name: 'Admin', email: 'u@x.id', role: 'admin', approved: true }, { id: '33333333-3333-3333-3333-333333333333', name: `Evil x');alert(1);('`, email: 'v@x.id', role: 'viewer', approved: true }];
+  const t = await boot({ from: PROFILE('admin', true), rpc: fn => ({ data: fn === 'dashboard' ? DASH : fn === 'list_users' ? users : null, error: null }) });
+  t.ev("PG_TAB='kelola'"); t.ev("showPage('pengguna')"); await wait(100);
+  const box = t.$('#pengguna'), del = [...box.querySelectorAll('button')].filter(x => x.textContent === 'Hapus' && /deleteUser/.test(x.getAttribute('onclick') || ''));
+  check('tombol Hapus hanya untuk akun lain (1 dari 2 pengguna)', del.length === 1, String(del.length));
+  check('XSS: hanya id (bukan nama) di atribut handler Hapus', !/alert|Evil/.test(del[0].getAttribute('onclick')), del[0].getAttribute('onclick'));
+  let asked = ''; t.w.confirm = m => (asked = m, false);
+  del[0].click(); await wait(60);
+  check('konfirmasi menyebut nama & email pengguna', /Evil/.test(asked) && /v@x\.id/.test(asked), asked);
+  check('batal di konfirmasi → delete_user TIDAK dipanggil', !t.sb.calls.includes('rpc:delete_user'));
+  t.w.confirm = () => true; del[0].click(); await wait(80);
+  check('setuju → delete_user(id) dipanggil', t.sb.calls.args.delete_user && t.sb.calls.args.delete_user.p_id === '33333333-3333-3333-3333-333333333333', JSON.stringify(t.sb.calls.args.delete_user));
+  check('tidak ada kode injeksi yang berjalan', t.alerts.length === 0, JSON.stringify(t.alerts));
+  t.w.close();
+}
+
+console.log('\n═══ 9c. Ubah pengguna ═══');
+{
+  const DASH = { members: 0, paid: 0, saldo: 0, masuk: 0, keluar: 0, cashflow: [], activity: [], recent: [], period: '2026-10', next: null, funds: { arisan: 0, kas: 0 }, types: [] };
+  const users = [{ id: '1', name: 'Admin', email: 'u@x.id', role: 'admin', approved: true }, { id: '3', name: 'Budi', email: 'v@x.id', role: 'viewer', approved: true }];
+  const t = await boot({ from: PROFILE('admin', true), rpc: fn => ({ data: fn === 'dashboard' ? DASH : fn === 'list_users' ? users : null, error: null }) });
+  t.ev("PG_TAB='kelola'"); t.ev("showPage('pengguna')"); await wait(100);
+  const ub = [...t.$('#pengguna').querySelectorAll('button')].filter(x => x.textContent === 'Ubah');
+  check('tombol Ubah ada untuk setiap pengguna (2)', ub.length === 2, String(ub.length));
+  ub[1].click(); await wait(40);
+  const f = t.$('#fForm');
+  check('form terbuka terisi nama & peran saat ini', f.elements.name.value === 'Budi' && f.elements.role.value === 'viewer');
+  f.elements.name.value = 'Budi Santoso'; f.elements.role.value = 'pengelola';
+  f.dispatchEvent(new t.w.Event('submit', { cancelable: true })); await wait(100);
+  check('simpan → rename_user & set_role dipanggil', t.sb.calls.args.rename_user && t.sb.calls.args.rename_user.p_name === 'Budi Santoso' && t.sb.calls.args.set_role && t.sb.calls.args.set_role.p_role === 'pengelola', JSON.stringify(t.sb.calls.args));
+  check('hubungan anggota tak berubah → link_member tidak dipanggil', !t.sb.calls.args.link_member);
+  t.w.close();
+}
+
 console.log('\n═══ 10. Refresh / link langsung & fallback 404.html ═══');
 {
   const t = await boot({ from: PROFILE('viewer', true), url: 'http://localhost/arisan' }); await wait(100);
@@ -248,6 +289,124 @@ console.log('\n═══ 10. Refresh / link langsung & fallback 404.html ══�
   const u = await boot({ from: PROFILE('viewer', true), url: 'http://localhost/tidak-ada' }); await wait(100);
   check('alamat tak dikenal → Dashboard, URL dikoreksi ke /', u.ev('page') === 'dashboard' && u.w.location.pathname === '/', u.ev('page') + ' ' + u.w.location.pathname);
   u.w.close();
+}
+
+console.log('\n═══ 11. Putaran arisan fleksibel (v3.16) ═══');
+{
+  const read = f => fs.readFileSync(path.join(PUB, f), 'utf8');
+  const dataJs = read('data.js'), setJs = read('settings.js'), profJs = read('profile.js'), drawJs = read('draw.js');
+  check('data.js: api("round") → round_state + create/update/open/close/cancel', /t === 'round'/.test(dataJs) && ['create_round', 'update_round', 'open_round', 'close_round', 'cancel_round', 'round_state'].every(f => dataJs.includes(f)) && !/set_active_period|period_state/.test(dataJs));
+  check('profile.js memakai putaran/bulan acuan dari konfigurasi (bukan bulan kalender browser)', !/cur = new Date\(\)\.toISOString/.test(profJs) && /getCfg\(\)/.test(profJs));
+  check('backup menyertakan putaran arisan sebagai bagian OPSIONAL (backup lama tetap valid)', /\['arisan_rounds', 'arisan_rounds', 'id'\]/.test(setJs) && /OPT = new Set\(\['arisan_rounds'\]\)/.test(setJs));
+  check('tidak ada lagi sisa "Kelola periode"/kalender tertinggal di draw.js', !/Kelola periode|perBanner|PRD\b/.test(drawJs));
+
+  const ST = (extra = {}) => ({ active: 'P002', next_seq: 4, today: '2026-10-16', rows: [
+    { id: 3, seq: 3, period: 'P003', title: null, status: 'rencana', held_on: null, place: null, requested_by: null, requester: null, note: 'dijadwalkan <b>nanti</b>', attempts: 0, winner: null, pending: 0, paid: 0, collected: 0, disbursed: 0, close_note: null },
+    { id: 2, seq: 2, period: 'P002', title: 'Arisan Lebaran', status: 'aktif', held_on: '2026-10-20', place: 'Rumah Bu Rina', requested_by: 4, requester: 'Rina', note: null, attempts: 1, winner: 'Siti', pending: 0, paid: 3, collected: 1050000, disbursed: 0, close_note: null },
+    { id: 1, seq: 1, period: '2026-09', title: null, status: 'selesai', held_on: '2026-09-12', place: null, requested_by: null, requester: null, note: null, attempts: 1, winner: 'Budi', pending: 0, paid: 3, collected: 1050000, disbursed: 1050000, close_note: '<img src=x onerror=alert(1)>' }], ...extra });
+  const DASH = { members: 0, paid: 0, saldo: 0, masuk: 0, keluar: 0, cashflow: [], activity: [], recent: [], period: 'P002', month: '2026-10', next: null, funds: { arisan: 0, kas: 0 }, types: [] };
+  const rpcOf = (state, log) => (fn, a) => ({ data: fn === 'round_state' ? state : ['open_round', 'close_round', 'cancel_round', 'create_round', 'update_round'].includes(fn) ? (log && log.push({ fn, ...a }), { ok: 1 }) : fn === 'dashboard' ? DASH : null, error: null });
+
+  const log = [], t = await boot({ from: PROFILE('admin', true), rpc: rpcOf(ST(), log) });
+  t.ev('openRounds()'); await wait(120);
+  const m = t.$('#roundModal');
+  check('admin: modal Kelola putaran terbuka', !!m && m.classList.contains('show'));
+  check('putaran aktif, tanggal, tempat & peminta ditampilkan', /Putaran 2/.test(m.textContent) && /Arisan Lebaran/.test(m.textContent) && /Rumah Bu Rina/.test(m.textContent) && /Rina/.test(m.textContent) && /20 Okt/.test(m.textContent), m.textContent.slice(0, 300));
+  check('putaran tanpa tanggal tertulis "Tanggal belum pasti"', /Tanggal belum pasti/.test(m.textContent));
+  check('semua putaran terdaftar (1, 2, 3) dengan status', /Rencana/.test(m.textContent) && /Selesai/.test(m.textContent) && /Putaran 1/.test(m.textContent) && /Putaran 3/.test(m.textContent));
+  check('catatan putaran (XSS) di-escape — tidak ada elemen <img>/<b> sisipan', !m.querySelector('img') && !m.querySelector('td b > b') && m.textContent.includes('dijadwalkan <b>nanti</b>'));
+  check('tombol admin: Jadwalkan, Buka (rencana), Tutup (aktif), Buka kembali (selesai)', /Jadwalkan putaran/.test(m.textContent) && /Buka\b/.test(m.textContent) && /Tutup/.test(m.textContent) && /Buka kembali/.test(m.textContent));
+  check('penjelasan: arisan tidak harus sebulan sekali', /tidak harus sebulan sekali/.test(m.textContent));
+
+  t.ev("rdAct('open',3)"); await wait(80);
+  const ask = t.$('#roundAskModal');
+  check('buka putaran → dialog konfirmasi menyebut putaran baru; putaran aktif akan ditutup', !!ask && ask.classList.contains('show') && /Putaran 3/.test(ask.textContent) && /Putaran 2/.test(ask.textContent));
+  check('putaran aktif sudah punya pemenang → catatan opsional, tombol aktif', t.$('#raOk').disabled === false);
+  t.$('#raNote').value = 'selesai'; t.$('#raOk').click(); await wait(150);
+  check('open_round dikirim: id, catatan, paksa=false', log.length === 1 && log[0].fn === 'open_round' && log[0].p_id === 3 && log[0].p_note === 'selesai' && log[0].p_force === false, JSON.stringify(log));
+
+  t.ev("rdAct('cancel',3)"); await wait(80);
+  check('batalkan putaran rencana: alasan opsional', t.$('#raOk').disabled === false);
+  t.$('#raOk').click(); await wait(150);
+  check('cancel_round dikirim dengan id', log.some(x => x.fn === 'cancel_round' && x.p_id === 3), JSON.stringify(log));
+
+  t.ev("rdAct('close',2)"); await wait(80);
+  t.$('#raOk').click(); await wait(150);
+  check('close_round dikirim (putaran punya pemenang → tanpa paksa)', log.some(x => x.fn === 'close_round' && x.p_force === false), JSON.stringify(log));
+
+  t.ev("rdAct('form')"); await wait(150);
+  check('form jadwalkan putaran: judul, tanggal, tempat, peminta, catatan', !!t.$('#roundFormModal') && !!t.$('#rfTitle') && !!t.$('#rfDate') && !!t.$('#rfPlace') && !!t.$('#rfReq') && !!t.$('#rfNote'));
+  t.$('#rfTitle').value = 'Arisan Akhir Tahun'; t.$('#rfPlace').value = 'Surabaya'; t.$('#rfGo').click(); await wait(150);
+  const cr = log.find(x => x.fn === 'create_round');
+  check('create_round: tanggal kosong terkirim null (belum pasti), judul & tempat terkirim', !!cr && cr.p_held_on === null && cr.p_title === 'Arisan Akhir Tahun' && cr.p_place === 'Surabaya' && cr.p_requested_by === null, JSON.stringify(cr));
+  t.w.close();
+
+  const noW = ST(); noW.rows[1].winner = null; noW.rows[1].attempts = 0;
+  const l2 = [], t2 = await boot({ from: PROFILE('admin', true), rpc: rpcOf(noW, l2) });
+  t2.ev('openRounds()'); await wait(120); t2.ev("rdAct('open',3)"); await wait(80);
+  check('putaran aktif tanpa pemenang: tombol nonaktif sampai alasan diisi', t2.$('#raOk').disabled === true && /tanpa pemenang/.test(t2.$('#roundAskModal').textContent));
+  t2.$('#raNote').value = 'ditunda'; t2.$('#raNote').dispatchEvent(new t2.w.Event('input'));
+  check('alasan diisi → tombol aktif', t2.$('#raOk').disabled === false);
+  t2.$('#raOk').click(); await wait(150);
+  check('paksa=true & alasan terkirim', l2.length === 1 && l2[0].p_force === true && l2[0].p_note === 'ditunda', JSON.stringify(l2));
+  t2.w.close();
+
+  const pend = ST(); pend.rows[1].pending = 1;
+  const l3 = [], t3 = await boot({ from: PROFILE('admin', true), rpc: rpcOf(pend, l3) });
+  t3.ev('openRounds()'); await wait(120); t3.ev("rdAct('open',3)"); await wait(80);
+  check('pemenang menunggu konfirmasi → tidak ada dialog & tidak ada panggilan', !(t3.$('#roundAskModal') && t3.$('#roundAskModal').classList.contains('show')) && l3.length === 0);
+  t3.w.close();
+
+  const v = await boot({ from: PROFILE('viewer', true), rpc: rpcOf(ST(), []) });
+  v.ev('openRounds()'); await wait(120);
+  check('viewer: hanya melihat daftar, tanpa tombol kelola', !!v.$('#roundModal') && /Putaran 2/.test(v.$('#roundModal').textContent) && !v.$('#roundModal').querySelector('.rd-top button') && !v.$('#roundModal').querySelector('.rd-acts button'));
+  v.w.close();
+
+  const jeda = { period: null, round: null, rounds: [], cycle: 1, eligible: [], unpaid: 0, winner: null, pending: null, absent: [], attempts: 0, history: [] };
+  const tj = await boot({ from: PROFILE('admin', true), rpc: fn => ({ data: fn === 'draw_state' ? jeda : fn === 'dashboard' ? { ...DASH, period: null, round: null } : null, error: null }) });
+  await wait(120);
+  check('arisan jeda: kartu pengocokan menulis "Belum ada putaran aktif" + tombol Kelola putaran', /Belum ada putaran aktif/.test(tj.$('#dashboard').textContent) && /Kelola putaran/.test(tj.$('#dashboard').textContent), tj.$('#dashboard').textContent.slice(0, 200));
+  tj.w.close();
+
+  const old = await boot({ from: PROFILE('admin', true), rpc: fn => ({ data: fn === 'round_state' ? null : fn === 'dashboard' ? DASH : null, error: fn === 'round_state' ? { message: 'function not found', code: '42883' } : null }) });
+  await wait(100);
+  check('SQL belum di-patch (round_state hilang): dashboard tetap jalan tanpa galat', old.errs.length === 0 && old.ev('page') === 'dashboard', old.errs.join('|'));
+  old.w.close();
+}
+
+console.log('\n═══ 12. Iuran per putaran & per bulan (v3.16) ═══');
+{
+  const TYPES = [{ id: 1, code: 'arisan', name: 'Iuran Arisan', amount: 350000, fund: 'arisan', schedule: 'putaran', required_for_draw: true, active: true, start_period: '2026-01', sort: 1 },
+                 { id: 2, code: 'wajib', name: 'Iuran Wajib', amount: 50000, fund: 'kas', schedule: 'bulanan', required_for_draw: false, active: true, start_period: '2026-01', sort: 2 }];
+  const RND = [{ period: 'P002', seq: 2, title: null, status: 'aktif', held_on: '2026-10-20' }, { period: 'P001', seq: 1, title: 'Lebaran', status: 'selesai', held_on: '2026-04-02' }];
+  const gp = (over = {}) => ({ period: 'P002', month: '2026-10', round: { ...RND[0], requester: 'Rina' }, rounds: RND, iuran: 350000, types: TYPES,
+    rows: [{ member_id: 1, name: 'Budi', relation: 'Anak', phone: '0811', paid: { 1: { pid: 5, amount: 350000, paid_at: '2026-10-01T00:00:00Z', receipt_no: 'KW-1', method: 'Tunai' } }, can_draw: true },
+           { member_id: 2, name: 'Siti', relation: 'Anak', phone: '0812', paid: {}, can_draw: false }], ...over });
+  const ARR = [{ member_id: 2, name: 'Siti', phone: '0812', type_id: 1, type_name: 'Iuran Arisan', amount: 350000, schedule: 'putaran', periods: ['P001'], n: 1, total: 350000 }];
+  const rpc = (over = {}) => (fn) => ({ data: fn === 'fee_config' ? { period: 'P002', round: RND[0], rounds: RND, month: '2026-10', ref_month: '2026-10', types: TYPES, meta: { org: 'Arisan', treasurer: '', chair: '' } }
+    : fn === 'get_payments' ? gp(over) : fn === 'iuran_arrears' ? ARR : fn === 'dashboard' ? { members: 2, paid: 1, saldo: 0, masuk: 0, keluar: 0, cashflow: [], activity: [], recent: [], period: 'P002', month: '2026-10', next: null, funds: { arisan: 0, kas: 0 }, types: [] } : null, error: null });
+  const t = await boot({ from: PROFILE('admin', true), rpc: rpc() });
+  t.ev("showPage(\'arisan\')"); await wait(250);
+  const box = t.$('#arisan');
+  check('tab Iuran: judul memuat putaran aktif dan bulan acuan', /Putaran 2/.test(box.textContent) && /Oktober 2026/.test(box.textContent), box.textContent.slice(0, 200));
+  const sel = box.querySelector('select[aria-label="Putaran"]');
+  check('ada pemilih putaran (bukan hanya pemilih bulan) dengan penanda (aktif)', !!sel && /\(aktif\)/.test(sel.textContent) && sel.options.length === 2);
+  check('ada pemilih bulan untuk iuran bulanan', !!box.querySelector('input[type=month]'));
+  check('anggota belum bayar punya tombol Catat; yang sudah, tidak', box.querySelectorAll('.btn-s.pay').length >= 1);
+  t.ev("finPerR('P001')"); await wait(150);
+  check('memilih putaran lain memuat ulang tanpa galat', t.errs.length === 0, t.errs.join('|'));
+  t.w.close();
+
+  const jeda = await boot({ from: PROFILE('admin', true), rpc: rpc({ period: null, round: null, rows: gp().rows.map(r => ({ ...r, paid: {} })) }) });
+  jeda.ev("showPage(\'arisan\')"); await wait(250);
+  const jb = jeda.$('#arisan');
+  check('arisan jeda: tampil peringatan & kolom Iuran Arisan tanpa tombol Catat', /Arisan sedang jeda/.test(jb.textContent) && !jb.querySelector('.btn-s.pay[onclick*=",1)"]'), jb.textContent.slice(0, 200));
+  jeda.w.close();
+
+  const plan = await boot({ from: PROFILE('admin', true), rpc: rpc({ round: { ...RND[0], status: 'rencana' } }) });
+  plan.ev("showPage(\'arisan\')"); await wait(250);
+  check('putaran masih rencana: ada catatan & Iuran Arisan tidak bisa dicatat', /masih rencana/.test(plan.$('#arisan').textContent) && !plan.$('#arisan').querySelector('.btn-s.pay[onclick*=",1)"]'));
+  plan.w.close();
 }
 
 process.exit(summary() ? 0 : 1);
