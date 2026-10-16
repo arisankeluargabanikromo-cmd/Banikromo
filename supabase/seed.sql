@@ -9,17 +9,22 @@ update members set marital_status='belum_menikah' where name in ('Andi Pratama',
 -- hubungan keluarga (generasi dihitung otomatis oleh database)
 update members c set parent_id=(select id from members p where p.name=v.par) from (values ('Budi Santoso','H. Santoso'),('Rina Novitasari','H. Santoso'),('Andi Pratama','Budi Santoso'),('Maya Sari','Budi Santoso'),('Dimas Santoso','Rina Novitasari'),('Nadia Santoso','Rina Novitasari')) v(child,par) where c.name=v.child;
 update members c set spouse_id=(select id from members p where p.name=v.sp) from (values ('Hj. Aminah','H. Santoso'),('Sri Wahyuni','Budi Santoso'),('Agus Wibowo','Rina Novitasari')) v(child,sp) where c.name=v.child;
+-- v3.16: arisan berjalan per PUTARAN (tidak harus sebulan sekali): satu putaran selesai, satu putaran sedang berjalan
+insert into arisan_rounds(seq,period,title,status,held_on,place,opened_at,opened_by,closed_at,closed_by,created_by) values
+ (1,'P001','Arisan perdana','selesai',current_date-30,'Rumah Pak Budi',now()-interval '35 days','Contoh',now()-interval '29 days','Contoh','Contoh');
+insert into arisan_rounds(seq,period,title,status,held_on,place,requested_by,note,opened_at,opened_by,created_by)
+ select 2,'P002','Arisan Keluarga Besar',  'aktif',current_date+6,'Rumah Bu Rina',(select id from members where name='Rina Novitasari'),'Dijadwalkan atas permintaan anggota',now()-interval '5 days','Contoh','Contoh';
 with p as (insert into payments(member_id,period,amount,paid_at) select id,public.cur_period(),350000,now()-random()*interval '5 days' from members where name<>'Dimas Santoso' returning id,member_id)
-insert into transactions(date,description,type,amount,payment_id) select current_date,'Iuran '||public.cur_period()||' - '||m.name,'masuk',350000,p.id from p join members m on m.id=p.member_id;
+insert into transactions(date,description,type,amount,payment_id) select current_date,'Iuran Arisan '||public.period_label(public.cur_period())||' - '||m.name,'masuk',350000,p.id from p join members m on m.id=p.member_id;
 insert into transactions(date,description,type,amount) values (current_date-120,'Saldo kas awal','masuk',6000000),(current_date-40,'Konsumsi arisan','keluar',1500000),(current_date-20,'Iuran bulan lalu (rekap)','masuk',2100000),(current_date-12,'Dekorasi & konsumsi','keluar',2050000),(current_date-4,'Sewa tempat acara','keluar',1200000);
 insert into events(date,time,title,location) values (current_date+6,'16:00','Arisan Keluarga Besar Santoso','Rumah Bu Rina'),(current_date+18,'18:00','Ulang Tahun Pak Budi','Surabaya');
 insert into announcements(title,body,author) values ('Arisan akan dilaksanakan pekan depan','Mohon hadir tepat waktu pukul 16:00 WIB.','Admin'),('Rekap iuran bulan lalu telah ditutup','','Admin');
 insert into albums(emoji,title) values ('📸','Arisan Bulan Lalu'),('🎉','Lebaran Keluarga'),('👨‍👩‍👧‍👦','Family Gathering'),('🌿','Liburan Keluarga');
-insert into draws(cycle,period,at,participants,winner_id,winner_name,proof) select 1,to_char(now() at time zone 'Asia/Jakarta' - interval '1 month','YYYY-MM'),now()-interval '30 days','[1,2,3,4,5,6,7]',id,name,'seed' from members where name='Rina Novitasari';
+insert into draws(cycle,period,at,participants,winner_id,winner_name,proof) select 1,'P001',now()-interval '30 days','[1,2,3,4,5,6,7]',id,name,'seed' from members where name='Rina Novitasari';
 
 -- v2.6: contoh Iuran Wajib bulan berjalan (sebagian anggota). Dana/kategori transaksi diisi otomatis oleh trigger.
 with ins as (
   insert into payments(member_id,period,amount,fee_type_id,method)
-  select id,public.cur_period(),(select amount from fee_types where id=2),2,case when id%2=0 then 'Transfer' else 'Tunai' end from members where active=1 and id%3<>0 returning id,member_id,amount)
+  select id,public.calendar_period(),(select amount from fee_types where id=2),2,case when id%2=0 then 'Transfer' else 'Tunai' end from members where active=1 and id%3<>0 returning id,member_id,amount)
 insert into transactions(date,description,type,amount,payment_id)
-  select (now() at time zone 'Asia/Jakarta')::date,'Iuran Wajib '||public.cur_period()||' - '||m.name,'masuk',ins.amount,ins.id from ins join members m on m.id=ins.member_id;
+  select (now() at time zone 'Asia/Jakarta')::date,'Iuran Wajib '||public.calendar_period()||' - '||m.name,'masuk',ins.amount,ins.id from ins join members m on m.id=ins.member_id;
