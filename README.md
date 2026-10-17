@@ -307,6 +307,55 @@ Setiap menu kini punya alamat sendiri, sehingga tombol **Back/Forward** browser,
 - **File baru**: `public/router.js`. **Diubah**: `vercel.json` (rewrite ke `index.html`), `index.html` (memuat router.js), `topbar.css` (bilah progres), `package.json` (`npm run dev` memakai `serve -s`), serta `public/_redirects` (cadangan untuk Netlify).
 - **Upgrade dari v3.6**: cukup timpa file lalu deploy ulang. Tidak ada perubahan database.
 
+## Tampilan seragam di semua menu (v3.18.0)
+Tanpa perubahan database; cukup deploy ulang frontend. Acuan desain: menu **Keuangan Keluarga**. Berkas baru: `public/ui.js` (kit komponen) dan `public/ui.css` (penyeragaman; dimuat paling akhir).
+
+| Menu | Sebelumnya | Sekarang |
+|---|---|---|
+| **Semua** | Tiap halaman bergaya sendiri (kartu `.stat` bergelombang, tabel/tombol/label berbeda, ikon glyph teks). | Kerangka sama: judul → **kartu ringkasan (KPI)** → kartu isi dengan **kepala + keterangan**, bar filter (segmen berpenghitung + pencarian), tabel/daftar seragam, **catatan jumlah** di bawah, dan **keadaan kosong** yang jelas. Warna status konsisten (hijau = baik, kuning = perhatian, merah = bermasalah, abu = netral). |
+| Dashboard | Grafik garis tanpa sumbu; ikon emoji; "Arisan berikutnya" tampil 3 kali. | Grafik batang berskala + total masuk/keluar/selisih, aktivitas berikon, status iuran (Arisan & Wajib), anggota terbaru berinisial. |
+| Anggota | Toolbar meluber (tombol terpotong), tanpa ringkasan. | 4 KPI (total, aktif arisan, generasi, data perlu dilengkapi), filter di dalam kartu, tabel rapi dengan pill status & penghitung hasil. |
+| Agenda | Tabel polos. | 3 KPI, segmen *Semua / Mendatang / Selesai*, pencarian, lencana tanggal, status berpill + "8 hari lagi". |
+| Pengumuman | Daftar polos. | 3 KPI, pencarian, kartu dengan penulis, tanggal, dan penanda **Baru** (≤7 hari). |
+| Dokumentasi | Ubin kecil berisi emoji. | KPI album/foto, kartu album besar (sampul foto atau emoji), jumlah foto, tampilan dalam album berjejak "Semua album". |
+| Laporan | Kontrol tanpa judul, tombol berglyph. | Kartu "Pengaturan laporan" + ikon, label "Pratinjau laporan". |
+| Akun & Pengaturan | Tab berglyph teks. | Tab sama dengan Keuangan (ikon garis SVG), kartu bernada sama. |
+
+Kit komponen (`UI.kpi`, `UI.pill`, `UI.who`, `UI.empty`, `UI.head`, `UI.seg`, `UI.searchBox`, `UI.barChart`, `UI.ic`) dipakai ulang oleh halaman baru agar konsisten.
+
+## Form "Ubah/Tambah Anggota" bergaya Profil Keluarga (v3.17.0)
+Tanpa perubahan database (tanpa patch SQL); cukup deploy ulang frontend. Berkas baru: `public/memberform.js`, `public/memberform.css`.
+
+- **Tampilan sama dengan Profil Keluarga**: sampul berwarna menurut jenis kelamin, foto besar (tombol 📷 untuk ganti foto), nama & inisial **ikut berubah saat mengetik**, tab *Data diri · Keluarga · Kontak & alamat*, serta panel **Ringkasan** langsung. Mengubah dari profil kini *menggantikan isi kotak yang sama* (tanpa tutup-buka).
+- **Kolom dikelompokkan per tugas** (Identitas, Tahun, Keanggotaan arisan / Pernikahan, Keluarga asal / Kontak, Alamat) dengan label singkat + teks bantuan, menggantikan satu daftar panjang berlabel panjang.
+- **Indikator kelengkapan data** (nama, jenis kelamin, tahun lahir, status pernikahan, HP, alamat) beserta daftar yang belum diisi.
+- **Bilah simpan melekat di bawah**: *Simpan* tetap terlihat saat menggulir; tombol berubah "Menyimpan…" (mencegah klik ganda); penanda "● Perubahan belum disimpan".
+- **Pengaman**: menutup (×, Esc, Batal) saat ada perubahan meminta konfirmasi; kolom wajib yang kosong di tab lain otomatis memindahkan tab & menandai kolom; Hapus anggota memakai konfirmasi bernama.
+- **HP**: isian lebih dulu, ringkasan sesudahnya; ukuran huruf 16px agar iOS tidak memperbesar layar.
+- Aturan simpan & validasi **tidak berubah** (`saveMember` dipakai ulang); dialog generik `openForm` untuk Agenda/Pengumuman/Album tidak berubah.
+
+## Menu lebih rapi & mudah dipahami (v3.16.3)
+Tidak ada perubahan database (tanpa patch SQL baru); cukup deploy ulang frontend.
+
+| Sebelumnya | Sekarang |
+|---|---|
+| Dua kelompok yang membingungkan ("Menu utama" / "Informasi"); *Akun* dan *Pengaturan* tercampur di "Informasi". | **Lima blok berdasarkan tugas**: Dashboard · **Arisan & Keuangan** (Arisan, Keuangan, Laporan) · **Keluarga** (Anggota, Silsilah) · **Kegiatan** (Agenda, Pengumuman, Dokumentasi) · **Akun & Sistem** (Akun, Pengaturan — khusus admin). |
+| Ikon berupa simbol teks yang tidak seragam (ikon notifikasi sama dengan ikon Silsilah; Akun memakai ikon roda gigi seperti Pengaturan). | Ikon garis SVG seragam, tiap menu punya ikon berbeda & jelas; ikon notifikasi dan tema ikut diganti. |
+| Menu aktif hanya beda warna. | Penanda aktif berupa garis aksen + `aria-current` (pembaca layar); fokus keyboard terlihat. |
+| Arahkan kursor hanya menampilkan nama menu. | Tooltip menjelaskan fungsi, mis. *Arisan — Kocok pemenang & catat iuran per putaran*. |
+| HP: judul kelompok hilang, semua ikon menyatu. | HP: pemisah tipis antar kelompok. |
+
+## Iuran Wajib tidak terbawa ke putaran baru (patch 021)
+Perbaikan di `supabase/patch-021-bulan-acuan-putaran.sql` (jalankan sekali di SQL Editor, aman diulang, lalu deploy ulang frontend). Berkas `schema.sql` dan `migrations/` sudah dibangun ulang.
+
+| # | Masalah | Perbaikan |
+|---|---|---|
+| 1 | Iuran Wajib bersifat bulanan, tetapi bulannya dihitung dari putaran yang sedang dilihat. Putaran baru **tanpa tanggal** jatuh ke bulan kalender / bulan dibuka, sehingga bulannya sama dengan putaran sebelumnya: pembayaran Iuran Wajib putaran lama langsung tampil **Lunas** di putaran baru dan ikut dihitung lolos syarat kocok. | Bulan acuan kini **disimpan per putaran** (`arisan_rounds.ref_month`). Putaran baru / tanpa tanggal otomatis mendapat bulan **sesudah** putaran sebelumnya (putaran batal tidak dihitung, tidak pernah mundur dari bulan kalender). Putaran bertanggal memakai bulan tanggalnya. |
+| 2 | Putaran bertanggal di bulan yang sama dengan putaran lain tetap berbagi Iuran Wajib bulan itu (memang eksplisit), tetapi tidak terlihat. | Tab Iuran menampilkan peringatan *"Iuran Wajib … juga dipakai oleh Putaran X"*, daftar putaran menampilkan bulan Iuran Wajib tiap putaran, dan formulir putaran menjelaskan efek tanggal. |
+| 3 | Pemilih bulan di tab Iuran bisa menampilkan/mencatat bulan yang tidak sejalan dengan putaran. | Pemilih bulan dihapus; periode tampil tetap di bawah judul kolom (mis. *Periode: Oktober 2026*). |
+
+Data yang sudah ada **tidak bergeser**: putaran yang sudah berjalan dibekukan pada bulan yang berlaku sebelum patch; hanya putaran berstatus *rencana* yang dihitung ulang. Bila sebuah putaran aktif sudah terlanjur berbagi bulan dengan putaran sebelumnya, isi/ubah *tanggal pelaksanaan*-nya (Kelola putaran → Ubah) ke bulan yang tepat.
+
 ## Input iuran saat periode berganti (v3.16.2)
 Perbaikan di `supabase/patch-020-periode-iuran.sql` (jalankan sekali, aman diulang) dan frontend:
 
