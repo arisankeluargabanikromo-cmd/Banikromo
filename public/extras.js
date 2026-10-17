@@ -16,15 +16,21 @@ async function resize(file, max = 1600) {           // perkecil di browser agar 
 R.galeri = async () => {
   const [al, ph] = await Promise.all([api('albums'), api('photos')]); CACHE.al = al;
   const cover = {}, cnt = {}; ph.forEach(p => { cnt[p.album_id] = (cnt[p.album_id] || 0) + 1; if (!cover[p.album_id]) cover[p.album_id] = p.path; });
-  const u = await signed(Object.values(cover));
-  $('#galeri').innerHTML = hero('Dokumentasi Keluarga', 'Kenangan keluarga tersimpan rapi dalam album.') + `${adm('<div class="toolbar"><button class="primary" onclick="addAlbum()">＋ Album</button></div>')}<div class="grid4">${al.map(a => { const c = u[cover[a.id]]; return `<div class="card album" style="cursor:pointer;${c ? `background:linear-gradient(#0000 40%,#000b),url('${c}') center/cover;color:#fff` : ''}" onclick="openAlbum(${a.id})"><div>${c ? '' : esc(a.emoji)}<small>${esc(a.title)} · ${cnt[a.id] || 0} foto</small></div>${adm(`<button class="btn-s x" onclick="event.stopPropagation();edit(AL,'al',${a.id})">Ubah</button>`)}</div>`; }).join('')}</div>`;
+  const u = await signed(Object.values(cover)), filled = al.filter(a => cnt[a.id]).length;
+  $('#galeri').innerHTML = hero('Dokumentasi Keluarga', 'Kenangan keluarga tersimpan rapi dalam album.') + `
+  <div class="fin-kpis">
+   ${UI.kpi('k-arisan', 'Album', 'folder', `${al.length} <small>album</small>`, `${filled} berisi foto • ${al.length - filled} masih kosong`)}
+   ${UI.kpi('k-kas', 'Total foto', 'image', `${ph.length} <small>foto</small>`, ph.length ? 'Tersimpan aman di penyimpanan keluarga' : 'Belum ada foto diunggah')}
+  </div>
+  <div class="card">${UI.head('Album keluarga', 'Klik album untuk melihat foto', adm(`<button class="primary" onclick="addAlbum()">${UI.ic('plus', 16)} Album</button>`))}
+   <div class="alb-grid">${al.map(a => { const c = u[cover[a.id]]; return `<div class="alb" style="--c:hsl(${UI.hue(a.title)} 70% 55%)" role="button" tabindex="0" onclick="openAlbum(${a.id})" onkeydown="if(event.key==='Enter')openAlbum(${a.id})"><div class="alb-cv"${c ? ` style="background-image:url('${c}')"` : ''}>${c ? '' : esc(a.emoji)}</div><div class="alb-bd"><div><b>${esc(a.title)}</b><small>${cnt[a.id] || 0} foto</small></div></div>${adm(`<button class="btn-s alb-ed" onclick="event.stopPropagation();edit(AL,'al',${a.id})" aria-label="Ubah album">${UI.ic('edit', 13)} Ubah</button>`)}</div>`; }).join('') || UI.empty('image', 'Belum ada album', 'Buat album pertama untuk mulai menyimpan foto kegiatan keluarga.')}</div></div>`;
 };
 const openAlbum = guard(async id => {
   const a = CACHE.al.find(x => x.id === id), { data, error } = await sb.from('photos').select('*').eq('album_id', id).order('id', { ascending: false });
   if (error) return toast(error.message);
   window._ph = data; window._phu = await signed(data.map(p => p.path));
-  $('#galeri').innerHTML = hero(esc(a.emoji + ' ' + a.title), data.length + ' foto') + `<div class="toolbar"><button class="primary" onclick="R.galeri()">← Semua album</button>${adm(`<label class="primary">＋ Unggah foto<input type="file" accept="image/*" multiple hidden onchange="uploadPhotos(${id},this.files)"></label>`)}</div>` +
-    (data.length ? `<div class="pgrid">${data.map((p, i) => `<div class="pthumb" onclick="lightbox(${i})"><img loading="lazy" alt="" src="${window._phu[p.path] || ''}"></div>`).join('')}</div>` : '<div class="card" style="padding:30px;text-align:center">Belum ada foto di album ini.</div>');
+  $('#galeri').innerHTML = hero(esc(a.emoji + ' ' + a.title), data.length + ' foto') + `<div class="ui-crumb"><button class="ghost" onclick="R.galeri()">${UI.ic('back', 16)} Semua album</button>${adm(`<label class="primary" style="display:inline-flex;align-items:center;gap:7px;padding:10px 16px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer">${UI.ic('upload', 16)} Unggah foto<input type="file" accept="image/*" multiple hidden onchange="uploadPhotos(${id},this.files)"></label>`)}</div>` +
+    (data.length ? `<div class="pgrid">${data.map((p, i) => `<div class="pthumb" onclick="lightbox(${i})"><img loading="lazy" alt="" src="${window._phu[p.path] || ''}"></div>`).join('')}</div>` : `<div class="card">${UI.empty('camera', 'Belum ada foto di album ini', 'Unggah foto untuk mengisi album.')}</div>`);
 });
 const uploadPhotos = guard(async (id, files) => {
   let ok = 0, n = files.length;
@@ -129,7 +135,7 @@ const syncTheme = () => { const m = document.querySelector('meta[name=theme-colo
 const _tt = toggleTheme; toggleTheme = () => { _tt(); syncTheme(); }; syncTheme();
 const _boot = boot; boot = () => {
   $('#navUsersTx').textContent = isA() ? 'Akun & Pengguna' : 'Akun Saya';       // semua peran punya halaman akun
-  document.querySelectorAll('.nav button').forEach(b => { b.title = b.querySelector('span:last-child').textContent; });
+  document.querySelectorAll('.nav button').forEach(b => { const l = b.querySelector('span:last-child').textContent; b.title = b.dataset.hint ? l + ' — ' + b.dataset.hint : l; });
   _boot();
   const sc = document.querySelector('.side-scroll'), fade = () => sc.classList.toggle('more', sc.scrollTop + sc.clientHeight < sc.scrollHeight - 4);
   sc.addEventListener('scroll', fade); addEventListener('resize', fade); setTimeout(fade, 50);

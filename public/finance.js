@@ -4,9 +4,8 @@
 // ============================================================
 (() => {
 const FUND = { arisan: 'Dana Arisan', kas: 'Kas Wajib' }, FUNDC = { arisan: '#6957ff', kas: '#17b9a0' };
-const FIN = { tab: 'ringkasan', per: null, mon: null, flt: 'all', q: '', lg: { fund: '', from: null, to: null, q: '' }, cur: false, pay: null, arr: null };
+const FIN = { tab: 'ringkasan', per: null, flt: 'all', q: '', lg: { fund: '', from: null, to: null, q: '' }, cur: false, pay: null, arr: null };
 const pad = n => String(n).padStart(2, '0'), num = n => Number(n || 0).toLocaleString('id-ID');
-const addM = (p, n) => { const [y, m] = p.split('-').map(Number), d = new Date(y, m - 1 + n, 1); return d.getFullYear() + '-' + pad(d.getMonth() + 1); };
 const lastDay = p => { const [y, m] = p.split('-').map(Number); return p + '-' + pad(new Date(y, m, 0).getDate()); };
 const monS = p => isMonthKey(p) ? MONTH(p).slice(0, 3) + ' ' + p.slice(2, 4) : PER(p);
 const arrLbl = (a, p) => a.schedule === 'putaran' ? PER(p) : monS(p);                                    // label tunggakan menurut jadwal iuran
@@ -14,6 +13,36 @@ const keyOf = t => t.schedule === 'putaran' ? FIN.pay.period : FIN.pay.month;   
 const canPay = t => t.schedule !== 'putaran' || (!!FIN.pay.round && ['aktif', 'selesai'].includes(FIN.pay.round.status));
 const perTxt = d => { const T = d.types, p = []; if (T.some(t => t.schedule === 'putaran') && d.round) p.push(PER(d.period) + (d.round.held_on ? ' (' + fd(d.round.held_on, { day: 'numeric', month: 'long' }) + ')' : '')); if (T.some(t => t.schedule !== 'putaran')) p.push(MONTH(d.month)); return p.join(' & ') || 'arisan'; };
 const todayStr = () => new Date().toISOString().slice(0, 10);
+
+// ---------------- Komponen tampilan: ikon SVG, pill status, kartu ringkasan ----------------
+const IC = {
+  wallet: '<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18v3.5"/><path d="M3 7.5V18a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-9.5a1 1 0 0 0-1-1H5.5A2.5 2.5 0 0 1 3 7.5z"/><circle cx="16.5" cy="14.5" r="1.1" fill="currentColor"/>',
+  target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/>',
+  bank: '<path d="M3 10l9-6 9 6"/><path d="M5.5 10v8M9.8 10v8M14.2 10v8M18.5 10v8"/><path d="M3 20.5h18"/>',
+  alert: '<path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.2" r=".7" fill="currentColor"/>',
+  grid: '<rect x="3" y="3" width="7.5" height="9" rx="1.8"/><rect x="13.5" y="3" width="7.5" height="5.5" rx="1.8"/><rect x="13.5" y="12" width="7.5" height="9" rx="1.8"/><rect x="3" y="15.5" width="7.5" height="5.5" rx="1.8"/>',
+  receipt: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9.5 8h5M9.5 12h5"/>',
+  book: '<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/>',
+  bell: '<path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+  down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
+  next: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  users: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17.5" cy="9" r="2.4"/><path d="M17 14.6c2.4.2 4 1.8 4 4.4"/>',
+  file: '<path d="M7 3h8l4 4v14H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>'
+};
+const ic = (n, s = 18) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+const ini = s => String(s || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+const hue = s => { let h = 0; for (const c of String(s || '')) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+const who = (name, sub) => `<div class="fin-who"><span class="fav" style="--h:${hue(name)}" aria-hidden="true">${esc(ini(name))}</span><div><b>${esc(name)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</div></div>`;
+const pill = (tone, html, title = '') => `<span class="pill ${tone}"${title ? ` title="${esc(title)}"` : ''}>${html}</span>`;
+const money = n => `<span class="cur">Rp</span>${n < 0 ? `<span class="neg">${num(n)}</span>` : num(n)}`;                                               // "Rp" kecil + angka besar: lebih mudah dibaca
+const cmp = n => { const a = Math.abs(n); return a >= 1e6 ? (n / 1e6).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' jt' : a >= 1e3 ? (n / 1e3).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' rb' : String(Math.round(n)); };
+const niceMax = v => { const p = Math.pow(10, Math.floor(Math.log10(Math.max(v, 1)))), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 4 ? 4 : n <= 8 ? 8 : 10) * p; };   // batas sumbu yang habis dibagi 4
+const OUTC = '#f0996b';
+const kpi = (cls, label, icon, val, sub = '', extra = '', color = '') => `<div class="card kpi ${cls}"${color ? ` style="--k:${color}"` : ''}><div class="kpi-top"><span class="kpi-label">${label}</span><span class="kpi-ic">${ic(icon, 20)}</span></div><div class="kpi-val">${val}</div>${sub ? `<div class="kpi-sub">${sub}</div>` : ''}${extra}</div>`;
 
 // ---------------- Modal ----------------
 function finModal(html, cls = '') {
@@ -157,30 +186,36 @@ function waArr(mid) {
 // ---------------- Blok daftar iuran (dipakai halaman Keuangan & Arisan) ----------------
 async function loadPay() {
   const cfg = await getCfg();
-  if (FIN.per && !(cfg.rounds || []).some(r => r.period === FIN.per && r.status !== 'batal')) FIN.per = FIN.mon = null;   // putaran pilihan sudah tidak ada/dibatalkan: ikuti putaran aktif
+  if (FIN.per && !(cfg.rounds || []).some(r => r.period === FIN.per && r.status !== 'batal')) FIN.per = null;   // putaran pilihan sudah tidak ada/dibatalkan: ikuti putaran aktif
   // bulan kosong = server memakai bulan acuan putaran yang tampil
-  const [d, ar] = await Promise.all([api('payments', 'GET', { period: FIN.per || cfg.period || null, month: FIN.mon || null }), api('fin/arrears', 'GET', { cur: false })]); FIN.pay = window._pay = d; FIN.arr = ar; return d; }
+  const [d, ar] = await Promise.all([api('payments', 'GET', { period: FIN.per || cfg.period || null, month: null }), api('fin/arrears', 'GET', { cur: false })]); FIN.pay = window._pay = d; FIN.arr = ar; return d; }
 function iuranBlock(d) { return `<div id="iuranWrap">${iuranInner(d)}</div>`; }
 function iuranInner(d) {
   const T = d.types, showDraw = T.some(t => t.required_for_draw), arr = {}; FIN.arr.forEach(a => { (arr[a.member_id] = arr[a.member_id] || []).push(a); });
+  const nAll = d.rows.length, nBelum = d.rows.filter(r => T.some(t => !r.paid[t.id])).length, cnt = { all: nAll, belum: nBelum, lunas: nAll - nBelum };
   const rows = d.rows.filter(r => (FIN.flt === 'all' || (FIN.flt === 'belum' ? T.some(t => !r.paid[t.id]) : T.every(t => r.paid[t.id]))) && (!FIN.q || r.name.toLowerCase().includes(FIN.q.toLowerCase())));
-  const st = T.map(t => { const p = d.rows.filter(r => r.paid[t.id]).length, real = d.rows.reduce((s, r) => s + (r.paid[t.id] ? r.paid[t.id].amount : 0), 0), tgt = d.rows.length * t.amount, pc = d.rows.length ? Math.round(p / d.rows.length * 100) : 0;
-    return `<div class="card stat fin-st"><span class="stat-label">${esc(t.name)} <i class="dot" style="background:${FUNDC[t.fund]}"></i></span><h2>${p}/${d.rows.length} <small>lunas</small></h2><div class="progress"><span style="width:${pc}%;background:${FUNDC[t.fund]}"></span></div><small>Rp ${num(real)} dari Rp ${num(tgt)} • ${pc}%</small></div>`; }).join('');
+  const st = T.map(t => { const p = d.rows.filter(r => r.paid[t.id]).length, real = d.rows.reduce((s, r) => s + (r.paid[t.id] ? r.paid[t.id].amount : 0), 0), tgt = nAll * t.amount, pc = nAll ? Math.round(p / nAll * 100) : 0;
+    return `<div class="card kpi" style="--k:${FUNDC[t.fund]}"><div class="kpi-top"><span class="kpi-label">${esc(t.name)}</span><span class="fd" style="--c:${FUNDC[t.fund]}">${FUND[t.fund]}</span></div><div class="kpi-val">${p}<small> dari ${nAll} anggota lunas</small></div><div class="progress" role="progressbar" aria-label="${esc(t.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc}"><span style="width:${pc}%;background:${FUNDC[t.fund]}"></span></div><div class="kpi-sub"><span>Rp ${num(real)} dari Rp ${num(tgt)}</span><b>${pc}%</b></div></div>`; }).join('');
   const lay = d.rows.filter(r => r.can_draw).length, hasR = T.some(t => t.schedule === 'putaran'), hasM = T.some(t => t.schedule !== 'putaran');
+  const drawCard = showDraw ? `<div class="card kpi" style="--k:#f6a623"><div class="kpi-top"><span class="kpi-label">Layak ikut kocok</span><span class="kpi-ic">${ic('target', 20)}</span></div><div class="kpi-val">${lay}<small> dari ${nAll} anggota</small></div><div class="kpi-sub">Syarat: ${T.filter(t => t.required_for_draw).map(t => esc(t.name)).join(' + ')} lunas</div></div>` : '';
   const rsel = hasR ? `<select class="select" aria-label="Putaran" onchange="finPerR(this.value)">${(d.rounds || []).filter(r => r.status !== 'batal').map(r => `<option value="${esc(r.period)}" ${r.period === d.period ? 'selected' : ''}>${esc('Putaran ' + r.seq + (r.title ? ' · ' + r.title : ''))}${r.status === 'aktif' ? ' (aktif)' : r.status === 'rencana' ? ' (rencana)' : ''}</option>`).join('') || '<option value="">Belum ada putaran</option>'}</select>` : '';
-  const msel = hasM ? `<div class="seg"><button onclick="finMon('${addM(d.month, -1)}')">‹</button><input type="month" value="${d.month}" onchange="finMon(this.value)"><button onclick="finMon('${addM(d.month, 1)}')">›</button></div>` : '';
   const ttl = [hasR ? (d.round ? PERX(d.period) : 'Belum ada putaran aktif') : '', hasM ? MONTH(d.month) : ''].filter(Boolean).join(' · ');
   const note = hasR && !d.round ? `<div class="per-warn" style="margin:0 20px 12px">⏸ Arisan sedang jeda — belum ada putaran. ${adm('<button onclick="openRounds()">Kelola putaran</button>')}</div>` : hasR && d.round.status === 'rencana' ? `<div class="per-warn" style="margin:0 20px 12px">Putaran ini masih <b>rencana</b>${d.round.held_on ? ' (' + esc(fd(d.round.held_on, { day: 'numeric', month: 'long', year: 'numeric' })) + ')' : ''}: iuran belum bisa dicatat. ${adm('<button onclick="openRounds()">Buka putaran</button>')}</div>` : '';
-  const cell = (r, t) => { const p = r.paid[t.id]; return p ? `<td><span class="status">✓ Lunas</span><div class="rc"><a class="lnk" onclick="finReceipt(${r.member_id},${t.id})" title="Lihat kuitansi">🧾 ${esc(p.receipt_no)}</a>${adm(`<a class="lnk d" onclick="finVoid(${p.pid})" title="Batalkan pembayaran">✕</a>`)}</div></td>`
-    : `<td>${!canPay(t) ? '<span class="muted" title="Putaran belum dibuka / belum ada putaran aktif">—</span>' : isA() ? `<button class="btn-s pay" onclick="finPay(${r.member_id},${t.id})">＋ Catat</button>` : '<span class="status pending">Belum</span>'}</td>`; };
-  return `<div class="grid4 fin-stats">${st}${showDraw ? `<div class="card stat fin-st"><span class="stat-label">Layak ikut kocok</span><h2>${lay}/${d.rows.length}</h2><small>${T.filter(t => t.required_for_draw).map(t => esc(t.name)).join(' + ')} lunas</small></div>` : ''}</div>
-  <div class="card"><div class="card-head"><div><h3>Iuran ${esc(ttl)}</h3><span>${T.map(t => `${esc(t.name)} Rp ${num(t.amount)}`).join(' • ')}</span></div><span class="fin-act">${adm('<button class="primary" onclick="waGroup()">💬 Ingatkan grup</button> <button class="ghost" onclick="finFee()">⚙ Atur iuran</button>')}</span></div>
-  ${note}<div class="fin-bar">${rsel}${msel}
-   <div class="seg">${[['all', 'Semua'], ['belum', 'Belum lunas'], ['lunas', 'Lunas']].map(([k, l]) => `<button class="${FIN.flt === k ? 'on' : ''}" onclick="finFlt('${k}')">${l}</button>`).join('')}</div>
-   <input class="search" placeholder="Cari nama anggota…" value="${esc(FIN.q)}" oninput="finQ(this.value)" id="finSearch"></div>
-  <div class="tscroll"><table class="table"><thead><tr><th>Anggota</th>${T.map(t => `<th>${esc(t.name)}<br><small class="muted">Rp ${num(t.amount)} → ${FUND[t.fund]}</small></th>`).join('')}${showDraw ? '<th>Syarat kocok</th>' : ''}<th>Tunggakan</th></tr></thead><tbody>
-  ${rows.map(r => { const a = arr[r.member_id]; return `<tr><td><b>${esc(r.name)}</b><br><small class="muted">${esc(r.relation || '')}</small></td>${T.map(t => cell(r, t)).join('')}${showDraw ? `<td>${r.can_draw ? '<span class="status">✓ Layak</span>' : '<span class="status pending">Belum</span>'}</td>` : ''}
-   <td>${a ? `<span class="status bad">⚠ ${a.reduce((s, x) => s + x.n, 0)} tagihan • Rp ${num(a.reduce((s, x) => s + x.total, 0))}</span>${adm(` <button class="btn-s" onclick="finSettle(${r.member_id})">Lunasi</button><button class="btn-s" onclick="finWa(${r.member_id})">💬</button>`)}` : '<span class="muted">—</span>'}</td></tr>`; }).join('') || `<tr><td colspan="${T.length + 3}" class="c muted" style="padding:24px">Tidak ada anggota yang cocok.</td></tr>`}</tbody></table></div></div>`;
+  const shared = hasM && hasR && d.round ? (d.rounds || []).filter(x => x.period !== d.period && x.status !== 'batal' && x.ref_month === d.month) : [];
+  const sharedNote = shared.length ? `<div class="per-warn" style="margin:0 20px 12px">Iuran Wajib <b>${esc(MONTH(d.month))}</b> juga dipakai oleh ${shared.map(x => esc(PER(x.period))).join(', ')}, jadi pembayaran bulan ini tampil di putaran-putaran tersebut. Agar periodenya terpisah, ubah tanggal pelaksanaan putaran ke bulan yang berbeda. ${adm('<button onclick="openRounds()">Kelola putaran</button>')}</div>` : '';
+  const cell = (r, t) => { const p = r.paid[t.id];
+    if (p) return `<td>${pill('ok', ic('check', 13) + 'Lunas')}<div class="rc"><a class="lnk" onclick="finReceipt(${r.member_id},${t.id})" title="Lihat kuitansi">${ic('receipt', 13)} ${esc(p.receipt_no)}</a>${adm(`<a class="lnk d" onclick="finVoid(${p.pid})" title="Batalkan pembayaran ini">Batalkan</a>`)}</div></td>`;
+    return `<td>${!canPay(t) ? '<span class="muted" title="Putaran belum dibuka / belum ada putaran aktif">—</span>' : isA() ? `<button class="btn-s pay" onclick="finPay(${r.member_id},${t.id})">${ic('plus', 13)} Catat</button>` : pill('warn', 'Belum lunas')}</td>`; };
+  const arrCell = r => { const a = arr[r.member_id]; if (!a) return '<span class="muted">—</span>';
+    return `<div class="arr-cell">${pill('bad', ic('alert', 13) + a.reduce((s, x) => s + x.n, 0) + ' tagihan · Rp ' + num(a.reduce((s, x) => s + x.total, 0)))}${adm(`<button class="btn-s" onclick="finSettle(${r.member_id})">Lunasi</button><button class="btn-s ico" onclick="finWa(${r.member_id})" title="Kirim pengingat lewat WhatsApp" aria-label="Kirim pengingat lewat WhatsApp">${ic('bell', 15)}</button>`)}</div>`; };
+  return `<div class="fin-kpis">${st}${drawCard}</div>
+  <div class="card"><div class="card-head"><div><h3>Iuran ${esc(ttl)}</h3><span>${T.map(t => `${esc(t.name)} Rp ${num(t.amount)}`).join(' • ')}</span></div><span class="fin-act">${adm(`<button class="primary" onclick="waGroup()">${ic('bell', 16)} Ingatkan grup</button> <button class="ghost" onclick="finFee()">${ic('gear', 16)} Atur iuran</button>`)}</span></div>
+  ${note}${sharedNote}<div class="fin-bar">${rsel}
+   <div class="seg" role="group" aria-label="Filter status">${[['all', 'Semua'], ['belum', 'Belum lunas'], ['lunas', 'Lunas']].map(([k, l]) => `<button class="${FIN.flt === k ? 'on' : ''}" aria-pressed="${FIN.flt === k}" onclick="finFlt('${k}')">${l}<em>${cnt[k]}</em></button>`).join('')}</div>
+   <input class="search" type="search" aria-label="Cari anggota" placeholder="Cari nama anggota…" value="${esc(FIN.q)}" oninput="finQ(this.value)" id="finSearch"></div>
+  <div class="tscroll"><table class="table fin-table stk"><thead><tr><th>Anggota</th>${T.map(t => `<th>${esc(t.name)}<small>Rp ${num(t.amount)} → <span class="fd" style="--c:${FUNDC[t.fund]}">${FUND[t.fund]}</span></small><small class="per">Periode: ${esc(t.schedule === 'putaran' ? (d.round ? PERX(d.period) : 'belum ada putaran') : MONTH(d.month))}</small></th>`).join('')}${showDraw ? '<th>Syarat kocok</th>' : ''}<th>Tunggakan</th></tr></thead><tbody>
+  ${rows.map(r => `<tr><td>${who(r.name, r.relation)}</td>${T.map(t => cell(r, t)).join('')}${showDraw ? `<td>${r.can_draw ? pill('ok', ic('check', 13) + 'Layak') : pill('warn', 'Belum layak')}</td>` : ''}<td>${arrCell(r)}</td></tr>`).join('') || `<tr><td colspan="${T.length + 3}"><div class="empty">${ic('users', 26)}<b>Tidak ada anggota yang cocok</b><span>Ubah kata pencarian atau filter status di atas.</span></div></td></tr>`}</tbody></table></div>
+  <div class="fin-foot">Menampilkan ${rows.length} dari ${nAll} anggota</div></div>`;
 }
 
 // ---------------- Halaman Arisan ----------------
@@ -190,25 +225,44 @@ R.arisan = async () => {
 };
 
 // ---------------- Halaman Keuangan ----------------
-const TABS = [['ringkasan', 'Ringkasan'], ['iuran', 'Iuran'], ['bukukas', 'Buku Kas'], ['tunggakan', 'Tunggakan']];
+const TABS = [['ringkasan', 'Ringkasan', 'grid'], ['iuran', 'Iuran', 'receipt'], ['bukukas', 'Buku Kas', 'book'], ['tunggakan', 'Tunggakan', 'alert']];
 R.keuangan = async () => {
   const body = await ({ ringkasan: tabRingkasan, iuran: tabIuran, bukukas: tabBuku, tunggakan: tabTunggakan }[FIN.tab] || tabRingkasan)();
-  $('#keuangan').innerHTML = hero('Keuangan Keluarga', 'Pembukuan terpisah Dana Arisan & Kas Wajib: iuran, tunggakan, pencairan, dan buku kas.') + `<div class="fin-tabs">${TABS.map(([k, l]) => `<button class="${FIN.tab === k ? 'on' : ''}" onclick="finTab('${k}')">${l}</button>`).join('')}</div>` + body;
+  $('#keuangan').innerHTML = hero('Keuangan Keluarga', 'Saldo, iuran, tunggakan, dan buku kas dalam satu tempat. Dana Arisan dan Kas Wajib dibukukan terpisah.')
+    + `<div class="fin-tabs" role="tablist" aria-label="Bagian keuangan">${TABS.map(([k, l, i]) => `<button role="tab" aria-selected="${FIN.tab === k}" class="${FIN.tab === k ? 'on' : ''}" onclick="finTab('${k}')">${ic(i, 16)}<span>${l}</span></button>`).join('')}</div>` + body;
 };
 const finTab = k => { FIN.tab = k; reload(); };
 
+function cashChart(mo) {
+  if (!mo.length) return `<div class="empty">${ic('book', 26)}<b>Belum ada transaksi</b><span>Grafik muncul setelah ada pemasukan atau pengeluaran.</span></div>`;
+  const W = 720, H = 220, ML = 58, MT = 12, MB = 28, PW = W - ML - 10, gw = PW / mo.length, bw = Math.min(30, gw * .3);
+  const mx = niceMax(Math.max(1, ...mo.map(m => Math.max(m.masuk_arisan + m.masuk_kas, m.keluar)))), y = v => MT + H - v / mx * H;
+  const grid = [0, 1, 2, 3, 4].map(i => { const v = mx / 4 * i, yy = y(v); return `<line x1="${ML}" x2="${W - 10}" y1="${yy}" y2="${yy}" stroke="currentColor" opacity="${i ? .1 : .28}"/><text x="${ML - 8}" y="${yy + 4}" text-anchor="end" font-size="11" fill="currentColor" opacity=".7">${cmp(v)}</text>`; }).join('');
+  const bars = mo.map((m, i) => { const cx = ML + gw * i + gw / 2, a = m.masuk_arisan / mx * H, k = m.masuk_kas / mx * H, o = m.keluar / mx * H, x1 = cx - bw - 2, x2 = cx + 2;
+    return `<g><title>${esc(MONTH(m.m))}: masuk Rp ${num(m.masuk_arisan + m.masuk_kas)} (arisan ${num(m.masuk_arisan)}, wajib ${num(m.masuk_kas)}), keluar Rp ${num(m.keluar)}</title>`
+      + (k > 0 ? `<rect x="${x1}" y="${MT + H - k}" width="${bw}" height="${k}" fill="${FUNDC.kas}" rx="3"/>` : '') + (a > 0 ? `<rect x="${x1}" y="${MT + H - k - a}" width="${bw}" height="${a}" fill="${FUNDC.arisan}" rx="3"/>` : '') + (o > 0 ? `<rect x="${x2}" y="${MT + H - o}" width="${bw}" height="${o}" fill="${OUTC}" rx="3"/>` : '')
+      + `<text x="${cx}" y="${MT + H + 19}" text-anchor="middle" font-size="12" fill="currentColor" opacity=".78">${esc(monS(m.m).split(' ')[0])}</text></g>`; }).join('');
+  return `<svg viewBox="0 0 ${W} ${MT + H + MB}" class="fin-chart" role="img" aria-label="Grafik arus kas ${mo.length} bulan terakhir: pemasukan dan pengeluaran tiap bulan">${grid}${bars}</svg>`;
+}
+
 async function tabRingkasan() {
   const d = await api('fin/dashboard'); FIN.pend = d.pending; const tot = d.funds.reduce((s, f) => s + f.saldo, 0), ar = d.funds.find(f => f.fund === 'arisan').saldo, kas = d.funds.find(f => f.fund === 'kas').saldo, pend = d.pending, pendAmt = pend.reduce((s, p) => s + p.amount, 0);
-  const cards = [['Total Saldo', tot, '◆', 'Dana Arisan + Kas Wajib'], ['Dana Arisan', ar, '◎', pendAmt ? `Rp ${num(pendAmt)} menunggu dicairkan` : 'Dana titipan • semua sudah dicairkan'], ['Kas Wajib', kas, '▣', `Bulan ini +${num(d.month.masuk)} / −${num(d.month.keluar)}`], ['Tunggakan', d.arrears.amount, '⚠', `${d.arrears.members} anggota menunggak`]];
-  const mo = d.monthly, mx = Math.max(1, ...mo.map(m => Math.max(m.masuk_arisan + m.masuk_kas, m.keluar))), W = 700, H = 210, bw = mo.length ? W / mo.length : W;
-  const chart = mo.length ? `<svg viewBox="0 0 ${W} ${H + 26}" class="fin-chart" role="img" aria-label="Arus kas 6 bulan">${mo.map((m, i) => { const x = i * bw + bw * .14, w = bw * .3, a = m.masuk_arisan / mx * H, k = m.masuk_kas / mx * H, o = m.keluar / mx * H;
-    return `<g><title>${MONTH(m.m)}: masuk ${num(m.masuk_arisan + m.masuk_kas)} (arisan ${num(m.masuk_arisan)}, wajib ${num(m.masuk_kas)}), keluar ${num(m.keluar)}</title><rect x="${x}" y="${H - a - k}" width="${w}" height="${a}" fill="${FUNDC.arisan}" rx="3"/><rect x="${x}" y="${H - k}" width="${w}" height="${k}" fill="${FUNDC.kas}" rx="3"/><rect x="${x + w + 5}" y="${H - o}" width="${w}" height="${o}" fill="#f0996b" rx="3"/><text x="${i * bw + bw / 2}" y="${H + 18}" text-anchor="middle" font-size="12" fill="currentColor" opacity=".7">${monS(m.m).split(' ')[0]}</text></g>`; }).join('')}</svg>` : '<p class="muted">Belum ada transaksi.</p>';
-  return `<div class="grid4">${cards.map(c => `<div class="card stat"><div class="stat-top"><span class="stat-label">${c[0]}</span><div class="stat-icon">${c[2]}</div></div><h2>${rp(c[1])}</h2><small>${c[3]}</small></div>`).join('')}</div>
-  ${pend.length ? `<div class="card fin-pend"><div class="card-head"><div><h3>Dana arisan menunggu dicairkan</h3><span>PEMENANG SUDAH DISAHKAN</span></div></div>${pend.map((p, i) => `<div class="pend-row"><div><b>${esc(p.winner)}</b><small>Arisan ${esc(PERX(p.period))} • terkumpul Rp ${num(p.collected)}${p.disbursed ? ` • sudah dicairkan Rp ${num(p.disbursed)}` : ''}</small></div><div class="pend-amt">Rp ${num(p.amount)}</div>${adm(`<button class="primary" onclick="finDisburse(${i})">Cairkan</button>`)}</div>`).join('')}</div>` : ''}
-  <div class="content2"><div class="card chart-card"><div class="card-head"><h3>Arus kas 6 bulan</h3><span>Rp</span></div><div style="padding:6px 20px 4px">${chart}</div><div class="legend"><span><i style="background:${FUNDC.arisan}"></i>Masuk Dana Arisan</span><span><i style="background:${FUNDC.kas}"></i>Masuk Kas Wajib</span><span><i style="background:#f0996b"></i>Keluar</span></div></div>
-  <div class="card"><div class="card-head"><h3>Iuran ${esc(d.round ? PER(d.period) : 'arisan')}</h3><span>${d.types[0] ? d.types[0].members + ' ANGGOTA' : ''}</span></div><div style="padding:0 20px 20px">${d.types.map(t => { const pc = t.members ? Math.round(t.paid / t.members * 100) : 0; return `<div class="fin-prog"><div class="split"><b>${esc(t.name)} <small class="muted">· ${esc(FP(t, t.key))}</small></b><span>${t.paid}/${t.members} • ${pc}%</span></div><div class="progress"><span style="width:${pc}%;background:${FUNDC[t.fund]}"></span></div><small class="muted">Rp ${num(t.realized)} dari Rp ${num(t.members * t.amount)} → ${FUND[t.fund]}${t.required ? ' • syarat kocok' : ''}</small></div>`; }).join('')}
-  <button class="primary" style="width:100%;margin-top:6px" onclick="finTab('iuran')">Catat pembayaran</button></div></div></div>
-  <div class="fin-links card"><div><b>Laporan keuangan</b><small>Posisi kas, rincian kategori, realisasi iuran, buku kas, kepatuhan & tunggakan — cetak PDF atau ekspor Excel.</small></div><button class="primary" onclick="showPage('laporan')">Buka laporan →</button></div>`;
+  const mo = d.monthly, sIn = mo.reduce((s, m) => s + m.masuk_arisan + m.masuk_kas, 0), sOut = mo.reduce((s, m) => s + m.keluar, 0), net = sIn - sOut, noArr = !d.arrears.amount;
+  const cards = [
+    kpi('k-total', 'Total saldo', 'wallet', money(tot), 'Dana Arisan + Kas Wajib'),
+    kpi('k-arisan', 'Dana Arisan', 'target', money(ar), pendAmt ? `<span class="tone-warn">Rp ${num(pendAmt)} menunggu dicairkan</span>` : 'Dana titipan · semua sudah dicairkan'),
+    kpi('k-kas', 'Kas Wajib', 'bank', money(kas), 'Pergerakan bulan ini', `<div class="kpi-flow"><span class="up">${ic('up', 13)} Masuk <b>Rp ${num(d.month.masuk)}</b></span><span class="down">${ic('down', 13)} Keluar <b>Rp ${num(d.month.keluar)}</b></span></div>`),
+    kpi(noArr ? 'k-ok' : 'k-warn', 'Tunggakan', noArr ? 'check' : 'alert', money(d.arrears.amount), noArr ? 'Tidak ada tunggakan' : `${d.arrears.members} anggota menunggak`)];
+  const prog = d.types.map(t => { const pc = t.members ? Math.round(t.paid / t.members * 100) : 0;
+    return `<div class="fin-prog"><div class="split"><b>${esc(t.name)} <small class="muted">· ${esc(FP(t, t.key))}</small></b><span class="pct">${pc}%</span></div><div class="progress" role="progressbar" aria-label="${esc(t.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc}"><span style="width:${pc}%;background:${FUNDC[t.fund]}"></span></div><div class="meta"><span>${t.paid} dari ${t.members} anggota lunas</span><span>Rp ${num(t.realized)} dari Rp ${num(t.members * t.amount)}</span></div><div class="tags"><span class="fd" style="--c:${FUNDC[t.fund]}">${FUND[t.fund]}</span>${t.required ? '<span class="cat">Syarat ikut kocok</span>' : ''}</div></div>`; }).join('');
+  return `<div class="fin-kpis">${cards.join('')}</div>
+  ${pend.length ? `<div class="card fin-pend"><div class="card-head"><div><h3>Dana arisan menunggu dicairkan</h3><span>Pemenang sudah disahkan · ${pend.length} putaran</span></div></div>${pend.map((p, i) => `<div class="pend-row">${who(p.winner, 'Arisan ' + PERX(p.period) + ' · terkumpul Rp ' + num(p.collected) + (p.disbursed ? ' · sudah dicairkan Rp ' + num(p.disbursed) : ''))}<div class="pend-amt"><small>Siap dicairkan</small>Rp ${num(p.amount)}</div>${adm(`<button class="primary" onclick="finDisburse(${i})">Cairkan</button>`)}</div>`).join('')}</div>` : ''}
+  <div class="content2"><div class="card chart-card"><div class="card-head"><div><h3>Arus kas ${mo.length || 6} bulan terakhir</h3><span>Pemasukan dan pengeluaran per bulan, dalam rupiah</span></div></div><div class="fin-chartbox">${cashChart(mo)}</div>
+  <div class="legend"><span><i style="background:${FUNDC.arisan}"></i>Masuk Dana Arisan</span><span><i style="background:${FUNDC.kas}"></i>Masuk Kas Wajib</span><span><i style="background:${OUTC}"></i>Keluar</span></div>
+  ${mo.length ? `<div class="fin-sumrow"><div><small>Total masuk</small><b class="in">Rp ${num(sIn)}</b></div><div><small>Total keluar</small><b class="out">Rp ${num(sOut)}</b></div><div><small>Selisih</small><b class="${net < 0 ? 'out' : 'in'}">${net < 0 ? '−' : '+'}Rp ${num(Math.abs(net))}</b></div></div>` : ''}</div>
+  <div class="card"><div class="card-head"><div><h3>Status iuran ${esc(d.round ? PER(d.period) : 'arisan')}</h3><span>${d.types[0] ? d.types[0].members + ' anggota terdaftar' : ''}</span></div></div><div class="fin-progwrap">${prog}
+  <button class="primary fin-cta" onclick="finTab('iuran')">${ic('plus', 16)} Catat pembayaran</button></div></div></div>
+  <div class="fin-links card"><div class="fl-ic">${ic('file', 22)}</div><div class="fl-tx"><b>Laporan keuangan</b><small>Posisi kas, rincian kategori, realisasi iuran, buku kas, kepatuhan &amp; tunggakan — cetak PDF atau ekspor Excel.</small></div><button class="primary" onclick="showPage('laporan')">Buka laporan ${ic('next', 16)}</button></div>`;
 }
 
 async function tabIuran() { const d = await loadPay(); return iuranBlock(d); }
@@ -219,26 +273,34 @@ async function tabBuku() {
   return `<div id="bukuWrap">${bukuInner(r)}</div>`;
 }
 function bukuInner(r) {
-  const L = FIN.lg, q = L.q.toLowerCase(), rows = r.rows.filter(x => !q || (x.description + ' ' + x.category + ' ' + (x.receipt_no || '')).toLowerCase().includes(q)), mk = rows.filter(x => x.type === 'masuk').reduce((s, x) => s + x.amount, 0), kl = rows.filter(x => x.type === 'keluar').reduce((s, x) => s + x.amount, 0);
-  return `<div class="grid4">${[['Saldo awal', r.opening], ['Penerimaan', mk], ['Pengeluaran', kl], ['Saldo akhir', r.rows.length ? r.rows[r.rows.length - 1].bal : r.opening]].map(s => `<div class="card stat"><span class="stat-label">${s[0]}</span><h2>${rp(s[1])}</h2></div>`).join('')}</div>
-  <div class="card"><div class="card-head"><div><h3>Buku Kas${L.fund ? ' — ' + FUND[L.fund] : ''}</h3><span>${r.total} TRANSAKSI${r.truncated ? ' • DITAMPILKAN 1.500 PERTAMA' : ''}</span></div>${adm('<button class="primary" onclick="addTx()">＋ Transaksi</button>')}</div>
-  <div class="fin-bar"><div class="seg">${[['', 'Semua dana'], ['arisan', 'Dana Arisan'], ['kas', 'Kas Wajib']].map(([k, l]) => `<button class="${L.fund === k ? 'on' : ''}" onclick="finLg('fund','${k}')">${l}</button>`).join('')}</div>
+  const L = FIN.lg, q = L.q.toLowerCase(), rows = r.rows.filter(x => !q || (x.description + ' ' + x.category + ' ' + (x.receipt_no || '')).toLowerCase().includes(q)), inn = rows.filter(x => x.type === 'masuk'), out = rows.filter(x => x.type === 'keluar'), mk = inn.reduce((s, x) => s + x.amount, 0), kl = out.reduce((s, x) => s + x.amount, 0);
+  const closing = r.rows.length ? r.rows[r.rows.length - 1].bal : r.opening, D = { day: 'numeric', month: 'long', year: 'numeric' };
+  return `<div class="fin-kpis">${[
+    kpi('k-flat', 'Saldo awal', 'wallet', money(r.opening), 'Per ' + fd(L.from, D)),
+    kpi('k-in', 'Penerimaan', 'up', money(mk), inn.length + ' transaksi'),
+    kpi('k-out', 'Pengeluaran', 'down', money(kl), out.length + ' transaksi'),
+    kpi('k-total', 'Saldo akhir', 'bank', money(closing), 'Per ' + fd(L.to, D))].join('')}</div>
+  <div class="card"><div class="card-head"><div><h3>Buku Kas${L.fund ? ' — ' + FUND[L.fund] : ''}</h3><span>${r.total} transaksi${r.truncated ? ' · ditampilkan 1.500 pertama' : ''}</span></div>${adm(`<button class="primary" onclick="addTx()">${ic('plus', 16)} Tambah transaksi</button>`)}</div>
+  <div class="fin-bar"><div class="seg" role="group" aria-label="Filter dana">${[['', 'Semua dana'], ['arisan', 'Dana Arisan'], ['kas', 'Kas Wajib']].map(([k, l]) => `<button class="${L.fund === k ? 'on' : ''}" aria-pressed="${L.fund === k}" onclick="finLg('fund','${k}')">${l}</button>`).join('')}</div>
    <label class="mini">Dari <input type="date" value="${L.from}" onchange="finLg('from',this.value)"></label><label class="mini">Sampai <input type="date" value="${L.to}" onchange="finLg('to',this.value)"></label>
-   <input class="search" placeholder="Cari keterangan / kategori / no. bukti…" value="${esc(L.q)}" oninput="finLgQ(this.value)" id="finSearch"></div>
-  <div class="tscroll"><table class="table"><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Kategori</th><th>Dana</th><th class="r">Masuk</th><th class="r">Keluar</th><th class="r">Saldo</th><th></th></tr></thead><tbody>
-  <tr class="opn"><td>${fd(L.from)}</td><td colspan="5"><i>Saldo awal</i></td><td class="r money">${num(r.opening)}</td><td></td></tr>
-  ${rows.map(x => `<tr><td>${fd(x.date)}</td><td>${esc(x.description)}${x.receipt_no ? `<br><small class="muted">${esc(x.receipt_no)}</small>` : ''}</td><td><span class="cat">${esc(x.category)}</span></td><td><span class="fd" style="--c:${FUNDC[x.fund]}">${FUND[x.fund]}</span></td>
-   <td class="r money in">${x.type === 'masuk' ? num(x.amount) : ''}</td><td class="r money out">${x.type === 'keluar' ? num(x.amount) : ''}</td><td class="r money">${L.q ? '' : num(x.bal)}</td>
-   <td>${adm(x.category === 'Pencairan Arisan' ? `<button class="btn-s d" onclick="finUndis(${x.id})">Batalkan</button>` : x.payment_id ? '' : `<button class="btn-s" onclick="finEditTx(${x.id})">Ubah</button>`)}</td></tr>`).join('') || '<tr><td colspan="8" class="c muted" style="padding:24px">Belum ada transaksi pada rentang ini.</td></tr>'}</tbody></table></div></div>`;
+   <input class="search" type="search" aria-label="Cari transaksi" placeholder="Cari keterangan, kategori, no. bukti…" value="${esc(L.q)}" oninput="finLgQ(this.value)" id="finSearch"></div>
+  <div class="tscroll"><table class="table fin-table bk"><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Kategori</th><th>Dana</th><th class="r">Masuk (Rp)</th><th class="r">Keluar (Rp)</th><th class="r">Saldo (Rp)</th><th><span class="sr">Aksi</span></th></tr></thead><tbody>
+  <tr class="opn"><td>${fd(L.from)}</td><td colspan="5"><i>Saldo awal periode</i></td><td class="r money">${num(r.opening)}</td><td></td></tr>
+  ${rows.map(x => `<tr><td class="nw">${fd(x.date)}</td><td>${esc(x.description)}${x.receipt_no ? `<small class="sub">${esc(x.receipt_no)}</small>` : ''}</td><td><span class="cat">${esc(x.category)}</span></td><td><span class="fd" style="--c:${FUNDC[x.fund]}">${FUND[x.fund]}</span></td>
+   <td class="r money in">${x.type === 'masuk' ? '+' + num(x.amount) : ''}</td><td class="r money out">${x.type === 'keluar' ? '−' + num(x.amount) : ''}</td><td class="r money">${L.q ? '' : num(x.bal)}</td>
+   <td class="nw">${adm(x.category === 'Pencairan Arisan' ? `<button class="btn-s d" onclick="finUndis(${x.id})">Batalkan</button>` : x.payment_id ? '' : `<button class="btn-s" onclick="finEditTx(${x.id})">Ubah</button>`)}</td></tr>`).join('') || `<tr><td colspan="8"><div class="empty">${ic('book', 26)}<b>Belum ada transaksi</b><span>Tidak ada transaksi pada rentang tanggal atau filter ini.</span></div></td></tr>`}</tbody>
+  ${rows.length ? `<tfoot><tr><td colspan="4">Total periode (${rows.length} transaksi)</td><td class="r money in">+${num(mk)}</td><td class="r money out">−${num(kl)}</td><td class="r money">${L.q ? '' : num(closing)}</td><td></td></tr></tfoot>` : ''}</table></div>
+  ${L.q ? '<div class="fin-foot">Saldo berjalan disembunyikan selama pencarian aktif, karena saldo hanya akurat pada daftar lengkap.</div>' : ''}</div>`;
 }
 
 async function tabTunggakan() {
   const ar = FIN.arr = await api('fin/arrears', 'GET', { cur: FIN.cur }), by = {}; ar.forEach(a => { (by[a.member_id] = by[a.member_id] || { name: a.name, phone: a.phone, items: [] }).items.push(a); });
   const mem = Object.entries(by), tot = ar.reduce((s, a) => s + a.total, 0), types = {}; ar.forEach(a => { types[a.type_name] = (types[a.type_name] || 0) + a.total; });
-  return `<div class="grid4"><div class="card stat"><span class="stat-label">Anggota menunggak</span><h2>${mem.length}</h2></div><div class="card stat"><span class="stat-label">Total tunggakan</span><h2>${rp(tot)}</h2></div>${Object.entries(types).map(([k, v]) => `<div class="card stat"><span class="stat-label">${esc(k)}</span><h2>${rp(v)}</h2></div>`).join('')}</div>
-  <div class="card"><div class="card-head"><div><h3>Daftar tunggakan</h3><span>PUTARAN SELESAI &amp; BULAN SEBELUM BULAN INI${FIN.cur ? ' + BERJALAN' : ''}</span></div><label class="chk"><input type="checkbox" ${FIN.cur ? 'checked' : ''} onchange="finCur(this.checked)"> Sertakan putaran/bulan berjalan</label></div>
-  <div class="tscroll"><table class="table"><thead><tr><th>Anggota</th><th>Rincian</th><th class="r">Total</th><th></th></tr></thead><tbody>${mem.map(([id, m]) => `<tr><td><b>${esc(m.name)}</b></td><td>${m.items.map(a => `<div class="arr"><b>${esc(a.type_name)}</b> <span class="muted">${a.n} ${UNIT(a)}</span><div>${a.periods.map(p => `<span class="chip s">${esc(arrLbl(a, p))}</span>`).join('')}</div></div>`).join('')}</td><td class="r money">${num(m.items.reduce((s, a) => s + a.total, 0))}</td>
-   <td>${adm(`<button class="btn-s" onclick="finSettle(${id})">Lunasi</button><button class="btn-s" onclick="finWaArr(${id})">💬 Ingatkan</button>`)}</td></tr>`).join('') || '<tr><td colspan="4" class="c muted" style="padding:28px">Tidak ada tunggakan 🎉</td></tr>'}</tbody></table></div></div>`;
+  const none = !mem.length;
+  return `<div class="fin-kpis">${kpi(none ? 'k-ok' : 'k-warn', 'Anggota menunggak', 'users', String(mem.length), none ? 'Semua anggota sudah lunas' : 'Perlu ditindaklanjuti')}${kpi(none ? 'k-ok' : 'k-warn', 'Total tunggakan', none ? 'check' : 'alert', money(tot), none ? '' : 'Seluruh jenis iuran')}${Object.entries(types).map(([k, v]) => kpi('k-flat', esc(k), 'receipt', money(v), 'Tunggakan jenis ini')).join('')}</div>
+  <div class="card"><div class="card-head"><div><h3>Daftar tunggakan</h3><span>Putaran selesai &amp; bulan sebelum bulan ini${FIN.cur ? ' + berjalan' : ''}</span></div><label class="chk"><input type="checkbox" ${FIN.cur ? 'checked' : ''} onchange="finCur(this.checked)"> Sertakan putaran/bulan berjalan</label></div>
+  <div class="tscroll"><table class="table fin-table"><thead><tr><th>Anggota</th><th>Rincian</th><th class="r">Total (Rp)</th><th><span class="sr">Aksi</span></th></tr></thead><tbody>${mem.map(([id, m]) => `<tr><td>${who(m.name)}</td><td>${m.items.map(a => `<div class="arr"><b>${esc(a.type_name)}</b> <span class="muted">${a.n} ${UNIT(a)}</span><div>${a.periods.map(p => `<span class="chip s">${esc(arrLbl(a, p))}</span>`).join('')}</div></div>`).join('')}</td><td class="r money out">${num(m.items.reduce((s, a) => s + a.total, 0))}</td>
+   <td class="nw">${adm(`<button class="btn-s" onclick="finSettle(${id})">Lunasi</button><button class="btn-s" onclick="finWaArr(${id})">${ic('bell', 14)} Ingatkan</button>`)}</td></tr>`).join('') || `<tr><td colspan="4"><div class="empty ok">${ic('check', 28)}<b>Tidak ada tunggakan</b><span>Semua iuran sampai periode ini sudah lunas.</span></div></td></tr>`}</tbody></table></div></div>`;
 }
 
 // ---------------- Penghubung inline-handler ----------------
@@ -249,7 +311,7 @@ function relocal(wrap, html, inputId) {   // render ulang tanpa ke server; perta
 }
 Object.assign(window, {
   finClose, finDone: done, finPay: payDlg, finVoid: voidPay, finReceipt: receiptFor, finSettle: settleDlg, finFee: feeDlg, finDisburse: disburseDlg, finUndis: undisburse, finTab, addTx, wa, waGroup, finWa: wa, finWaArr: waArr,
-  finPerR: k => { FIN.per = k || null; FIN.mon = null; reload(); }, finResetView: () => { FIN.per = null; FIN.mon = null; }, finMon: p => { if (/^\d{4}-\d{2}$/.test(p)) { FIN.mon = p; reload(); } }, finCur: v => { FIN.cur = v; reload(); },
+  finPerR: k => { FIN.per = k || null; reload(); }, finResetView: () => { FIN.per = null; }, finCur: v => { FIN.cur = v; reload(); },
   finFlt: k => { FIN.flt = k; relocal('#iuranWrap', iuranInner(FIN.pay), 'finSearch'); },
   finQ: dbc(v => { FIN.q = v; relocal('#iuranWrap', iuranInner(FIN.pay), 'finSearch'); }),
   finLg: (k, v) => { FIN.lg[k] = v; reload(); },

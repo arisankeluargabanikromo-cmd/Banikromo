@@ -1,0 +1,45 @@
+/* Form Anggota bergaya Profil Keluarga (v3.17.0). Memakai kerangka .fbp-* dari silsilah-ux.css; di sini hanya yang khusus form. */
+.mf-box .fbp-head{padding-bottom:16px}
+.mf-box .fbp-body.mf{padding-bottom:0}
+.mf-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 14px}
+.mf-grid>label{grid-column:1/-1}.mf-grid>label.half{grid-column:auto}.mf-grid>.fnote2{margin:0}
+.mf .mf-grid>label{display:flex;flex-direction:column;gap:7px}.mf .mf-grid>label>:is(input,select,textarea){margin-top:auto}   /* kolom sebaris selalu sejajar, walau satu punya teks bantuan */
+
+/* label + bantuan + kolom isian */
+.mf label{display:block;font-size:13px;font-weight:600;color:var(--text);margin:0}
+.mf label .fh{display:block;font-weight:400;font-size:11.5px;color:var(--muted);margin-top:-5px;line-height:1.4}
+.mf input,.mf select,.mf textarea{width:100%;margin:0;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--text);font:inherit;font-size:14px;font-weight:400;outline:none;transition:border-color .15s,box-shadow .15s}
+.mf textarea{resize:vertical;min-height:92px;line-height:1.5}
+.mf input:hover,.mf select:hover,.mf textarea:hover{border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
+.mf input:focus,.mf select:focus,.mf textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent);background:var(--panel)}
+.mf input.mf-bad{border-color:#e0434d;box-shadow:0 0 0 3px rgba(224,67,77,.16)}
+.mf-req{color:#e0434d;font-weight:700}
+
+/* panel ringkasan & kelengkapan */
+.mf .fbp-intro{top:64px}
+.mf-comp{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.mf-comp-top{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--muted)}.mf-comp-top b{font-size:15px;color:var(--text)}
+.mf-comp-bg{height:8px;border-radius:99px;background:var(--panel2);overflow:hidden;margin:8px 0 6px;box-shadow:inset 0 0 0 1px var(--line)}
+.mf-comp-bg i{display:block;height:100%;width:0;border-radius:99px;background:#e0a23a;transition:width .25s ease,background-color .25s}
+.mf-comp-bg i.mid{background:#3b8bff}.mf-comp-bg i.ok{background:#22b07d}
+.mf-comp small{display:block;color:var(--muted);font-size:11.5px;line-height:1.5}
+.mf-photo-note{margin-top:12px}
+
+/* bilah simpan: melekat di dasar kotak, selalu terlihat saat menggulir */
+.mf-foot{grid-column:1/-1;position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px -20px 0;padding:14px 20px;background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -10px 24px rgba(20,28,60,.06);border-radius:0 0 24px 24px}
+.mf-foot button{padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600}
+.mf-foot .primary{min-width:160px}.mf-foot button:disabled{opacity:.6;cursor:progress}
+.mf-sp{flex:1}
+.mf-dirty{font-size:12.5px;color:#c27a10;font-weight:600}
+body.dark .mf-dirty{color:#f0b957}
+body.dark .mf-foot{box-shadow:0 -10px 24px rgba(0,0,0,.28)}
+
+@media(max-width:900px){.mf .fbp-intro{position:static;order:2}.mf .fbp-main{order:1}.mf-foot{order:3}   /* layar sempit: isian dulu, ringkasan sesudahnya */
+  .mf-foot{margin:6px -10px 0;padding:12px 10px}}
+@media(max-width:760px){
+  .mf-grid{grid-template-columns:1fr}.mf-grid>label.half{grid-column:1/-1}
+  .mf-foot{gap:8px}.mf-foot .primary{flex:1 1 100%;order:-1}.mf-foot .ghost{flex:1}.mf-foot .danger{flex:1}
+  .mf-dirty{flex:1 1 100%;order:-2}.mf-sp{display:none}
+  .mf input,.mf select,.mf textarea{font-size:16px}          /* cegah zoom otomatis iOS saat fokus */
+}
+@media(prefers-reduced-motion:reduce){.mf-comp-bg i,.mf input,.mf select,.mf textarea{transition:none}}

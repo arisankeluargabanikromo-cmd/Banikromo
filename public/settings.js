@@ -5,7 +5,7 @@
 // (supabase/patch-009-pengaturan.sql): bila gagal, tidak ada data yang berubah.
 // ============================================================
 (() => {
-const VER = '3.16.2', LS = 'fh-brand';
+const VER = '3.18.0', LS = 'fh-brand';
 const DEF = { name: 'FamilyHub', tagline: 'Arisan & Family Network', shape: 'rounded', logo: '' };
 const SAFE_LOGO = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 const ST = { tab: 'umum', ready: null, brand: { ...DEF }, pend: { ...DEF }, last: null, counts: null, rst: null, imp: { ds: 'anggota', res: null, skip: true } };
@@ -437,12 +437,12 @@ async function doReset(scope) {
 }
 
 // ---------- Tampilan ----------
-const TABS = [['umum', '🎨', 'Umum & Logo'], ['backup', '💾', 'Backup & Pemulihan'], ['impor', '⬆', 'Impor Data'], ['ekspor', '⬇', 'Ekspor Data'], ['reset', '⚠', 'Reset Data']];
+const TABS = [['umum', 'image', 'Umum & Logo'], ['backup', 'shield', 'Backup & Pemulihan'], ['impor', 'upload', 'Impor Data'], ['ekspor', 'download', 'Ekspor Data'], ['reset', 'alert', 'Reset Data']];
 const body = () => E('stBody');
 function draw() {
   const alert = ST.ready === false ? `<div class="st-alert warn"><i>⚠</i><div><b>Pembaruan database diperlukan.</b> Jalankan <code>supabase/patch-009-pengaturan.sql</code> sekali di SQL Editor Supabase (aman diulang). Ekspor dan unduh backup tetap bisa dipakai; simpan logo, impor transaksi/agenda/pengumuman, pemulihan, dan reset memerlukan pembaruan ini.</div></div>` : '';
   E('pengaturan').innerHTML = hero('Pengaturan', 'Kelola identitas, cadangan data, perpindahan data, dan pemeliharaan FamilyHub.', `<div class="hero-date"><strong>v${VER}</strong><span>PENGATURAN</span></div>`) + alert +
-    `<div class="st-tabs" role="tablist">${TABS.map(([k, ic, l]) => `<button class="st-tab ${k === 'reset' ? 'dz' : ''} ${ST.tab === k ? 'on' : ''}" role="tab" aria-selected="${ST.tab === k}" data-act="tab" data-v="${k}"><span>${ic}</span>${l}</button>`).join('')}</div><div id="stBody"></div>`;
+    `<div class="st-tabs" role="tablist">${TABS.map(([k, ic, l]) => `<button class="st-tab ${k === 'reset' ? 'dz' : ''} ${ST.tab === k ? 'on' : ''}" role="tab" aria-selected="${ST.tab === k}" data-act="tab" data-v="${k}">${UI.ic(ic, 17)}${l}</button>`).join('')}</div><div id="stBody"></div>`;
   ({ umum: tabUmum, backup: tabBackup, impor: tabImpor, ekspor: tabEkspor, reset: tabReset })[ST.tab]();
 }
 async function tabUmum() {

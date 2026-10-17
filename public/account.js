@@ -125,8 +125,8 @@ const ROLE_TAG = { admin: 'ADMIN', pengelola: 'PENGELOLA', viewer: 'ANGGOTA' };
 R.pengguna = async () => {
   const admin = isA(); if (!admin && PG_TAB === 'kelola') PG_TAB = 'akun';
   const tab = PG_TAB, root = E('pengguna');
-  const TABS = [['akun', '◉', 'Akun Saya'], ['iuran', '◈', 'Iuran Saya']].concat(admin ? [['kelola', '⚙', 'Kelola Pengguna']] : []);
-  const tabs = `<div class="st-tabs" role="tablist">${TABS.map(([k, ic, l]) => `<button class="st-tab ${tab === k ? 'on' : ''}" role="tab" aria-selected="${tab === k}" onclick="goPgTab('${k}')"><span>${ic}</span>${l}</button>`).join('')}</div>`;
+  const TABS = [['akun', 'user', 'Akun Saya'], ['iuran', 'receipt', 'Iuran Saya']].concat(admin ? [['kelola', 'shield', 'Kelola Pengguna']] : []);
+  const tabs = `<div class="st-tabs" role="tablist">${TABS.map(([k, ic, l]) => `<button class="st-tab ${tab === k ? 'on' : ''}" role="tab" aria-selected="${tab === k}" onclick="goPgTab('${k}')">${UI.ic(ic, 17)}${l}</button>`).join('')}</div>`;
   root.innerHTML = hero(admin ? 'Akun & Pengguna' : 'Akun Saya',
     tab === 'kelola' ? 'Setujui pendaftar baru, atur peran, dan hubungkan akun ke anggota keluarga.' : tab === 'iuran' ? 'Status iuran, tunggakan, dan kuitansi Anda.' : 'Profil, hak akses, dan keamanan akun Anda.',
     `<div class="hero-date"><strong>${esc(ini(ME.name))}</strong><span>${ROLE_TAG[ME.role] || 'ANGGOTA'}</span></div>`) + tabs + '<div id="pgBody"></div>';

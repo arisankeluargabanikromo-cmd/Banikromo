@@ -1,0 +1,138 @@
+/* ============================================================
+   Penyeragaman tampilan semua menu (v3.18.0) — acuan: menu Keuangan Keluarga (finance.css).
+   Dimuat PALING AKHIR: menimpa gaya lama (style/glass/dashcards/settings) yang membuat tiap halaman berbeda.
+   Komponen dasar (.kpi .pill .fin-table .fin-who .fav .empty .seg .fin-bar .fin-foot .fin-tabs) ada di finance.css.
+   ============================================================ */
+
+/* ---------- Dasar bersama ---------- */
+.page button:focus-visible,.page input:focus-visible,.page select:focus-visible,.page textarea:focus-visible,.page a:focus-visible,.page [role=button]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.page .hero{margin-bottom:20px}
+.page .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:20px 22px 14px}
+.page .card-head h3{margin:0;font-size:16px;line-height:1.3}
+.page .card-head>div>span,.page .card-head>span{display:block;margin-top:3px;font-size:12.5px;color:var(--muted);font-weight:500;letter-spacing:0;text-transform:none}
+.page .card-head>span.fin-act{display:flex;margin-top:0}
+.page .muted{color:var(--muted)}
+
+/* ---------- Kotak pencarian & filter (satu gaya di semua halaman) ---------- */
+.ui-search{position:relative;display:flex;align-items:center;flex:1 1 260px;min-width:200px}
+.ui-search .ic{position:absolute;left:13px;color:var(--muted);pointer-events:none}
+.ui-search input{width:100%;padding:11px 14px 11px 38px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--text);font:inherit;font-size:13.5px;outline:none;transition:border-color .15s,box-shadow .15s}
+.ui-search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent);background:var(--panel)}
+.page .fin-bar .select,.page .toolbar .select{padding:10px 12px;border-radius:12px;font-size:13px;min-width:0}
+.page .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;margin:0 0 16px}
+.page .toolbar .search{flex:1 1 240px;min-width:200px}
+
+/* ---------- Tombol ---------- */
+.page .card-head .primary,.page .toolbar .primary,.page .fin-act .primary,.page .fin-act .ghost,.page .toolbar .ghost{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 16px;border-radius:12px;font-size:13px;font-weight:600;white-space:nowrap}
+.page .btn-s{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text);font-size:12.5px;font-weight:600}
+.page .btn-s:hover{border-color:var(--accent);color:var(--accent)}
+.page .btn-s.d{color:var(--bad)}.page .btn-s.d:hover{border-color:var(--bad)}
+.page .btn-s.pay{border:1px dashed var(--accent);border-radius:999px;color:var(--accent);background:transparent}
+
+/* ---------- Tabel lama (.table) disamakan dengan .fin-table ---------- */
+.page .table:not(.fin-table){border-collapse:separate;border-spacing:0;width:100%}
+.page .table:not(.fin-table) th,.page .table:not(.fin-table) td{padding:14px 18px;font-size:13.5px;line-height:1.4;border:0;border-top:1px solid var(--line);vertical-align:middle;text-align:left}
+.page .table:not(.fin-table) thead th{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);background:var(--panel2);white-space:nowrap}
+.page .table:not(.fin-table) tbody tr:hover td{background:var(--panel2)}
+.page .table:not(.fin-table) tbody tr:first-child td{border-top:1px solid var(--line)}
+.page .table:not(.fin-table) .r{text-align:right}
+
+/* ---------- Label status lama (.status) → pill ---------- */
+.page .status{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;line-height:1.3;white-space:nowrap;background:var(--ok-bg);color:var(--ok)}
+.page .status.pending{background:var(--warn-bg);color:var(--warn)}.page .status.bad{background:var(--bad-bg);color:var(--bad)}.page .status.done{background:var(--panel2);color:var(--muted)}
+
+/* ---------- Tab halaman Akun & Pengaturan → sama dengan tab Keuangan ---------- */
+.st-tabs{display:flex;gap:4px;margin:0 0 20px;padding:5px;background:var(--panel);border:1px solid var(--line);border-radius:16px;width:fit-content;max-width:100%;overflow-x:auto;box-shadow:var(--shadow)}
+.st-tab{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:12px;font-size:14px;font-weight:600;color:var(--muted);background:transparent;white-space:nowrap}
+.st-tab .ic{flex:none}
+.st-tab:not(.on):hover{background:var(--panel2);color:var(--text)}
+.st-tab.on{background:var(--accent);color:#fff;box-shadow:0 8px 20px rgba(105,87,255,.32)}
+.st-tab.dz.on{background:var(--danger);box-shadow:0 8px 20px rgba(239,107,115,.28)}
+.page .st-card{border-radius:24px}
+.page .st-h h3{font-size:16px}
+
+/* ---------- Dashboard ---------- */
+.dash-kpis{margin-bottom:20px}
+.dash-split{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;margin-bottom:20px}
+.dash-split>.card{margin:0}
+.dash-next{padding:0 22px 22px}
+.dash-next .nx{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--panel2)}
+.datebadge{flex:none;width:54px;border-radius:14px;background:var(--panel);border:1px solid var(--line);text-align:center;padding:6px 0 7px;line-height:1.1}
+.datebadge small{display:block;font-size:10.5px;font-weight:800;letter-spacing:.08em;color:var(--accent);text-transform:uppercase}
+.datebadge b{display:block;font-size:21px;font-weight:800;font-variant-numeric:tabular-nums}
+.dash-next h4{margin:0 0 3px;font-size:15px}.dash-next p{margin:0;font-size:12.5px;color:var(--muted)}
+.dash-prog{margin-top:16px}
+.dash-prog .split{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:8px}.dash-prog .split b{font-size:16px}
+.dash-prog .progress{height:10px;border-radius:8px;background:var(--panel2);overflow:hidden}.dash-prog .progress span{display:block;height:100%;border-radius:8px;background:var(--accent)}
+.feed{padding:0 8px 8px}
+.feed-row{display:flex;gap:14px;align-items:flex-start;padding:12px 14px;border-top:1px solid var(--line)}
+.feed-row:first-child{border-top:0}
+.feed-ic{flex:none;width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--c,var(--accent)) 14%,transparent);color:var(--c,var(--accent))}
+.feed-tx{flex:1;min-width:0}.feed-tx b{display:block;font-size:13.5px;line-height:1.35}.feed-tx span{display:block;margin-top:2px;font-size:12px;color:var(--muted)}
+.feed-t{flex:none;font-size:12px;color:var(--muted);white-space:nowrap;padding-top:2px}
+.mini-list{padding:0 8px 8px}.mini-list .row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--line)}.mini-list .row:first-child{border-top:0}.mini-list .row .fin-who{flex:1;min-width:0}
+
+/* ---------- Anggota ---------- */
+.mem-kin{display:inline-flex;vertical-align:middle;margin-left:6px}
+#anggota .mcell{display:inline-flex;align-items:center;gap:12px;min-width:190px}
+#anggota .fin-table th,#anggota .fin-table td{padding:12px 14px}
+#anggota .fin-table td .lnk{white-space:nowrap}
+#anggota .mcell .kt{margin-left:6px;vertical-align:middle}
+#anggota .mcell b{font-size:14px}
+#anggota .table td small.muted{font-size:12px}
+#anggota .st.big,#anggota em.st{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;font-style:normal;background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+.mem-filters{display:flex;flex-wrap:wrap;gap:10px 12px;padding:2px 22px 16px;align-items:center}
+.mem-filters .select{flex:0 1 auto}
+.fin-foot.c{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+
+/* ---------- Agenda ---------- */
+.ag-when{display:flex;align-items:center;gap:14px}
+.ag-title b{display:block;font-size:14px}.ag-title small{display:flex;align-items:center;gap:5px;margin-top:3px;font-size:12px;color:var(--muted)}
+.ag-title small .ic{flex:none}
+
+/* ---------- Pengumuman ---------- */
+.ann-list{padding:0 8px 8px}
+.ann-item{display:flex;gap:16px;align-items:flex-start;padding:18px 16px;border-top:1px solid var(--line)}
+.ann-item:first-child{border-top:0}
+.ann-ic{flex:none;width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:rgba(105,87,255,.12);color:var(--accent)}
+.ann-bd{flex:1;min-width:0}
+.ann-bd h4{margin:0 0 6px;font-size:15px;line-height:1.35;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ann-bd p{margin:0 0 10px;font-size:13.5px;line-height:1.6;color:var(--text);opacity:.88;white-space:pre-line;overflow-wrap:anywhere}
+.ann-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:12.5px;color:var(--muted)}
+.ann-meta .fav{width:24px;height:24px;font-size:10px}
+.ann-meta span{display:inline-flex;align-items:center;gap:6px}
+
+/* ---------- Dokumentasi (album) ---------- */
+.alb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;padding:2px 22px 22px}
+.alb{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--panel);cursor:pointer;transition:transform .15s,box-shadow .15s,border-color .15s;display:flex;flex-direction:column}
+.alb:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--accent) 40%,var(--line));box-shadow:0 12px 28px rgba(35,45,75,.12)}
+.alb:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.alb-cv{aspect-ratio:4/3;display:grid;place-items:center;font-size:54px;background:linear-gradient(135deg,color-mix(in srgb,var(--c) 18%,var(--panel2)),color-mix(in srgb,var(--c) 6%,var(--panel2)));background-size:cover;background-position:center}
+.alb-bd{padding:12px 14px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.alb-bd b{display:block;font-size:14px;line-height:1.3;overflow-wrap:anywhere}
+.alb-bd small{display:block;margin-top:3px;font-size:12px;color:var(--muted)}
+.alb-ed{position:absolute;right:10px;top:10px;background:rgba(255,255,255,.92);color:#243049;border:1px solid rgba(0,0,0,.08)}
+body.dark .alb-ed{background:rgba(20,29,51,.9);color:#e8ecf8;border-color:rgba(255,255,255,.14)}
+.ui-crumb{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 16px}
+
+/* ---------- Laporan & Akun ---------- */
+.rpt-ctl{padding:0!important}.rpt-ctl .rpt-row{padding:0 22px}.rpt-ctl .rpt-act{padding:0 22px 22px;margin-top:18px}
+.rpt-ctl .rpt-row label{font-size:12px;font-weight:600}
+.rpt-act .primary,.rpt-act .ghost{display:inline-flex;align-items:center;gap:7px}
+.rpt-prevlab{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:13px;font-weight:700;color:var(--muted)}
+.pg-load{display:flex;align-items:center;gap:10px;color:var(--muted)}
+
+/* ---------- Layar sempit ---------- */
+@media(max-width:900px){.dash-split{grid-template-columns:1fr}}
+@media(max-width:760px){
+  .page .card-head{padding:16px 16px 12px;flex-wrap:wrap}
+  .page .card-head .fin-act{width:100%}.page .card-head .fin-act>*{flex:1}
+  .mem-filters{padding:2px 16px 14px}.mem-filters .select,.mem-filters .ui-search{flex:1 1 100%}
+  .page .table:not(.fin-table) th,.page .table:not(.fin-table) td{padding:12px 14px}
+  .ann-item{padding:16px 10px;gap:12px}.alb-grid{grid-template-columns:repeat(2,1fr);gap:12px;padding:2px 14px 16px}.alb-cv{font-size:42px}
+  .feed-t{display:none}
+  .st-tabs{width:100%}.st-tab{flex:1;justify-content:center;padding:10px 8px;font-size:13px}
+}
+@media(max-width:480px){.alb-grid{grid-template-columns:1fr 1fr}.st-tab .ic{display:none}}
+@media(prefers-reduced-motion:reduce){.alb,.ui-search input{transition:none}.alb:hover{transform:none}}
+@media print{.ui-search,.mem-filters{display:none!important}}

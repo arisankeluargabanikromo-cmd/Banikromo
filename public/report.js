@@ -183,15 +183,15 @@ function presetRange(p, cur) {   // cur = periode berjalan 'YYYY-MM' dari server
 R.laporan = async () => {
   const cfg = await getCfg(); if (RP.preset !== 'custom' || !RP.from) { const r = presetRange(RP.preset === 'custom' ? 'bulan' : RP.preset, cfg.month); RP.from = r[0]; RP.to = r[1]; }
   $('#laporan').innerHTML = `<div class="no-print">${hero('Laporan Keuangan', 'Laporan profesional siap cetak (PDF), Excel, dan CSV — dari pembukuan Dana Arisan & Kas Wajib.')}</div>
-  <div class="card no-print rpt-ctl"><div class="rpt-row">
+  <div class="card no-print rpt-ctl">${UI.head('Pengaturan laporan', 'Pilih jenis dan periode, lalu cetak atau ekspor')}<div class="rpt-row">
     <label>Jenis laporan<select class="select" id="rpKind">${KINDS.map(k => `<option value="${k[0]}" ${RP.kind === k[0] ? 'selected' : ''}>${k[1]}</option>`).join('')}</select></label>
     <label>Periode<select class="select" id="rpPre">${PRESETS.map(k => `<option value="${k[0]}" ${RP.preset === k[0] ? 'selected' : ''}>${k[1]}</option>`).join('')}</select></label>
     <label class="${RP.preset === 'custom' ? '' : 'hid'}" id="rpFromL">Dari<input type="date" id="rpFrom" value="${RP.from}"></label>
     <label class="${RP.preset === 'custom' ? '' : 'hid'}" id="rpToL">Sampai<input type="date" id="rpTo" value="${RP.to}"></label>
     <label class="${RP.kind === 'bukukas' ? '' : 'hid'}" id="rpFundL">Dana<select class="select" id="rpFund"><option value="">Semua dana</option><option value="arisan" ${RP.fund === 'arisan' ? 'selected' : ''}>Dana Arisan</option><option value="kas" ${RP.fund === 'kas' ? 'selected' : ''}>Kas Wajib</option></select></label>
     <label class="chk ${RP.kind === 'tunggakan' ? '' : 'hid'}" id="rpCurL"><input type="checkbox" id="rpCur" ${RP.cur ? 'checked' : ''}> Sertakan putaran/bulan berjalan</label>
-  </div><div class="rpt-act"><button class="primary" id="rpPrint">🖨 Cetak / PDF</button><button class="primary" id="rpXls">▦ Excel</button><button class="ghost" id="rpCsv">CSV</button>${adm('<button class="ghost" id="rpMeta">⚙ Identitas laporan</button>')}</div></div>
-  <div id="rptDoc" class="rpt-wrap"><div class="rpt-load">Menyusun laporan…</div></div>`;
+  </div><div class="rpt-act"><button class="primary" id="rpPrint">${UI.ic('file', 16)} Cetak / PDF</button><button class="primary" id="rpXls">${UI.ic('download', 16)} Excel</button><button class="ghost" id="rpCsv">${UI.ic('download', 16)} CSV</button>${adm(`<button class="ghost" id="rpMeta">${UI.ic('gear', 16)} Identitas laporan</button>`)}</div></div>
+  <div class="no-print rpt-prevlab">${UI.ic('file', 16)} Pratinjau laporan</div><div id="rptDoc" class="rpt-wrap"><div class="rpt-load">Menyusun laporan…</div></div>`;
   const ch = () => { RP.kind = $('#rpKind').value; RP.preset = $('#rpPre').value; RP.fund = $('#rpFund').value; RP.cur = $('#rpCur').checked;
     if (RP.preset === 'custom') { RP.from = $('#rpFrom').value || RP.from; RP.to = $('#rpTo').value || RP.to; } else { const r = presetRange(RP.preset, cfg.month); RP.from = r[0]; RP.to = r[1]; }
     if (RP.from > RP.to) { toast('Tanggal "Dari" harus sebelum "Sampai"'); return; } reload(); };

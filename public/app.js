@@ -39,11 +39,16 @@ async function logout() { if (!confirm('Keluar dari FamilyHub?')) return; await 
 
 // ---------- Navigasi ----------
 const titles = { dashboard: 'Dashboard', arisan: 'Arisan', silsilah: 'Silsilah Keluarga', anggota: 'Anggota', keuangan: 'Keuangan', agenda: 'Agenda', galeri: 'Dokumentasi', pengumuman: 'Pengumuman', laporan: 'Laporan' };
+const THEME_ICON = {
+  light: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor"/></svg>',
+  dark: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>' };
+const paintThemeBtn = () => { const b = document.querySelector('#themeBtn'); if (b) b.innerHTML = document.body.classList.contains('dark') ? THEME_ICON.dark : THEME_ICON.light; };
 const R = {};
 function showPage(id, btn) {
   page = id; document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === id));
-  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-  (btn || [...document.querySelectorAll('.nav button')].find(b => b.getAttribute('onclick').includes(`'${id}'`))).classList.add('active');
+  document.querySelectorAll('.nav button').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
+  const cur = btn || [...document.querySelectorAll('.nav button')].find(b => b.getAttribute('onclick').includes(`'${id}'`));
+  if (cur) { cur.classList.add('active'); cur.setAttribute('aria-current', 'page'); }
   $('#pageTitle').textContent = titles[id]; window.scrollTo({ top: 0 });
   if (typeof R[id] !== 'function') { console.error('Halaman "' + id + '" belum siap (skrip belum dimuat)'); return; }
   guard(R[id])();
@@ -80,15 +85,17 @@ function readForm(form, fields) {
   }
   return o;
 }
+// Satu kolom isian (label + input). f.h = teks bantuan kecil di bawah label. Dipakai openForm & form anggota (memberform.js).
+function fieldHtml(f, val) {
+  if (f.t === 'note') return `<p class="fnote2">${f.l}</p>`;
+  const v = val ?? '', a = `name="${f.k}" ${f.req ? 'required' : ''}`;
+  const inp = f.t === 'pick' ? pickInput(f, v) : f.t === 'select' ? `<select ${a}>${f.o.map(o => { const [ov, ol] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(ov)}" ${String(ov) === String(v) ? 'selected' : ''}>${esc(ol)}</option>`; }).join('')}</select>`
+    : f.t === 'textarea' ? `<textarea ${a} rows="3">${esc(v)}</textarea>` : `<input type="${f.t || 'text'}" ${a} value="${esc(v)}" ${f.t === 'number' ? 'min="0"' : ''}>`;
+  return `<label${f.half ? ' class="half"' : ''}><span class="fl">${f.l}</span>${f.h ? `<small class="fh">${f.h}</small>` : ''}${inp}</label>`;
+}
 function openForm(title, fields, vals, onSave, onDel) {
   $('#fTitle').textContent = title;
-  $('#fForm').innerHTML = fields.map(f => {
-    if (f.t === 'note') return `<p class="fnote2">${f.l}</p>`;
-    const v = vals[f.k] ?? '', a = `name="${f.k}" ${f.req ? 'required' : ''}`;
-    const inp = f.t === 'pick' ? pickInput(f, v) : f.t === 'select' ? `<select ${a}>${f.o.map(o => { const [ov, ol] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(ov)}" ${String(ov) === String(v) ? 'selected' : ''}>${esc(ol)}</option>`; }).join('')}</select>`
-      : f.t === 'textarea' ? `<textarea ${a} rows="3">${esc(v)}</textarea>` : `<input type="${f.t || 'text'}" ${a} value="${esc(v)}" ${f.t === 'number' ? 'min="0"' : ''}>`;
-    return `<label${f.half ? ' class="half"' : ''}>${f.l}${inp}</label>`;
-  }).join('') + `<div class="row"><button type="button" class="ghost" onclick="closeForm()">Batal</button>${onDel ? '<button type="button" class="danger" id="fDel">Hapus</button>' : ''}<button class="primary">Simpan</button></div>`;
+  $('#fForm').innerHTML = fields.map(f => fieldHtml(f, vals[f.k])).join('') + `<div class="row"><button type="button" class="ghost" onclick="closeForm()">Batal</button>${onDel ? '<button type="button" class="danger" id="fDel">Hapus</button>' : ''}<button class="primary">Simpan</button></div>`;
   $('#fForm').onsubmit = guard(async e => { e.preventDefault(); await onSave(readForm(e.target, fields)); closeForm(); toast('Tersimpan'); reload(); });
   if (onDel) $('#fDel').onclick = guard(async () => { if (confirm('Hapus data ini?')) { await onDel(); closeForm(); toast('Dihapus'); reload(); } });
   $('#formModal').classList.add('show');
@@ -105,43 +112,96 @@ const ALF = [{ k: 'title', l: 'Nama album', req: 1 }, { k: 'emoji', l: 'Emoji sa
 let CACHE = {}; const edit = (c, k, id) => c.edit(CACHE[k].find(x => x.id === id));
 
 // ---------- Profil ----------
-const closeProfile = () => $('#profileModal').classList.remove('show');
+const closeProfile = () => { if (window.mfGuard && !mfGuard()) return; $('#profileModal').classList.remove('show'); };   // mfGuard: tanya dulu bila form anggota punya perubahan belum disimpan
 backdropClose($('#profileModal'), closeProfile);
 backdropClose($('#formModal'), closeForm);
 
 // ---------- Halaman ----------
 R.dashboard = async () => {
-  const d = await api('dashboard'), pct = d.members ? Math.round(d.paid / d.members * 100) : 0, cf = d.cashflow, mx = Math.max(1, ...cf.flatMap(c => [c.masuk, c.keluar]));
-  const pts = k => cf.map((c, i) => `${cf.length > 1 ? i * 700 / (cf.length - 1) : 350},${200 - c[k] / mx * 180}`);
-  const line = k => 'M' + pts(k).join(' L'), n = d.next;
-  $('#dashboard').innerHTML = hero(`Selamat datang, ${esc(ME.name)} 👋`, 'Satu tempat untuk menjaga silaturahmi, transparansi arisan, dan cerita keluarga.', `<div class="hero-date"><strong>${String(new Date().getDate()).padStart(2, '0')}</strong><span>${MONTH(d.month).toUpperCase()}</span></div>`) + `
-  <div class="grid4">${[['Saldo Kas', rp(d.saldo), '◆', d.funds ? `Arisan ${rp(d.funds.arisan)} • Wajib ${rp(d.funds.kas)}` : `Pemasukan ${rp(d.masuk)}`], ['Anggota Aktif', d.members, '♙', 'terdaftar di arisan'], [d.round ? 'Iuran ' + PER(d.period) : 'Iuran Arisan', d.round ? pct + '%' : '—', '✓', !d.round ? 'Belum ada putaran aktif' : `${d.paid} dari ${d.members} lunas arisan${(d.types || []).filter(x => x.code === 'wajib').map(x => ` • wajib ${x.paid}/${d.members}`).join('')}`], ['Arisan Berikutnya', n ? fd(n.date) : '—', '◷', n ? esc(n.title) : 'Belum ada agenda']]
-      .map(s => `<div class="card stat"><div class="stat-top"><span class="stat-label">${s[0]}</span><div class="stat-icon">${s[2]}</div></div><h2>${s[1]}</h2><small>${s[3]}</small><div class="wave"></div></div>`).join('')}</div>
-  <div class="content2"><div class="card chart-card"><div class="card-head"><h3>Arus Kas Arisan</h3><span>${cf.length} bulan terakhir</span></div><div class="chart">${cf.length ? `<svg viewBox="0 0 700 210" preserveAspectRatio="none"><path d="${line('masuk')}" fill="none" stroke="#6957ff" stroke-width="4"/><path d="${line('keluar')}" fill="none" stroke="#22c7a9" stroke-width="3" stroke-dasharray="7 6"/></svg>` : ''}</div><div class="legend"><span><i></i>Pemasukan</span><span><i class="g"></i>Pengeluaran</span></div></div>
-  <div class="card next"><div class="card-head" style="padding:0 0 18px"><h3>Arisan berikutnya</h3></div>${n ? `<div class="event-date"><div class="datebox"><small>${fd(n.date, { month: 'short' }).toUpperCase()}</small><b>${n.date.slice(8)}</b></div><div><h4>${esc(n.title)}</h4><p>${esc(n.location || '')} • ${esc(n.time || '')}</p></div></div>` : '<p>Belum ada agenda mendatang.</p>'}<div class="progress"><span style="width:${pct}%"></span></div><div class="split"><span>${d.paid}/${d.members} iuran masuk</span><b style="color:#22a98f">${pct}%</b></div><button class="primary" style="width:100%;margin-top:18px" onclick="showPage('arisan')">Lihat detail arisan</button></div></div>
-  <div class="content2"><div class="card activity"><div class="card-head"><h3>Aktivitas terbaru</h3></div>${d.activity.map(a => `<div class="activity-row"><div class="activity-icon">${esc(a.icon)}</div><div class="activity-text"><b>${esc(a.text)}</b><span>${esc(a.detail)} • ${ft(a.at)}</span></div></div>`).join('')}</div>
-  <div class="card members"><div class="card-head"><h3>Anggota terbaru</h3><span>${d.members} ANGGOTA</span></div>${d.recent.map(m => `<div class="member-row"><div class="avatar">${ini(m.name)}</div><div class="member-info"><b>${esc(m.name)}</b><span>${esc(m.relation || '')} • Generasi ${m.generation}</span></div></div>`).join('')}</div></div>`;
+  const d = await api('dashboard'), pct = d.members ? Math.round(d.paid / d.members * 100) : 0, n = d.next, cf = d.cashflow || [];
+  const wj = (d.types || []).filter(x => x.code === 'wajib')[0], rows = cf.map(c => ({ m: c.m, in: c.masuk, out: c.keluar })), tin = rows.reduce((s, r) => s + r.in, 0), tout = rows.reduce((s, r) => s + r.out, 0);
+  const FEED = { '⚡': ['bolt', '#6957ff'], '💰': ['receipt', '#17a98a'], '✏': ['edit', '#3b8bff'], '✗': ['x', '#e5484d'], '↩': ['back', '#e0a23a'], '↺': ['back', '#e0a23a'], '🎉': ['check', '#17a98a'] };
+  const feed = (d.activity || []).map(a => { const [i, c] = FEED[[...String(a.icon || '')][0]] || ['dot', '#8a94a8']; return `<div class="feed-row"><span class="feed-ic" style="--c:${c}">${UI.ic(i, 18)}</span><div class="feed-tx"><b>${esc(a.text)}</b><span>${esc(a.detail || '')}</span></div><span class="feed-t">${ft(a.at)}</span></div>`; }).join('');
+  $('#dashboard').innerHTML = hero(`Selamat datang, ${esc(ME.name)}`, 'Satu tempat untuk menjaga silaturahmi, transparansi arisan, dan cerita keluarga.', `<div class="hero-date"><strong>${String(new Date().getDate()).padStart(2, '0')}</strong><span>${MONTH(d.month).toUpperCase()}</span></div>`) + `
+  <div class="fin-kpis grid4 dash-kpis">
+   ${UI.kpi('k-total', 'Saldo kas', 'wallet', UI.money(d.saldo), 'Dana Arisan + Kas Wajib', d.funds ? `<div class="kpi-flow"><span>Arisan <b>${rp(d.funds.arisan)}</b></span><span>Wajib <b>${rp(d.funds.kas)}</b></span></div>` : '')}
+   ${UI.kpi('k-kas', 'Anggota aktif', 'users', `${d.members} <small>orang</small>`, 'Terdaftar di arisan')}
+   ${UI.kpi(d.round ? (pct >= 80 ? 'k-ok' : 'k-arisan') : 'k-flat', d.round ? 'Iuran ' + PER(d.period) : 'Iuran arisan', 'target', d.round ? `${pct}<small>%</small>` : '—', d.round ? `<span>${d.paid} dari ${d.members} lunas${wj ? ` • wajib ${wj.paid}/${d.members}` : ''}</span>` : 'Belum ada putaran aktif', d.round ? UI.progress(pct, pct >= 80 ? '#17b9a0' : '#6957ff') : '')}
+   ${UI.kpi('k-flat', 'Arisan berikutnya', 'calendar', n ? fd(n.date) : '—', n ? `<span><b>${esc(n.title)}</b> • ${UI.rel(n.date)}</span>` : 'Belum ada agenda mendatang', '', n ? '#e0a23a' : '#8a94a8')}
+  </div>
+  <div class="dash-split">
+   <div class="card chart-card">${UI.head('Arus kas 6 bulan terakhir', 'Pemasukan dan pengeluaran per bulan, dalam rupiah')}<div class="fin-chartbox">${UI.barChart(rows, { inColor: '#17b9a0', outColor: '#f0996b', label: 'Arus kas 6 bulan' })}</div>
+    ${rows.length ? `<div class="legend"><span><i style="background:#17b9a0"></i>Pemasukan</span><span><i style="background:#f0996b"></i>Pengeluaran</span></div><div class="fin-sumrow"><div><small>Total masuk</small><b class="in">${rp(tin)}</b></div><div><small>Total keluar</small><b class="out">${rp(tout)}</b></div><div><small>Selisih</small><b class="${tin - tout < 0 ? 'out' : 'in'}">${tin - tout < 0 ? '−' : '+'}${rp(Math.abs(tin - tout))}</b></div></div>` : ''}<div style="height:18px"></div></div>
+   <div class="card">${UI.head(d.round ? 'Status iuran ' + PER(d.period) : 'Status iuran', d.round ? `${d.members} anggota terdaftar` : 'Belum ada putaran aktif')}
+    ${d.round ? `<div class="dash-next" style="padding-top:0"><div class="dash-prog" style="margin-top:0"><div class="split"><span>Iuran Arisan</span><b>${pct}%</b></div><div class="progress"><span style="width:${pct}%"></span></div><small class="muted">${d.paid} dari ${d.members} anggota lunas</small></div>${wj ? `<div class="dash-prog"><div class="split"><span>Iuran Wajib</span><b>${d.members ? Math.round(wj.paid / d.members * 100) : 0}%</b></div><div class="progress"><span style="width:${d.members ? Math.round(wj.paid / d.members * 100) : 0}%;background:#17b9a0"></span></div><small class="muted">${wj.paid} dari ${d.members} anggota lunas</small></div>` : ''}<button class="primary fin-cta" onclick="showPage('arisan')">Lihat detail arisan ${UI.ic('next', 16)}</button></div>`
+      : UI.empty('target', 'Belum ada putaran aktif', 'Iuran dapat dicatat setelah admin membuka putaran arisan.', `<button class="btn-s" onclick="showPage('arisan')">Buka halaman arisan</button>`)}</div>
+  </div>
+  <div class="dash-split">
+   <div class="card activity">${UI.head('Aktivitas terbaru', 'Catatan perubahan terakhir di aplikasi')}<div class="feed">${feed || UI.empty('clock', 'Belum ada aktivitas')}</div></div>
+   <div class="card members">${UI.head('Anggota terbaru', `${d.members} anggota aktif`, `<button class="btn-s" onclick="showPage('anggota')">Lihat semua</button>`)}<div class="mini-list">${(d.recent || []).map(m => `<div class="row">${UI.who(m.name, `${m.relation || '—'} • Generasi ${m.generation}`)}</div>`).join('') || UI.empty('users', 'Belum ada anggota')}</div></div>
+  </div>`;
 };
 // R.arisan & R.keuangan ada di finance.js; R.laporan ada di report.js
+// ---------- Agenda ----------
+const AG = { f: 'all', q: '' }, ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const agPast = e => e.date < ymd(new Date()) || e.status === 'Selesai';
+window.agF = k => { AG.f = k; agDraw(); }; window.agQ = v => { AG.q = v; agDraw(); };
+function agDraw() {
+  const ev = CACHE.ev || [], q = AG.q.toLowerCase(), up = ev.filter(e => !agPast(e)).sort((a, b) => a.date.localeCompare(b.date)), ps = ev.filter(agPast).sort((a, b) => b.date.localeCompare(a.date));
+  const list = (AG.f === 'up' ? up : AG.f === 'past' ? ps : [...up, ...ps]).filter(e => !q || (e.title + ' ' + (e.location || '')).toLowerCase().includes(q));
+  const tone = e => e.status === 'Dibatalkan' ? 'bad' : agPast(e) ? 'mute' : 'ok';
+  $('#agSeg').innerHTML = UI.seg([['all', 'Semua', ev.length], ['up', 'Mendatang', up.length], ['past', 'Selesai', ps.length]], AG.f, 'agF');
+  $('#agBody').innerHTML = list.map(e => `<tr><td><div class="ag-when"><div class="datebadge"><small>${esc(fd(e.date, { month: 'short' }))}</small><b>${e.date.slice(8)}</b></div><div><b>${esc(fd(e.date, { weekday: 'long' }))}</b><small class="sub">${e.date.slice(0, 4)}${e.time ? ' • ' + esc(e.time) : ''}</small></div></div></td>
+    <td><div class="ag-title"><b>${esc(e.title)}</b>${e.location ? `<small>${UI.ic('pin', 13)}${esc(e.location)}</small>` : ''}</div></td>
+    <td>${UI.pill(tone(e), esc(e.status || 'Terjadwal'))}<small class="sub">${agPast(e) ? '' : UI.rel(e.date)}</small></td>
+    <td class="nw">${adm(`<button class="btn-s" onclick="edit(E,'ev',${e.id})">${UI.ic('edit', 13)} Ubah</button>`)}</td></tr>`).join('') || `<tr><td colspan="4">${UI.empty('calendar', q || AG.f !== 'all' ? 'Tidak ada acara yang cocok' : 'Belum ada agenda', q || AG.f !== 'all' ? 'Ubah kata kunci atau filter.' : 'Tambahkan acara keluarga pertama Anda.')}</td></tr>`;
+  $('#agFoot').textContent = `Menampilkan ${list.length} dari ${ev.length} acara`;
+}
 R.agenda = async () => {
-  const ev = CACHE.ev = await api('events');
-  $('#agenda').innerHTML = hero('Agenda Keluarga', 'Semua acara keluarga dalam satu kalender.') + `<div class="card"><div class="card-head"><h3>Daftar acara</h3>${adm('<button class="primary" onclick="addEvent()">＋ Agenda</button>')}</div><table class="table"><thead><tr><th>Tanggal</th><th>Kegiatan</th><th>Lokasi</th><th>Status</th><th></th></tr></thead><tbody>${ev.map(e => `<tr><td><b>${fd(e.date)}</b> ${esc(e.time || '')}</td><td>${esc(e.title)}</td><td>${esc(e.location || '—')}</td><td><span class="status ${e.status == 'Terjadwal' ? '' : 'pending'}">${esc(e.status)}</span></td><td>${adm(`<button class="btn-s" onclick="edit(E,'ev',${e.id})">Ubah</button>`)}</td></tr>`).join('')}</tbody></table></div>`;
+  const ev = CACHE.ev = await api('events'), today = ymd(new Date()), mo = today.slice(0, 7), up = ev.filter(e => !agPast(e)).sort((a, b) => a.date.localeCompare(b.date)), nx = up[0];
+  $('#agenda').innerHTML = hero('Agenda Keluarga', 'Semua acara keluarga dalam satu tempat.') + `
+  <div class="fin-kpis">
+   ${UI.kpi('k-arisan', 'Acara mendatang', 'calendar', `${up.length} <small>acara</small>`, nx ? `<span>Berikutnya: <b>${esc(nx.title)}</b> • ${UI.rel(nx.date)}</span>` : 'Belum ada acara terjadwal')}
+   ${UI.kpi('k-kas', 'Bulan ini', 'clock', `${ev.filter(e => e.date.slice(0, 7) === mo).length} <small>acara</small>`, MONTH(mo))}
+   ${UI.kpi('k-flat', 'Sudah selesai', 'check', `${ev.filter(agPast).length} <small>acara</small>`, 'Riwayat kegiatan keluarga')}
+  </div>
+  <div class="card">${UI.head('Daftar acara', 'Urut dari yang paling dekat', adm(`<button class="primary" onclick="addEvent()">${UI.ic('plus', 16)} Agenda</button>`))}
+   <div class="fin-bar"><div id="agSeg"></div>${UI.searchBox('agq', 'Cari kegiatan atau lokasi…', AG.q, 'agQ')}</div>
+   <div class="tscroll"><table class="table fin-table"><thead><tr><th>Tanggal</th><th>Kegiatan</th><th>Status</th><th></th></tr></thead><tbody id="agBody"></tbody></table></div><div class="fin-foot" id="agFoot"></div></div>`;
+  agDraw();
 };
 R.galeri = async () => {
   const al = CACHE.al = await api('albums');
-  $('#galeri').innerHTML = hero('Dokumentasi Keluarga', 'Kenangan keluarga tersimpan rapi dalam album.') + `${adm('<div class="toolbar"><button class="primary" onclick="addAlbum()">＋ Album</button></div>')}<div class="grid4">${al.map(a => `<div class="card album"><div>${esc(a.emoji)}<small>${esc(a.title)}</small></div>${adm(`<button class="btn-s x" onclick="edit(AL,'al',${a.id})">Ubah</button>`)}</div>`).join('')}</div>`;
+  $('#galeri').innerHTML = hero('Dokumentasi Keluarga', 'Kenangan keluarga tersimpan rapi dalam album.') + `<div class="card">${UI.head('Album keluarga', `${al.length} album`, adm(`<button class="primary" onclick="addAlbum()">${UI.ic('plus', 16)} Album</button>`))}<div class="alb-grid">${al.map(a => `<div class="alb" style="--c:hsl(${UI.hue(a.title)} 70% 55%)"><div class="alb-cv">${esc(a.emoji)}</div><div class="alb-bd"><div><b>${esc(a.title)}</b></div></div></div>`).join('') || UI.empty('image', 'Belum ada album')}</div></div>`;
 };
+// ---------- Pengumuman ----------
+const AN = { q: '' };
+window.anQ = v => { AN.q = v; anDraw(); };
+const daysAgo = d => Math.round((new Date(ymd(new Date()) + 'T00:00:00') - new Date(d + 'T00:00:00')) / 864e5);
+function anDraw() {
+  const an = (CACHE.an || []).filter(a => !AN.q || (a.title + ' ' + (a.body || '') + ' ' + (a.author || '')).toLowerCase().includes(AN.q.toLowerCase()));
+  $('#anBody').innerHTML = an.map(a => `<div class="ann-item"><span class="ann-ic">${UI.ic('megaphone', 20)}</span><div class="ann-bd"><h4>${esc(a.title)}${daysAgo(a.date) <= 7 ? UI.pill('ok', 'Baru') : ''}</h4>${a.body ? `<p>${esc(a.body)}</p>` : ''}<div class="ann-meta"><span><span class="fav" style="--h:${UI.hue(a.author)}" aria-hidden="true">${esc(UI.initials(a.author))}</span>${esc(a.author || '—')}</span><span>${UI.ic('calendar', 13)}${fd(a.date, { day: 'numeric', month: 'long', year: 'numeric' })}</span></div></div>${adm(`<button class="btn-s" onclick="edit(A,'an',${a.id})">${UI.ic('edit', 13)} Ubah</button>`)}</div>`).join('') || UI.empty('megaphone', AN.q ? 'Tidak ada pengumuman yang cocok' : 'Belum ada pengumuman', AN.q ? 'Ubah kata kunci pencarian.' : 'Pengumuman penting untuk keluarga akan tampil di sini.');
+  $('#anFoot').textContent = `Menampilkan ${an.length} dari ${(CACHE.an || []).length} pengumuman`;
+}
 R.pengumuman = async () => {
-  const an = CACHE.an = await api('announcements');
-  $('#pengumuman').innerHTML = hero('Pengumuman', 'Informasi penting untuk seluruh anggota keluarga.') + `${adm('<div class="toolbar"><button class="primary" onclick="addAnn()">＋ Pengumuman</button></div>')}<div class="card activity">${an.map(a => `<div class="activity-row"><div class="activity-icon">!</div><div class="activity-text" style="flex:1"><b>${esc(a.title)}</b>${a.body ? `<p style="margin:2px 0 4px">${esc(a.body)}</p>` : ''}<span>${esc(a.author)} • ${fd(a.date, { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>${adm(`<button class="btn-s" onclick="edit(A,'an',${a.id})">Ubah</button>`)}</div>`).join('') || '<div class="activity-row">Belum ada pengumuman.</div>'}</div>`;
+  const an = CACHE.an = await api('announcements'), last = an.slice().sort((a, b) => b.date.localeCompare(a.date))[0];
+  $('#pengumuman').innerHTML = hero('Pengumuman', 'Informasi penting untuk seluruh anggota keluarga.') + `
+  <div class="fin-kpis">
+   ${UI.kpi('k-arisan', 'Total pengumuman', 'megaphone', `${an.length} <small>pengumuman</small>`, 'Seluruh arsip')}
+   ${UI.kpi('k-kas', '7 hari terakhir', 'clock', `${an.filter(a => daysAgo(a.date) <= 7).length} <small>baru</small>`, 'Belum lewat seminggu')}
+   ${UI.kpi('k-flat', 'Terbaru', 'calendar', last ? fd(last.date, { day: 'numeric', month: 'short' }) : '—', last ? `<span><b>${esc(last.title)}</b></span>` : 'Belum ada pengumuman')}
+  </div>
+  <div class="card">${UI.head('Papan pengumuman', 'Yang terbaru ada di atas', adm(`<button class="primary" onclick="addAnn()">${UI.ic('plus', 16)} Pengumuman</button>`))}
+   <div class="fin-bar">${UI.searchBox('anq', 'Cari judul, isi, atau penulis…', AN.q, 'anQ')}</div><div class="ann-list" id="anBody"></div><div class="fin-foot" id="anFoot"></div></div>`;
+  anDraw();
 };
-
 // ---------- Tema & boot ----------
 function toggleTheme() {
   const d = document.body.classList.toggle('dark'); localStorage.setItem('familyhub-theme', d ? 'dark' : 'light');
-  document.querySelector('#themeBtn').textContent = d ? '☀' : '◐'; toast(d ? 'Mode gelap aktif' : 'Mode terang aktif');
+  paintThemeBtn(); toast(d ? 'Mode gelap aktif' : 'Mode terang aktif');
 }
-if (localStorage.getItem('familyhub-theme') === 'dark') { document.body.classList.add('dark'); document.querySelector('#themeBtn').textContent = '☀'; }
+if (localStorage.getItem('familyhub-theme') === 'dark') document.body.classList.add('dark');
+paintThemeBtn();
 function boot() {
   showPage(page);
 }

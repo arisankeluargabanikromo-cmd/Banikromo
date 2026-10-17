@@ -35,13 +35,13 @@ async function saveMember(id, b) {
   await api(id ? 'members/' + id : 'members', id ? 'PUT' : 'POST', b);
   if (id && b.spouse_id) await sb.from('members').update({ spouse_status: b.spouse_status }).eq('id', +b.spouse_id).eq('spouse_id', id);   // samakan status di sisi pasangan
 }
-const addMember = guard(async (vals = {}) => { await ensureMembers(); openForm('Tambah Anggota', memberFields(null), { gender: '', active: 1, spouse_status: 'menikah', joined: new Date().getFullYear(), marital_status: 'belum_menikah', ...vals }, b => saveMember(null, b)); });
+const addMember = guard(async (vals = {}) => { await ensureMembers(); await openMemberForm(null, { gender: '', active: 1, spouse_status: 'menikah', joined: new Date().getFullYear(), marital_status: 'belum_menikah', ...vals }); });   // tampilan: memberform.js
 const editMember = guard(async id => {
-  await ensureMembers(); const m = FAM.byId.get(id), rev = MEMBERS.find(x => x.spouse_id === id); closeProfile();
-  openForm('Ubah Anggota', memberFields(m), { ...m, marital_status: FAM.mar.get(id).k || '', spouse_id: m.spouse_id || (rev && rev.id) || '' }, b => saveMember(id, b), () => api('members/' + id, 'DELETE'));
+  await ensureMembers(); const m = FAM.byId.get(id), rev = MEMBERS.find(x => x.spouse_id === id);
+  await openMemberForm(id, { ...m, marital_status: FAM.mar.get(id).k || '', spouse_id: m.spouse_id || (rev && rev.id) || '' });   // tampilan: memberform.js (ganti isi kotak profil, tanpa kedip tutup-buka)
 });
-const addChild = id => { closeProfile(); addMember({ parent_id: id, relation: 'Anak' }); };
-const addSpouse = id => { closeProfile(); const m = FAM.byId.get(id); addMember({ spouse_id: id, marital_status: 'menikah', gender: m.gender === 'L' ? 'P' : m.gender === 'P' ? 'L' : '', relation: 'Pasangan' }); };
+const addChild = id => { addMember({ parent_id: id, relation: 'Anak' }); };
+const addSpouse = id => { const m = FAM.byId.get(id); addMember({ spouse_id: id, marital_status: 'menikah', gender: m.gender === 'L' ? 'P' : m.gender === 'P' ? 'L' : '', relation: 'Pasangan' }); };
 
 // ---------- Foto profil (Storage privat, URL bertanda tangan, dimuat hanya untuk kartu yang tampil) ----------
 const PH = {};
@@ -121,25 +121,37 @@ const fillMarital = guard(async () => {
 
 // ---------- Direktori anggota ----------
 let MLIMIT = 100;
+window.memQ = () => { MLIMIT = 100; drawMembers(); };
 R.anggota = async () => {
   MEMBERS = await api('members'); famOf(); MLIMIT = 100;
-  $('#anggota').innerHTML = hero('Anggota Keluarga', `${MEMBERS.length} anggota — direktori, status pernikahan, pasangan, dan status arisan.`) + `<div class="toolbar"><input class="search" id="mq" placeholder="Cari nama anggota..." oninput="MLIMIT=100;drawMembers()">
-  <select class="select" id="mk" onchange="MLIMIT=100;drawMembers()"><option value="">Semua garis keluarga</option><option value="asli">🧬 Keturunan asli</option><option value="menantu">💍 Menantu</option>${FAM.stats.besan ? '<option value="besan">🏠 Keluarga besan</option>' : ''}${FAM.stats.luar ? '<option value="luar">Keluarga lain</option>' : ''}</select>
-  <select class="select" id="mg" onchange="MLIMIT=100;drawMembers()"><option value="">Semua generasi</option>${Array.from({ length: FAM.stats.maxGen }, (_, i) => `<option value="${i + 1}">Generasi ${i + 1}</option>`).join('')}</select>
-  <select class="select" id="mj" onchange="MLIMIT=100;drawMembers()"><option value="">Semua jenis kelamin</option><option value="L">♂ Laki-laki</option><option value="P">♀ Perempuan</option><option value="?">Belum diisi</option></select>
-  <select class="select" id="ms" onchange="MLIMIT=100;drawMembers()"><option value="">Semua status nikah</option><option value="belum_menikah">Belum menikah</option><option value="menikah">Menikah</option><option value="cerai">Cerai</option><option value="cerai_mati">Duda / Janda</option><option value="-">Belum diisi</option></select>
-  ${mgr('<button class="primary" onclick="addMember()">＋ Anggota</button><button class="ghost" onclick="openImport()">⇪ Impor CSV</button>')}</div>
-  <div class="card"><div class="tscroll"><table class="table"><thead><tr><th>Nama</th><th>Status</th><th>Pasangan</th><th>Orang tua</th><th>Gen</th><th>Tahun</th><th>Arisan</th><th></th></tr></thead><tbody id="memberTable"></tbody></table></div><div id="mmore" class="mmore"></div></div>`;
+  const S = FAM.stats, act = MEMBERS.filter(m => m.active).length, pctA = MEMBERS.length ? Math.round(act / MEMBERS.length * 100) : 0,
+    todo = MEMBERS.filter(m => !m.gender || !FAM.mar.get(m.id).k || !m.birth_year).length, sel = (id, ph, opts) => `<select class="select" id="${id}" aria-label="${ph}" onchange="memQ()"><option value="">${ph}</option>${opts}</select>`;
+  $('#anggota').innerHTML = hero('Anggota Keluarga', `${MEMBERS.length} anggota — direktori, status pernikahan, pasangan, dan status arisan.`) + `
+  <div class="fin-kpis">
+   ${UI.kpi('k-total', 'Total anggota', 'users', `${MEMBERS.length} <small>orang</small>`, `♂ ${S.L} laki-laki • ♀ ${S.P} perempuan${S.unk ? ` • ${S.unk} belum diisi` : ''}`)}
+   ${UI.kpi('k-kas', 'Aktif di arisan', 'target', `${act} <small>dari ${MEMBERS.length}</small>`, `${MEMBERS.length - act} nonaktif`, UI.progress(pctA, '#17b9a0'))}
+   ${UI.kpi('k-arisan', 'Generasi', 'tree', `${S.maxGen} <small>generasi</small>`, `Keturunan asli ${S.asli} • Menantu ${S.menantu}${S.besan ? ` • Besan ${S.besan}` : ''}`)}
+   ${UI.kpi(todo ? 'k-flat' : 'k-ok', 'Data perlu dilengkapi', todo ? 'alert' : 'check', todo ? `${todo} <small>anggota</small>` : 'Lengkap', todo ? 'Jenis kelamin, status pernikahan, atau tahun lahir belum diisi' : 'Semua data dasar sudah terisi', '', todo ? '#e0a23a' : '')}
+  </div>
+  <div class="card">${UI.head('Direktori anggota', 'Klik nama untuk membuka profil lengkap', mgr(`<button class="primary" onclick="addMember()">${UI.ic('plus', 16)} Anggota</button><button class="ghost" onclick="openImport()">${UI.ic('upload', 16)} Impor CSV</button>`))}
+   <div class="mem-filters">${UI.searchBox('mq', 'Cari nama anggota…', '', 'memQ')}
+    ${sel('mk', 'Semua garis keluarga', `<option value="asli">🧬 Keturunan asli</option><option value="menantu">💍 Menantu</option>${FAM.stats.besan ? '<option value="besan">🏠 Keluarga besan</option>' : ''}${FAM.stats.luar ? '<option value="luar">Keluarga lain</option>' : ''}`)}
+    ${sel('mg', 'Semua generasi', Array.from({ length: FAM.stats.maxGen }, (_, i) => `<option value="${i + 1}">Generasi ${i + 1}</option>`).join(''))}
+    ${sel('mj', 'Semua jenis kelamin', '<option value="L">♂ Laki-laki</option><option value="P">♀ Perempuan</option><option value="?">Belum diisi</option>')}
+    ${sel('ms', 'Semua status nikah', '<option value="belum_menikah">Belum menikah</option><option value="menikah">Menikah</option><option value="cerai">Cerai</option><option value="cerai_mati">Duda / Janda</option><option value="-">Belum diisi</option>')}</div>
+   <div class="tscroll"><table class="table fin-table"><thead><tr><th>Nama</th><th>Status</th><th>Pasangan</th><th>Orang tua</th><th>Gen</th><th>Tahun</th><th>Arisan</th><th></th></tr></thead><tbody id="memberTable"></tbody></table></div><div id="mmore" class="fin-foot c"></div></div>`;
   drawMembers();
 };
 function drawMembers() {
   const q = $('#mq').value.toLowerCase(), kk = $('#mk').value, g = $('#mg').value, j = $('#mj').value, s = $('#ms').value;
   const res = MEMBERS.filter(m => m.name.toLowerCase().includes(q) && (!g || FAM.gen.get(m.id) == g) && (!kk || (kk === 'asli' ? ['asli', 'pendiri'].includes(kinOf(m).k) : kinOf(m).k === kk)) && (!j || (j === '?' ? !m.gender : m.gender === j)) && (!s || (s === '-' ? !FAM.mar.get(m.id).k : FAM.mar.get(m.id).k === s)));
   $('#memberTable').innerHTML = res.slice(0, MLIMIT).map(m => {
-    const sp = spousesOf(m.id), p = FAM.byId.get(m.parent_id), st = FAM.mar.get(m.id);
-    return `<tr><td><span class="mcell g-${gCls(m)}" role="button" tabindex="0" style="cursor:pointer" title="Buka profil" onclick="openProfile(${m.id})">${avHtml(m, 's', 'sm')}<span><b>${esc(m.name)}</b>${m.death_year ? ' †' : ''} ${kinHtml(m)}<br><small class="muted">${esc(m.relation || '')}</small></span></span></td><td>${st.t ? `<em class="st st-${st.k} big">${st.t}</em>` : '<small class="muted">—</small>'}</td><td>${sp.map(x => `<a class="lnk" onclick="openProfile(${x.id})">${esc(x.name)}</a>`).join(', ') || '—'}</td><td>${p ? `<a class="lnk" onclick="openProfile(${p.id})">${esc(p.name)}</a>` : '—'}</td><td>${FAM.gen.get(m.id)}</td><td>${esc(yrs(m).replace('Lahir ', '') || '—')}</td><td><span class="status ${m.active ? '' : 'pending'}">${m.active ? 'Aktif' : 'Nonaktif'}</span></td><td><button class="btn-s" onclick="openProfile(${m.id})">Detail</button></td></tr>`;
-  }).join('') || '<tr><td colspan="8">Tidak ada data</td></tr>';
-  $('#mmore').innerHTML = res.length > MLIMIT ? `<button class="ghost" onclick="MLIMIT+=100;drawMembers()">Tampilkan 100 lagi (${res.length - MLIMIT} tersisa)</button>` : `<small class="muted">${res.length} anggota</small>`;
+    const sp = spousesOf(m.id), p = FAM.byId.get(m.parent_id), st = FAM.mar.get(m.id), lnk = x => `<a class="lnk" onclick="openProfile(${x.id})">${esc(x.name)}</a>`;
+    return `<tr><td><span class="mcell g-${gCls(m)}" role="button" tabindex="0" style="cursor:pointer" title="Buka profil" onclick="openProfile(${m.id})" onkeydown="if(event.key==='Enter')openProfile(${m.id})">${avHtml(m, 's', 'sm')}<span><b>${esc(m.name)}</b>${m.death_year ? ' †' : ''} ${kinHtml(m)}<small class="sub">${esc(m.relation || '')}</small></span></span></td>
+    <td>${st.t ? UI.pill('mute', esc(st.t)) : '<span class="muted">—</span>'}</td><td>${sp.map(lnk).join(', ') || '<span class="muted">—</span>'}</td><td>${p ? lnk(p) : '<span class="muted">—</span>'}</td><td class="nw">${FAM.gen.get(m.id)}</td><td class="nw">${esc(yrs(m).replace('Lahir ', '') || '—')}</td>
+    <td>${m.active ? UI.pill('ok', UI.ic('check', 13) + 'Aktif') : UI.pill('mute', 'Nonaktif')}</td><td class="nw"><button class="btn-s" onclick="openProfile(${m.id})">Detail</button></td></tr>`;
+  }).join('') || `<tr><td colspan="8">${UI.empty('search', 'Tidak ada anggota yang cocok', 'Ubah kata kunci atau filter di atas.')}</td></tr>`;
+  $('#mmore').innerHTML = `<span>Menampilkan ${Math.min(res.length, MLIMIT)} dari ${MEMBERS.length} anggota</span>${res.length > MLIMIT ? `<button class="btn-s" onclick="MLIMIT+=100;drawMembers()">Tampilkan 100 lagi (${res.length - MLIMIT} tersisa)</button>` : ''}`;
   hydratePhotos($('#memberTable'));
 }
 

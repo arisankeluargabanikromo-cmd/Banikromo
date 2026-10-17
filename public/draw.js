@@ -401,7 +401,7 @@ function renderRounds(s) {
     : r.status === 'aktif' ? btn('close', r.id, 'Tutup') + btn('form', r.id, 'Ubah') + btn('cancel', r.id, 'Batalkan', 'btn-s x')
     : r.status === 'selesai' ? btn('open', r.id, 'Buka kembali') + btn('form', r.id, 'Ubah') : '';
   const rows = s.rows.map(r => `<tr class="${r.status === 'aktif' || r.status === 'rencana' ? '' : 'dp-mut'}"><td><b>${esc(rname(r))}</b>${r.note ? `<br><small>${esc(r.note)}</small>` : ''}</td>
-    <td>${esc(rdate(r.held_on))}${r.place ? `<br><small>📍 ${esc(r.place)}</small>` : ''}</td><td>${r.requester ? esc(r.requester) : '—'}</td>
+    <td>${esc(rdate(r.held_on))}${r.place ? `<br><small>📍 ${esc(r.place)}</small>` : ''}${r.status !== 'batal' && ROUNDS[r.period] && ROUNDS[r.period].ref_month ? `<br><small>Iuran Wajib: ${esc(MONTH(ROUNDS[r.period].ref_month))}</small>` : ''}</td><td>${r.requester ? esc(r.requester) : '—'}</td>
     <td><span class="status ${RSTAT[r.status][1]}">${RSTAT[r.status][0]}</span>${r.close_note ? `<br><small>${esc(r.close_note)}</small>` : ''}</td>
     <td>${r.winner ? esc(r.winner) : '—'}</td><td>${r.status === 'rencana' ? '—' : `${rp(r.collected)}<br><small>cair ${rp(r.disbursed)} · ${r.paid} bayar</small>`}</td><td class="rd-acts">${acts(r)}</td></tr>`).join('');
   dlg('roundModal', 'Kelola putaran arisan', `<div class="per-now"><small>PUTARAN AKTIF</small><b>${act ? esc(rname(act)) : 'Belum ada — arisan jeda'}</b><span>${st}</span>${act ? roundMeta(act).replace('class="rd-meta"', 'class="rd-meta" style="margin:6px 0 0"') : ''}</div>
@@ -446,6 +446,7 @@ window.rdForm = guard(async r => {
     <div class="dp-dlg"><div class="per-form" style="margin:0">
     <label>Judul (opsional)<input type="text" id="rfTitle" maxlength="80" value="${esc(r ? r.title || '' : '')}" placeholder="mis. Arisan Lebaran"></label>
     <label>Tanggal pelaksanaan <small>(kosongkan bila belum pasti)</small><input type="date" id="rfDate" value="${esc(r && r.held_on ? r.held_on : '')}"></label>
+    <p class="rd-note" style="margin:-4px 0 0">Bulan tanggal ini menjadi <b>periode Iuran Wajib</b> putaran tersebut. Bila dikosongkan, periode otomatis jatuh pada bulan <b>sesudah</b> putaran sebelumnya, sehingga pembayaran Iuran Wajib putaran lama tidak ikut tampil di putaran baru.</p>
     <label>Tempat / tuan rumah<input type="text" id="rfPlace" maxlength="120" value="${esc(r ? r.place || '' : '')}" placeholder="mis. Rumah Bu Rina"></label>
     <label>Diminta oleh<select id="rfReq"><option value="">— tidak dicatat —</option>${mem.map(m => `<option value="${m.id}" ${r && r.requested_by === m.id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select></label>
     <label>Catatan (opsional)<textarea id="rfNote" rows="2" maxlength="500" placeholder="mis. dipercepat karena kebutuhan biaya sekolah">${esc(r ? r.note || '' : '')}</textarea></label>

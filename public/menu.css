@@ -1,0 +1,27 @@
+/* Menu samping & ikon topbar (v3.16.3): dikelompokkan menurut tugas, ikon garis konsisten, penanda halaman aktif jelas.
+   Dimuat setelah style/glass/topbar agar aturan di sini yang berlaku. */
+.nav-group{margin:0 0 4px}
+.nav-group+.nav-group{margin-top:6px}
+.nav-title{padding:12px 12px 6px;font-size:10.5px;font-weight:700;letter-spacing:1.2px;color:var(--sb-title)}
+.nav button{position:relative;padding:10px 12px;margin:2px 0;gap:12px;font-size:14px;line-height:1.25;border-radius:12px;cursor:pointer}
+.nav button:focus-visible{outline:2px solid var(--accent,#6558e8);outline-offset:-2px}
+.nav-icon{width:22px;height:22px;display:grid;place-items:center;flex:none}
+.nav-icon svg,.icon-btn svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;display:block}
+.nav button.active{background:var(--sb-active);color:var(--sb-active-text);font-weight:600}
+.nav button.active::before{content:"";position:absolute;left:-8px;top:9px;bottom:9px;width:3.5px;border-radius:0 4px 4px 0;background:var(--accent,#6558e8)}
+.nav button:not(.active):hover .nav-icon{color:var(--accent,#6558e8)}
+/* titik peringatan backup di ikon Pengaturan tetap terlihat */
+.nav button.st-warn .nav-icon:after{right:-3px;top:-3px}
+/* ikon topbar */
+.icon-btn{display:inline-grid;place-items:center}
+.icon-btn svg.ic{width:19px;height:19px}
+/* HP / sidebar ikon saja: pemisah tipis antar kelompok menggantikan judul kelompok yang disembunyikan */
+@media(max-width:760px){
+  .nav-group+.nav-group{margin-top:8px;padding-top:8px;border-top:1px solid var(--sb-line)}
+  .nav button{padding:11px 0;justify-content:center}
+  .nav button.active::before{left:-9px}
+  .nav-icon{width:auto;height:auto}
+  .nav-icon svg{width:22px;height:22px}
+}
+@media(max-height:760px){.nav button{padding:8px 12px}.nav-title{padding:8px 12px 4px}}
+@media(prefers-reduced-motion:reduce){.nav button{transition:none!important}}
