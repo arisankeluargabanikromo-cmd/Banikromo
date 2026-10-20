@@ -1,0 +1,321 @@
+/* ==========================================================================
+   FamilyHub — Tampilan APLIKASI MOBILE (v3.20)
+   Hanya aktif di layar <= 760px (HP). Desktop & tablet TIDAK berubah.
+   Gaya: Material-like Android — app bar, bottom navigation, bottom sheet,
+   kartu saldo, tabel berubah jadi kartu, tombol ≥ 44px, area aman (notch/gesture bar).
+   Dimuat SESUDAH ui.css agar aturan di sini yang berlaku.
+   ========================================================================== */
+
+/* ---- elemen yang hanya dipakai di mobile: sembunyi di desktop ---- */
+.bnav,.msheet,.msheet-bg,.m-back,.qa,.m-greet{display:none}
+
+@media(max-width:760px){
+:root{
+  --m-bar:56px;                       /* tinggi app bar */
+  --m-nav:64px;                       /* tinggi bottom navigation (di luar area aman) */
+  --m-top:env(safe-area-inset-top,0px);
+  --m-bot:env(safe-area-inset-bottom,0px);
+  --m-r:20px;                         /* radius kartu */
+  --m-ease:cubic-bezier(.2,.8,.2,1);
+}
+
+/* ---------- dasar: terasa seperti aplikasi, bukan halaman web ---------- */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scroll-padding-top:calc(var(--m-bar) + var(--m-top) + 8px)}
+body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;background:var(--bg)}
+button,a,.alb,.pthumb,[onclick],select,summary,label.primary{touch-action:manipulation}
+.bnav button,.m-back,.icon-btn,.tb-sync,.tb-user-btn,.qa button,.msheet button,.fin-tabs button,.seg button,.primary,.ghost,.danger,.btn-s{-webkit-user-select:none;user-select:none}
+/* umpan balik sentuh (pengganti hover) */
+.primary:active,.ghost:active,.danger:active,.icon-btn:active,.tb-sync:active,.qa button:active,.bnav button:active .bi,.msheet .mi:active,.btn-s:active,.alb:active,.card[onclick]:active,.mem-row:active{transform:scale(.97);transition:transform .08s}
+.card:hover,.node:hover,.alb:hover{transform:none}
+@media(hover:none){.fin-table tbody tr:hover td{background:transparent}}
+
+/* ---------- rangka: sidebar diganti app bar + bottom nav ---------- */
+.sidebar{display:none!important}
+.app{display:block;min-height:100dvh}
+.main{margin:0!important;width:100%!important;padding:0 14px calc(var(--m-nav) + var(--m-bot) + 22px)!important;min-height:100dvh}
+
+/* App bar */
+.topbar{position:sticky;top:0;z-index:40;margin:0 -14px 12px;padding:calc(var(--m-top) + 6px) 12px 6px 14px;min-height:calc(var(--m-bar) + var(--m-top));
+  background:color-mix(in srgb,var(--bg) 88%,transparent);-webkit-backdrop-filter:saturate(1.4) blur(14px);backdrop-filter:saturate(1.4) blur(14px);
+  border-bottom:1px solid transparent;transition:border-color .2s,box-shadow .2s;gap:6px;align-items:center}
+body.m-scrolled .topbar{border-bottom-color:var(--line);box-shadow:0 4px 18px rgba(20,30,60,.06)}
+.topbar .breadcrumb{display:flex!important;align-items:center;flex:1;min-width:0;font-size:0;color:var(--text)}
+.topbar .breadcrumb b{font-size:20px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* di Beranda: logo + nama aplikasi */
+body[data-page=dashboard] .topbar .breadcrumb::before{content:"FH";display:inline-grid;place-items:center;width:34px;height:34px;margin-right:10px;border-radius:11px;flex:none;
+  background:linear-gradient(135deg,#8d7cff,#43d8bd);color:#fff;font-size:13px;font-weight:800;letter-spacing:.02em}
+body[data-page=dashboard] .topbar .breadcrumb b{font-size:0}
+body[data-page=dashboard] .topbar .breadcrumb b::after{content:"FamilyHub";font-size:19px;font-weight:800}
+/* di halaman turunan: tombol kembali */
+.m-back{display:none;width:40px;height:40px;margin:0 2px 0 -8px;border-radius:50%;background:transparent;color:var(--text);place-items:center;flex:none}
+.m-back svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.m-back:active{background:var(--panel2)}
+body[data-sec="1"] .m-back{display:inline-grid}
+.topbar .actions{gap:2px;margin-left:auto;flex:none}
+.tb-clock,#themeBtn{display:none!important}
+.topbar .icon-btn,.topbar .tb-sync{width:42px;height:42px;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none;color:var(--text);display:inline-grid;place-items:center}
+.topbar .icon-btn:active,.topbar .tb-sync:active{background:var(--panel2)}
+.tb-sync-ic{font-size:21px}
+.tb-net{right:8px;top:8px}
+.icon-btn .dot{right:9px;top:8px;border-color:var(--bg)}
+.tb-user-btn{height:42px;width:42px;padding:0;border:0;background:transparent;box-shadow:none;justify-content:center}
+.tb-user-btn .avatar{width:34px;height:34px;font-size:12px;box-shadow:0 0 0 2px var(--bg),0 0 0 3.5px color-mix(in srgb,var(--accent) 45%,transparent)}
+.tb-menu{display:none!important}   /* menu akun mobile = lembar bawah (mobile.js) */
+
+/* ---------- Bottom navigation ---------- */
+.bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:45;padding:6px 6px calc(6px + var(--m-bot));
+  background:color-mix(in srgb,var(--panel) 94%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+  border-top:1px solid var(--line);box-shadow:0 -8px 28px rgba(20,30,60,.07);transition:transform .25s var(--m-ease)}
+.bnav button{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:2px 0 0;background:none;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.01em;line-height:1.2;min-height:54px}
+.bnav .bi{position:relative;width:58px;height:30px;border-radius:16px;display:grid;place-items:center;transition:background-color .22s,color .22s}
+.bnav svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.bnav button.on{color:var(--accent);font-weight:700}
+.bnav button.on .bi{background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.bnav button.on svg{stroke-width:2.2}
+.bnav .bi i{position:absolute;right:13px;top:2px;width:9px;height:9px;border-radius:50%;background:var(--danger);border:2px solid var(--panel);box-sizing:content-box}
+.bnav .bi i[hidden]{display:none}
+body.kbd .bnav{transform:translateY(110%)}      /* papan ketik terbuka: sembunyikan agar tidak menumpuk */
+
+/* ---------- Lembar bawah "Menu" ---------- */
+.msheet-bg{display:block;position:fixed;inset:0;z-index:80;background:rgba(10,15,30,.5);opacity:0;pointer-events:none;transition:opacity .25s}
+.msheet-bg.show{opacity:1;pointer-events:auto}
+.msheet{display:flex;flex-direction:column;position:fixed;left:0;right:0;bottom:0;z-index:81;max-height:88dvh;background:var(--panel);color:var(--text);
+  border-radius:26px 26px 0 0;box-shadow:0 -20px 60px rgba(0,0,0,.28);transform:translateY(105%);visibility:hidden;
+  transition:transform .32s var(--m-ease),visibility 0s .32s;padding-bottom:var(--m-bot)}
+.msheet.show{transform:none;visibility:visible;transition:transform .32s var(--m-ease),visibility 0s}
+.msheet .grab{flex:none;display:flex;justify-content:center;width:100%;padding:10px 0 6px;touch-action:none}
+.msheet .grab span{display:block;width:40px;height:4px;border-radius:4px;background:var(--line)}
+.msheet .ms-body{overflow-y:auto;overscroll-behavior:contain;padding:6px 16px 18px;-webkit-overflow-scrolling:touch}
+.msheet .ms-user{display:flex;align-items:center;gap:14px;width:100%;padding:12px;margin:2px 0 14px;border-radius:18px;background:var(--panel2);border:1px solid var(--line);text-align:left;color:var(--text)}
+.msheet .ms-user .avatar{width:48px;height:48px;font-size:16px;flex:none}
+.msheet .ms-user b{display:block;font-size:15px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msheet .ms-user small{display:block;margin-top:2px;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msheet .ms-user .role{display:inline-block;margin-top:5px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+.msheet .ms-user>div{min-width:0;flex:1}
+.msheet .ms-user .chev{color:var(--muted);flex:none}
+.msheet .ms-user .chev svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.msheet .ms-h{margin:4px 4px 10px;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.msheet .ms-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px 4px;margin-bottom:12px}
+.msheet .mi{display:flex;flex-direction:column;align-items:center;gap:7px;padding:8px 2px;background:none;color:var(--text);font-size:11.5px;font-weight:600;line-height:1.25;text-align:center;border-radius:14px}
+.msheet .mi .mic{width:52px;height:52px;border-radius:17px;display:grid;place-items:center;background:color-mix(in srgb,var(--c,#6957ff) 13%,transparent);color:var(--c,#6957ff)}
+.msheet .mi svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.msheet .mi.cur .mic{background:var(--c,#6957ff);color:#fff}
+.msheet .ms-list{border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.msheet .ms-row{display:flex;align-items:center;gap:14px;width:100%;padding:14px 16px;background:var(--panel);color:var(--text);font-size:14px;font-weight:600;text-align:left;border-top:1px solid var(--line);min-height:52px}
+.msheet .ms-row:first-child{border-top:0}
+.msheet .ms-row:active{background:var(--panel2)}
+.msheet .ms-row svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;color:var(--muted);flex:none}
+.msheet .ms-row.out,.msheet .ms-row.out svg{color:var(--danger)}
+.msheet .ms-row .sw{margin-left:auto;width:42px;height:24px;border-radius:14px;background:var(--line);position:relative;transition:background .2s;flex:none}
+.msheet .ms-row .sw::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s var(--m-ease)}
+body.dark .msheet .ms-row .sw{background:var(--accent)}
+body.dark .msheet .ms-row .sw::after{transform:translateX(18px)}
+.msheet .ms-ver{margin:14px 0 0;text-align:center;font-size:11.5px;color:var(--muted)}
+body.m-lock{overflow:hidden}
+
+/* ---------- Kartu & judul halaman ---------- */
+.card{border-radius:var(--m-r);box-shadow:0 1px 2px rgba(20,30,60,.04),0 8px 24px rgba(20,30,60,.05)}
+body.dark .card{box-shadow:none}
+.page{animation:mIn .28s var(--m-ease)}
+@keyframes mIn{from{opacity:0;transform:translateY(8px)}}
+.page .card-head{padding:16px 16px 10px}
+.card-head h3{font-size:16px;letter-spacing:-.005em}
+
+/* banner judul halaman: ringkas (judul utama sudah di app bar) */
+.page:not(#dashboard) .hero{padding:14px 16px;border-radius:18px;margin-bottom:14px;box-shadow:0 10px 26px rgba(105,87,255,.2)}
+.page:not(#dashboard) .hero:after{width:180px;height:180px;top:-110px}
+.page:not(#dashboard) .hero h1{font-size:17px;margin:0 0 3px;letter-spacing:-.005em}
+.page:not(#dashboard) .hero p{font-size:12.5px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.page:not(#dashboard) .hero-date{display:none}
+
+/* ---------- BERANDA: kartu saldo bergaya aplikasi dompet ---------- */
+#dashboard .hero{display:none}                                    /* diganti sapaan + kartu saldo */
+.m-greet{display:block;margin:2px 2px 14px}
+.m-greet small{display:block;font-size:13px;color:var(--muted);font-weight:500}
+.m-greet b{display:block;margin-top:1px;font-size:22px;font-weight:800;letter-spacing:-.015em;line-height:1.2}
+#dashboard .dash-kpis{grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+#dashboard .dash-kpis .kpi{border-radius:var(--m-r);padding:15px 15px 15px 19px}
+#dashboard .dash-kpis .kpi-val{font-size:22px}
+#dashboard .dash-kpis .kpi-label{font-size:12.5px}
+/* kartu pertama = kartu saldo gradien */
+#dashboard .dash-kpis .kpi.k-total{grid-column:1/-1;padding:20px 20px 18px;border:0;color:#fff;overflow:hidden;
+  background:radial-gradient(120% 140% at 100% 0%,rgba(67,216,189,.55),transparent 55%),linear-gradient(135deg,#5b49f2 0%,#7a69ff 60%,#8d7cff 100%);
+  box-shadow:0 18px 38px rgba(105,87,255,.32)}
+#dashboard .dash-kpis .kpi.k-total:before{display:none}
+#dashboard .dash-kpis .kpi.k-total:after{content:"";position:absolute;right:-50px;bottom:-70px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.09)}
+#dashboard .dash-kpis .kpi.k-total .kpi-label{color:rgba(255,255,255,.82);font-size:13px}
+#dashboard .dash-kpis .kpi.k-total .kpi-ic{background:rgba(255,255,255,.18);color:#fff}
+#dashboard .dash-kpis .kpi.k-total .kpi-val{font-size:30px;margin-top:2px;color:#fff}
+#dashboard .dash-kpis .kpi.k-total .kpi-val .cur{color:rgba(255,255,255,.8)}
+#dashboard .dash-kpis .kpi.k-total .kpi-sub{color:rgba(255,255,255,.8)}
+#dashboard .dash-kpis .kpi.k-total .kpi-flow{margin-top:8px;position:relative;z-index:1;gap:8px}
+#dashboard .dash-kpis .kpi.k-total .kpi-flow span{background:rgba(255,255,255,.16);border:0;color:rgba(255,255,255,.88);padding:6px 12px;font-size:12px}
+#dashboard .dash-kpis .kpi.k-total .kpi-flow b{color:#fff}
+/* kartu terakhir (arisan berikutnya) selebar layar */
+#dashboard .dash-kpis .kpi:last-child{grid-column:1/-1}
+
+/* menu cepat */
+.qa{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 18px}
+.qa button{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 4px 10px;background:var(--panel);border:1px solid var(--line);border-radius:18px;color:var(--text);font-size:11.5px;font-weight:700;line-height:1.2;box-shadow:0 1px 2px rgba(20,30,60,.04)}
+.qa .qi{width:44px;height:44px;border-radius:15px;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 14%,transparent);color:var(--c)}
+.qa svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+.fin-kpis{grid-template-columns:1fr 1fr!important;gap:12px;margin-bottom:16px}
+.fin-kpis .kpi{padding:14px 14px 14px 16px;gap:5px;border-radius:var(--m-r)}
+.fin-kpis .kpi:before{display:none}
+.fin-kpis .kpi-top{align-items:flex-start}
+.fin-kpis .kpi-label{font-size:12.5px;line-height:1.3}
+.fin-kpis .kpi-ic{width:34px;height:34px;border-radius:11px}
+.fin-kpis .kpi-val{font-size:20px}
+.fin-kpis .kpi-sub{font-size:12px;flex-wrap:wrap}
+.fin-kpis>.kpi:last-child:nth-child(odd){grid-column:1/-1}
+.fin-kpis .kpi-flow{flex-direction:column;align-items:flex-start}
+.fin-kpis .kpi-flow span{white-space:normal}
+.kpi-flow{gap:5px}
+/* filter direktori: 2 kolom */
+.mem-filters{display:grid!important;grid-template-columns:1fr 1fr;gap:10px;padding:2px 16px 14px!important}
+.mem-filters .ui-search{grid-column:1/-1}
+.mem-filters .select{min-width:0;width:100%}
+
+/* ---------- Tab, filter, segmen: gulir samping bergaya "chip" ---------- */
+.fin-tabs{display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:8px;padding:2px 0 4px;margin:0 -14px 14px;padding-left:14px;padding-right:14px;background:none;border:0;box-shadow:none;border-radius:0;scroll-snap-type:x proximity}
+.fin-tabs button{flex:none!important;scroll-snap-align:start;padding:10px 16px!important;border-radius:999px;background:var(--panel)!important;border:1px solid var(--line)!important;color:var(--muted)!important;font-size:13.5px!important;font-weight:700;min-height:42px;box-shadow:none!important}
+.fin-tabs button .ic{display:inline-block!important}
+.fin-tabs button.on{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important;box-shadow:0 8px 18px rgba(105,87,255,.28)!important}
+.seg{max-width:100%}
+.seg button{min-height:40px}
+.st-tabs{overflow-x:auto;scrollbar-width:none}.st-tabs::-webkit-scrollbar{display:none}
+
+/* ---------- Kolom isian & tombol: sesuai pedoman sentuh Android ---------- */
+input,select,textarea,.search,.select{font-size:16px!important}
+.search,.select,.ui-search input,.fin-bar .select,.mem-filters .select{min-height:46px;border-radius:14px}
+.primary,.ghost,.danger{min-height:46px;border-radius:14px;font-weight:700}
+.btn-s,.fin-table .btn-s{min-height:38px;border-radius:12px}
+.card-head .primary,.card-head .ghost{min-height:40px;padding:9px 14px}
+.fin-act{gap:8px}
+
+/* ---------- Daftar aktivitas / anggota / pengumuman ---------- */
+.feed-row,.mini-list .row,.ann-item,.member-row{min-height:56px}
+.mini-list .row{padding:10px 16px}
+.dash-split{gap:14px;margin-bottom:14px}
+.dcards{gap:14px}
+.chart-card .fin-chartbox{padding:2px 8px 4px}
+
+/* ---------- TABEL → KARTU (diatur mobile.js: data-label & kelas .m-cards) ---------- */
+.m-cards{display:block;width:100%;min-width:0!important;border:0}
+.m-cards thead{display:none}
+.m-cards tbody,.m-cards tfoot{display:block}
+.m-cards tr{display:block;position:relative;padding:12px 16px 10px;border-top:1px solid var(--line)}
+.m-cards tbody tr:first-child{border-top:0}
+.m-cards td,.m-cards th{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:6px 0!important;border:0!important;background:transparent!important;text-align:right;font-size:13.5px;min-width:0}
+.m-cards td::before{content:attr(data-label);flex:none;max-width:42%;text-align:left;font-size:12px;font-weight:600;color:var(--muted);line-height:1.3}
+.m-cards td[data-label=""]::before,.m-cards td:not([data-label])::before{display:none}
+.m-cards td.m-first{display:block;text-align:left;padding:2px 0 8px!important}
+.m-cards td.m-first::before{display:none}
+.m-cards td.m-act{justify-content:flex-start;flex-wrap:wrap;gap:8px;padding-top:8px!important}
+.m-cards td.m-act::before{display:none}
+.m-cards td:empty{display:none}
+.m-cards td[colspan]{display:block;text-align:center}
+.m-cards td[colspan]::before{display:none}
+.m-cards .fin-who{min-width:0}
+.m-cards.stk td:first-child{position:static}
+.m-cards .arr-cell{justify-content:flex-end}
+.m-cards .arr{min-width:0}
+.m-cards .r{text-align:right}
+.m-cards tr.opn,.m-cards tfoot tr{background:var(--panel2);border-radius:12px;margin:8px 12px}
+.m-cards tfoot td{font-weight:800}
+.m-cards td .sub{margin-top:0}
+.m-cards td>div:only-child{text-align:right}
+.m-cards td.m-first,.m-cards td.m-first div,.m-cards td.m-first span{text-align:left}
+.m-cards td.m-empty{display:none}
+.m-cards .rc{flex-wrap:wrap!important;justify-content:flex-end;gap:4px 12px}
+.m-cards .rc a{white-space:normal}
+/* direktori anggota: kartu ringkas 2 kolom */
+#memberTable td.m-act{display:none}
+#memberTable tr{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;padding:14px 16px}
+#memberTable td{flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:3px;padding:0!important;text-align:left}
+#memberTable td::before{max-width:none;font-size:11px;letter-spacing:.02em}
+#memberTable td.m-first{grid-column:1/-1;padding-bottom:2px!important}
+#memberTable .mcell{display:flex;align-items:center;gap:12px}
+#memberTable td[colspan]{grid-column:1/-1}
+
+/* Buku Kas: daftar transaksi gaya aplikasi dompet */
+.bk.m-cards tbody tr:not(.opn){display:grid;grid-template-columns:auto auto 1fr auto;gap:5px 10px;padding:13px 16px}
+.bk.m-cards tbody tr:not(.opn) td{padding:0!important;text-align:left;min-width:0}
+.bk.m-cards td::before{display:none}
+.bk.m-cards td[data-label^=Keterangan]{grid-area:1/1/2/4;display:block;font-size:14.5px;font-weight:600;line-height:1.35}
+.bk.m-cards td[data-label^=Keterangan] .sub{display:block;margin-top:2px;font-size:11.5px;color:var(--muted);font-weight:500}
+.bk.m-cards td[data-label^=Masuk],.bk.m-cards td[data-label^=Keluar]{grid-area:1/4/2/5;justify-self:end;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+.bk.m-cards td[data-label^=Tanggal]{grid-area:2/1;font-size:12px;color:var(--muted)}
+.bk.m-cards td[data-label^=Kategori]{grid-area:2/2/3/4;font-size:12px}
+.bk.m-cards td[data-label^=Dana]{grid-area:3/1/4/4;font-size:12px;color:var(--muted)}
+.bk.m-cards td[data-label^=Saldo]{grid-area:2/4;justify-self:end;font-size:12px;color:var(--muted);font-weight:600}
+.bk.m-cards td[data-label^=Saldo]::before{display:inline;content:"Saldo ";max-width:none;font-size:11px;margin-right:4px}
+.bk.m-cards td.m-act{grid-area:4/1/5/5;padding-top:4px!important}
+.bk.m-cards tr.opn{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px}
+.bk.m-cards tr.opn td:first-child{display:none}
+.bk.m-cards tr.opn td[colspan]{flex:1;text-align:left;display:block;padding:0!important}
+.bk.m-cards tr.opn td:not([colspan]){flex:none;padding:0!important;font-weight:800}
+.bk.m-cards tr.opn{margin:8px 12px;padding-right:20px;box-sizing:border-box}
+.bk.m-cards tr.opn td:not([colspan])::before{display:none}
+.bk.m-cards tfoot tr{display:block}
+.tscroll{overflow:visible}
+.tscroll:has(.m-cards){overflow:visible}
+
+/* ---------- Dialog → lembar bawah (bottom sheet) ---------- */
+.modal{align-items:flex-end!important;padding:0!important;background:rgba(10,15,30,.52)}
+.modal-box{width:100%!important;max-width:none!important;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;border-radius:26px 26px 0 0!important;
+  padding:22px 18px calc(20px + var(--m-bot))!important;box-shadow:0 -20px 60px rgba(0,0,0,.3);position:relative}
+.modal.show>.modal-box{animation:mSheet .32s var(--m-ease)}
+@keyframes mSheet{from{transform:translateY(100%)}}
+.modal:not(#profileModal)>.modal-box::before{content:"";position:sticky;top:-14px;display:block;width:40px;height:4px;border-radius:4px;background:var(--line);margin:-12px auto 14px}
+.modal-top{font-size:17px;font-weight:800;margin-bottom:6px;align-items:center}
+.close{width:38px;height:38px;border-radius:50%;font-size:20px;line-height:1}
+.fform .row{position:sticky;bottom:calc(-20px - var(--m-bot));background:var(--panel);padding:12px 0 calc(8px + var(--m-bot));margin-top:14px;z-index:2}
+.fform input,.fform select,.fform textarea{min-height:48px;border-radius:13px;padding:12px 14px}
+.fform textarea{min-height:92px}
+.fform label{font-size:12.5px;font-weight:600}
+
+/* ---------- Notifikasi (toast) di atas bottom nav ---------- */
+.toast{left:16px!important;right:16px!important;bottom:calc(var(--m-nav) + var(--m-bot) + 14px)!important;border-radius:14px;text-align:center;padding:13px 16px;font-size:13px;font-weight:600;box-shadow:0 12px 34px rgba(0,0,0,.28)}
+body.kbd .toast{bottom:16px!important}
+
+/* ---------- Layar masuk ---------- */
+.login{padding:0!important;align-items:flex-end!important;background:linear-gradient(160deg,#4a39e0 0%,#7a69ff 55%,#43d8bd 130%)!important;overflow-y:auto}
+body:not(.dark) .login{background:linear-gradient(160deg,#4a39e0 0%,#7a69ff 55%,#43d8bd 130%)!important}
+.login .modal-box{border-radius:28px 28px 0 0!important;padding:26px 22px calc(26px + var(--m-bot))!important;max-height:none;box-shadow:0 -10px 40px rgba(0,0,0,.18)}
+.login .modal-box::before{display:none!important}
+#loginForm input{min-height:50px;border-radius:14px}
+#loginForm .primary{min-height:50px;font-size:15px}
+.login .logo-mark{width:60px!important;height:60px!important;border-radius:20px;font-size:20px;box-shadow:0 12px 26px rgba(105,87,255,.35)}
+
+/* ---------- Tabel-tabel kecil & detail ---------- */
+.pgrid{grid-template-columns:repeat(3,1fr);gap:8px}
+.lb img{max-height:72vh}
+.empty{padding:32px 16px}
+
+/* ---------- Mode gelap ---------- */
+body.dark .topbar{background:color-mix(in srgb,var(--bg) 86%,transparent)}
+body.dark .bnav{box-shadow:0 -8px 28px rgba(0,0,0,.35)}
+body.dark .qa button{box-shadow:none}
+body.dark .msheet{box-shadow:0 -20px 60px rgba(0,0,0,.6)}
+body.dark #dashboard .dash-kpis .kpi.k-total{box-shadow:0 14px 30px rgba(0,0,0,.4)}
+body.dark .fin-tabs button{background:var(--panel2)!important}
+
+/* ---------- Aksesibilitas ---------- */
+.bnav button:focus-visible,.m-back:focus-visible,.msheet button:focus-visible,.qa button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.page,.modal.show>.modal-box,.msheet,.msheet-bg,.bnav{animation:none!important;transition:none!important}}
+}
+
+/* ---- layar sangat sempit (≤ 360px) ---- */
+@media(max-width:360px){
+  .bnav button{font-size:10.5px}.bnav .bi{width:50px}
+  .qa{gap:6px}.qa button{font-size:10.5px;padding:10px 2px 8px}
+  .msheet .ms-grid{grid-template-columns:repeat(3,1fr)}
+  #dashboard .dash-kpis .kpi.k-total .kpi-val{font-size:26px}
+}
+/* ---- HP landscape: bottom nav lebih tipis ---- */
+@media(max-width:760px) and (max-height:480px){
+  :root{--m-nav:52px}.bnav button{min-height:44px;flex-direction:row;justify-content:center;gap:8px}.bnav .bi{width:34px;height:28px}
+}
+@media print{.bnav,.msheet,.msheet-bg,.m-back{display:none!important}}

@@ -19,7 +19,54 @@
    "sizes": "512x512",
    "type": "image/png",
    "purpose": "any"
+  },
+  {
+   "src": "/icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
   }
  ],
- "id": "/"
+ "id": "/",
+ "orientation": "portrait",
+ "categories": [
+  "finance",
+  "lifestyle",
+  "productivity"
+ ],
+ "shortcuts": [
+  {
+   "name": "Arisan",
+   "short_name": "Arisan",
+   "url": "/arisan",
+   "icons": [
+    {
+     "src": "/icon-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  },
+  {
+   "name": "Keuangan",
+   "short_name": "Keuangan",
+   "url": "/keuangan",
+   "icons": [
+    {
+     "src": "/icon-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  },
+  {
+   "name": "Anggota",
+   "short_name": "Anggota",
+   "url": "/anggota",
+   "icons": [
+    {
+     "src": "/icon-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  }
+ ]
 }

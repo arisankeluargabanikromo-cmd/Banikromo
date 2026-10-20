@@ -15,16 +15,19 @@ const PAPER = { a4: ['A4', 210, 297], a3: ['A3', 297, 420], a2: ['A2', 420, 594]
 const SHEET = { a4: ['A4', 210, 297], a3: ['A3', 297, 420], letter: ['Letter', 216, 279] };
 const SERIF = "Georgia,'Times New Roman',serif", SANS = "'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif";
 const TH = {   // [isi, garis] untuk laki-laki (m), perempuan (f), netral (x)
+  neon: { n: 'Neon Futuristik', fx: 'neon', grad: 1, glow: '#19e6ff', bg: '#050816', bg2: '#16093a', band: 'rgba(25,230,255,.035)', ink: '#eaf7ff', soft: '#7f95bd', acc: '#19e6ff', acc2: '#b46bff', line: '#2b6f9e', hf: SANS, bf: SANS, m: ['#0a1f3f', '#34adff'], f: ['#2b0f3d', '#ff4fd8'], x: ['#0d1b30', '#6580a8'], up: 1 },
+  aurora: { n: 'Aurora Gelap', fx: 'aurora', grad: 1, glow: '#7cf7c8', bg: '#08111f', bg2: '#1b1040', band: 'rgba(124,247,200,.035)', ink: '#f1f7ff', soft: '#8ea3c4', acc: '#7cf7c8', acc2: '#b58cff', line: '#3d6a9a', hf: SANS, bf: SANS, m: ['#0f2b4a', '#5cb4ff'], f: ['#371740', '#ff8ad8'], x: ['#12203a', '#6f86ad'], up: 1 },
+  galeri: { n: 'Galeri Minimal', fx: 'galeri', bg: '#f7f8fc', bg2: '#eceffa', band: 'rgba(79,70,255,.04)', ink: '#0e1124', soft: '#6a7390', acc: '#4f46ff', acc2: '#00c2a8', line: '#aab3d1', hf: SANS, bf: SANS, m: ['#ffffff', '#4f7dff'], f: ['#ffffff', '#ff5fa2'], x: ['#ffffff', '#8b95b3'], up: 1 },
   klasik: { n: 'Klasik Krem', bg: '#fbf5e6', band: 'rgba(168,131,47,.09)', ink: '#3b2a1d', soft: '#7a6652', acc: '#a8832f', line: '#b49c72', hf: SERIF, bf: SERIF, m: ['#e8eef4', '#6b88a6'], f: ['#f8e8eb', '#b56e7d'], x: ['#f0ebdf', '#a39378'] },
   modern: { n: 'Modern Putih', bg: '#ffffff', band: 'rgba(105,87,255,.05)', ink: '#172033', soft: '#6b7690', acc: '#6957ff', line: '#c5cde0', hf: SANS, bf: SANS, m: ['#eaf0ff', '#4b7bff'], f: ['#fde8f1', '#ec5f9a'], x: ['#eef1f6', '#8b95a8'], up: 1 },
   gelap: { n: 'Elegan Gelap', bg: '#0e1530', band: 'rgba(255,255,255,.04)', ink: '#f3ecd9', soft: '#a9b0c8', acc: '#e2b857', line: '#4d5a85', hf: SERIF, bf: SANS, m: ['#1b2a52', '#7da0ff'], f: ['#3a2140', '#ff86b8'], x: ['#1d2540', '#8b95a8'] },
   alam: { n: 'Hijau Alam', bg: '#f1f6ee', band: 'rgba(60,110,70,.08)', ink: '#1f3a27', soft: '#5f7a66', acc: '#3f8a52', line: '#9db9a3', hf: SERIF, bf: SERIF, m: ['#e3eef4', '#5b8aa8'], f: ['#f6e8e4', '#c07a68'], x: ['#e8efe4', '#8aa38f'] },
   hitam: { n: 'Hitam Putih (hemat tinta)', bg: '#ffffff', band: 'rgba(0,0,0,.045)', ink: '#111111', soft: '#555555', acc: '#111111', line: '#888888', hf: SERIF, bf: SANS, m: ['#ffffff', '#111111'], f: ['#ebebeb', '#111111'], x: ['#ffffff', '#777777'] },
 };
-const DEF = { scope: 'all', branch: null, depth: 99, spouses: true, dead: true, photos: true, years: true, nameMode: 'full', theme: 'klasik', gender: true,
-  title: '', subtitle: '', motto: '', logo: true, frame: true, bands: true, legend: true, date: true, gap: 'normal',
+const DEF = { scope: 'all', branch: null, depth: 99, spouses: true, dead: true, photos: true, years: true, nameMode: 'full', theme: 'neon', gender: true,
+  title: '', subtitle: '', motto: '', logo: true, frame: true, fstyle: 'hud', bands: true, legend: true, date: true, gap: 'normal',
   paper: 'a1', orient: 'auto', layout: 'auto', margin: 'normal', mode: 'single', sheet: 'a4', pngq: 'hi' };
-const PERSIST = ['depth', 'spouses', 'dead', 'photos', 'years', 'nameMode', 'theme', 'gender', 'motto', 'logo', 'frame', 'bands', 'legend', 'date', 'gap', 'paper', 'orient', 'layout', 'margin', 'mode', 'sheet', 'pngq'];
+const PERSIST = ['depth', 'spouses', 'dead', 'photos', 'years', 'nameMode', 'theme', 'gender', 'motto', 'logo', 'frame', 'fstyle', 'bands', 'legend', 'date', 'gap', 'paper', 'orient', 'layout', 'margin', 'mode', 'sheet', 'pngq'];
 let O = null, TAB = 'isi', ZOOM = 1, LAST = null, TOK = 0, BR = [], timer = 0;
 const PD = {};   // cache foto: kunci berkas → data-URL ('' = gagal)
 
@@ -130,12 +133,67 @@ async function ensure(keys, prog) {
 }
 
 // ---------- Gambar kartu & pohon (satuan desain) ----------
+// ---------- Efek tema futuristik (semua vektor: tanpa filter/blur agar tetap tajam di PDF & percetakan) ----------
+function fxCard(x, y, w, h, sty, lead, th) {
+  const st = lead ? th.acc : sty[1], k = Math.min(3.4, w * .12);
+  if (th.fx === 'galeri') return `<rect x="${n2(x)}" y="${n2(y)}" width="${w}" height="${h}" rx="1.2" fill="${sty[0]}" stroke="${lead ? th.acc : th.line}" stroke-width="${lead ? .8 : .35}"/><rect x="${n2(x)}" y="${n2(y)}" width="1.1" height="${h}" fill="${st}"/>`;
+  return `<rect x="${n2(x - .5)}" y="${n2(y - .5)}" width="${n2(w + 1)}" height="${n2(h + 1)}" rx="2" fill="none" stroke="${st}" stroke-width="1.6" opacity="${lead ? .3 : .14}"/>`
+    + `<rect x="${n2(x)}" y="${n2(y)}" width="${w}" height="${h}" rx="1.4" fill="${sty[0]}" fill-opacity=".94" stroke="${st}" stroke-opacity=".85" stroke-width="${lead ? .8 : .4}"/>`
+    + `<path d="M${n2(x)} ${n2(y + k)}V${n2(y)}H${n2(x + k)}M${n2(x + w - k)} ${n2(y + h)}H${n2(x + w)}V${n2(y + h - k)}" fill="none" stroke="${st}" stroke-width=".9" stroke-linecap="square"/>`;
+}
+const lineGroup = (th, d) => th.glow
+  ? `<g fill="none" stroke="${th.glow}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" opacity=".12">${d}</g><g fill="none" stroke="${th.glow}" stroke-width=".5" stroke-linejoin="round">${d}</g>`
+  : `<g fill="none" stroke="${th.line}" stroke-width=".6" stroke-linejoin="round">${d}</g>`;
+function fxBg(th, W, H, u) {
+  const g = th.fx === 'galeri', s = u * 3, R = Math.max(W, H);
+  let o = `<defs><linearGradient id="fhbg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${th.bg}"/><stop offset="1" stop-color="${th.bg2}"/></linearGradient>`
+    + `<radialGradient id="fhg1"><stop offset="0" stop-color="${th.acc}" stop-opacity=".26"/><stop offset="1" stop-color="${th.acc}" stop-opacity="0"/></radialGradient>`
+    + `<radialGradient id="fhg2"><stop offset="0" stop-color="${th.acc2}" stop-opacity=".3"/><stop offset="1" stop-color="${th.acc2}" stop-opacity="0"/></radialGradient>`
+    + `<linearGradient id="fhtt" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${th.acc}"/><stop offset="1" stop-color="${th.acc2}"/></linearGradient>`
+    + `<pattern id="fhgr" width="${n2(s)}" height="${n2(s)}" patternUnits="userSpaceOnUse"><path d="M${n2(s)} 0H0V${n2(s)}" fill="none" stroke="${th.acc}" stroke-opacity="${g ? .08 : .06}" stroke-width="${n2(u * .05)}"/></pattern></defs>`
+    + `<rect width="${W}" height="${H}" fill="url(#fhbg)"/>`;
+  if (!g) o += `<circle cx="${n2(W * .12)}" cy="${n2(H * .04)}" r="${n2(R * .75)}" fill="url(#fhg1)"/><circle cx="${n2(W * .92)}" cy="${n2(H * .96)}" r="${n2(R * .8)}" fill="url(#fhg2)"/>`;
+  o += `<rect width="${W}" height="${H}" fill="url(#fhgr)"/>`;
+  if (!g) o += `<g fill="none" stroke="${th.acc}" stroke-opacity=".07" stroke-width="${n2(u * .12)}">${[.25, .42, .6].map(k => `<circle cx="${n2(W / 2)}" cy="${n2(H * .55)}" r="${n2(R * k)}"/>`).join('')}</g>`;
+  return o;
+}
+function fxFrame(th, W, H, m, u, st) {
+  const i = m * .3, A = m * .55, j = i + A, c = Math.min(u * 5, A * 3.2), L = u * 7, gal = th.fx === 'galeri';
+  const pol = (k, cc) => `M${n2(k + cc)} ${n2(k)}H${n2(W - k - cc)}L${n2(W - k)} ${n2(k + cc)}V${n2(H - k - cc)}L${n2(W - k - cc)} ${n2(H - k)}H${n2(k + cc)}L${n2(k)} ${n2(H - k - cc)}V${n2(k + cc)}Z`;
+  const rr = (k, r) => `<rect x="${n2(k)}" y="${n2(k)}" width="${n2(W - 2 * k)}" height="${n2(H - 2 * k)}" rx="${n2(r)}"`;
+  const defs = `<defs><linearGradient id="fhfr" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${n2(W)}" y2="${n2(H)}"><stop offset="0" stop-color="${th.acc}"/><stop offset=".5" stop-color="${th.acc2}"/><stop offset="1" stop-color="${th.acc}"/></linearGradient></defs>`;
+  const G = gal ? th.acc : 'url(#fhfr)', corners = [[i, i, 1, 1], [W - i, i, -1, 1], [i, H - i, 1, -1], [W - i, H - i, -1, -1]];
+  if (st === 'passe') {            // bingkai foto: pita tebal dengan sambungan miter + garis dalam
+    const band = `M${n2(i)} ${n2(i)}H${n2(W - i)}V${n2(H - i)}H${n2(i)}ZM${n2(j)} ${n2(j)}V${n2(H - j)}H${n2(W - j)}V${n2(j)}Z`, g2 = i + A * .78;
+    return defs + `<path d="${band}" fill-rule="evenodd" fill="${gal ? th.ink : 'url(#fhfr)'}" ${gal ? '' : 'fill-opacity=".92"'}/>`
+      + `<g stroke="${th.bg}" stroke-opacity=".55" stroke-width="${n2(u * .12)}">${corners.map(([x, y, a, b]) => `<path d="M${n2(x)} ${n2(y)}L${n2(x + a * A)} ${n2(y + b * A)}"/>`).join('')}</g>`
+      + `<rect x="${n2(i + A * .12)}" y="${n2(i + A * .12)}" width="${n2(W - 2 * i - A * .24)}" height="${n2(H - 2 * i - A * .24)}" fill="none" stroke="${th.bg}" stroke-opacity=".35" stroke-width="${n2(u * .1)}"/>`
+      + `<rect x="${n2(g2)}" y="${n2(g2)}" width="${n2(W - 2 * g2)}" height="${n2(H - 2 * g2)}" fill="none" stroke="${gal ? th.acc : th.line}" stroke-opacity="${gal ? 1 : .7}" stroke-width="${n2(u * .14)}"/>`;
+  }
+  if (st === 'neon') {             // garis ganda membulat, bersinar, dengan simpul sudut
+    return defs + `${rr(i, u * 3)} fill="none" stroke="${G}" stroke-width="${n2(u * 1)}" opacity="${gal ? 0 : .16}"/>${rr(i, u * 3)} fill="none" stroke="${G}" stroke-width="${n2(u * .3)}"/>`
+      + `${rr(j, u * 2)} fill="none" stroke="${th.line}" stroke-opacity=".75" stroke-width="${n2(u * .12)}" stroke-dasharray="${n2(u * .7)} ${n2(u * .5)}"/>`
+      + corners.map(([x, y, a, b]) => `<circle cx="${n2(x + a * u * 3 * .29)}" cy="${n2(y + b * u * 3 * .29)}" r="${n2(u * 1.05)}" fill="${th.bg}" stroke="${th.acc}" stroke-width="${n2(u * .24)}"/><circle cx="${n2(x + a * u * 3 * .29)}" cy="${n2(y + b * u * 3 * .29)}" r="${n2(u * .4)}" fill="${th.acc2}"/>`).join('')
+      + `<g fill="${th.acc}">${[[W / 2, i], [W / 2, H - i], [i, H / 2], [W - i, H / 2]].map(([x, y]) => `<rect x="${n2(x - u * .55)}" y="${n2(y - u * .55)}" width="${n2(u * 1.1)}" height="${n2(u * 1.1)}" transform="rotate(45 ${n2(x)} ${n2(y)})"/>`).join('')}</g>`;
+  }
+  // 'hud': panel kendali bersudut terpotong, aksen terang di sudut, skala penggaris, simpul di tengah sisi
+  const tick = (x0, y0, dx, dy, nx, ny) => { let d = ''; for (let q = 0; q < 6; q++) d += `M${n2(x0 + dx * q * u * 1.1)} ${n2(y0 + dy * q * u * 1.1)}l${n2(nx * A * (q % 2 ? .4 : .62))} ${n2(ny * A * (q % 2 ? .4 : .62))}`; return d; };
+  let tk = '';
+  for (const [x, y, a, b] of corners) tk += tick(x + a * (c + L + u * 1.6), y + b * A * .15, a, 0, 0, b) + tick(x + a * A * .15, y + b * (c + L + u * 1.6), 0, b, a, 0);
+  return defs + `<path d="${pol(i, c)}" fill="none" stroke="${G}" stroke-width="${n2(u * 1)}" stroke-linejoin="round" opacity="${gal ? 0 : .15}"/><path d="${pol(i, c)}" fill="none" stroke="${G}" stroke-width="${n2(u * .26)}" stroke-linejoin="round"/>`
+    + `<path d="${pol(j, Math.max(c - A * .6, u))}" fill="none" stroke="${th.line}" stroke-opacity=".6" stroke-width="${n2(u * .1)}" stroke-linejoin="round"/>`
+    + `<g fill="none" stroke="${th.acc}" stroke-opacity=".7" stroke-width="${n2(u * .09)}">${`<path d="${tk}"/>`}</g>`
+    + `<g fill="none" stroke="${th.acc}" stroke-width="${n2(u * .62)}" stroke-linecap="butt">${corners.map(([x, y, a, b]) => `<path d="M${n2(x)} ${n2(y + b * c)}L${n2(x + a * c)} ${n2(y)}H${n2(x + a * (c + L))}M${n2(x)} ${n2(y + b * c)}V${n2(y + b * (c + L))}"/>`).join('')}</g>`
+    + `<g fill="${th.acc2}">${corners.map(([x, y, a, b]) => `<circle cx="${n2(x + a * (c + L))}" cy="${n2(y)}" r="${n2(u * .5)}"/><circle cx="${n2(x)}" cy="${n2(y + b * (c + L))}" r="${n2(u * .5)}"/>`).join('')}</g>`
+    + `<g fill="${th.acc}">${[[W / 2, i], [W / 2, H - i], [i, H / 2], [W - i, H / 2]].map(([x, y]) => `<rect x="${n2(x - u * .6)}" y="${n2(y - u * .6)}" width="${n2(u * 1.2)}" height="${n2(u * 1.2)}" transform="rotate(45 ${n2(x)} ${n2(y)})"/>`).join('')}</g>`
+    + `<g stroke="${th.acc}" stroke-opacity=".55" stroke-width="${n2(u * .16)}">${[[W / 2, i, 1, 0], [W / 2, H - i, 1, 0], [i, H / 2, 0, 1], [W - i, H / 2, 0, 1]].map(([x, y, dx, dy]) => `<path d="M${n2(x - dx * u * 6)} ${n2(y - dy * u * 6)}L${n2(x - dx * u * 1.6)} ${n2(y - dy * u * 1.6)}M${n2(x + dx * u * 1.6)} ${n2(y + dy * u * 1.6)}L${n2(x + dx * u * 6)} ${n2(y + dy * u * 6)}"/>`).join('')}</g>`;
+}
 const yearsTxt = m => m.death_year ? `${m.birth_year || '?'} – ${m.death_year}` : m.birth_year ? 'Lahir ' + m.birth_year : '';
 function cardSvg(m, x, y, G, th, o, ctx) {
   const w = G.cw, h = G.ch, kn = FAM.kin.get(m.id) || { k: 'asli' }, sty = !o.gender ? th.x : m.gender === 'L' ? th.m : m.gender === 'P' ? th.f : th.x;
   const dead = !!m.death_year, lead = kn.k === 'pendiri', yt = o.years ? yearsTxt(m) : '', nm = o.nameMode === 'short' ? first(m.name) : m.name;
   const tx = (G.tb ? w - 4 : (G.ph ? w - 2 - 15 - 2 : w - 6)), wr = wrapName(nm, tx, G.nfs, G.lines, th.bf), lh = wr.fs * 1.2, p = [];
-  p.push(`<rect x="${n2(x + .5)}" y="${n2(y + .7)}" width="${w}" height="${h}" rx="3" fill="#000" opacity=".07"/><rect x="${n2(x)}" y="${n2(y)}" width="${w}" height="${h}" rx="3" fill="${sty[0]}" stroke="${lead ? th.acc : sty[1]}" stroke-width="${lead ? 1 : .55}"/>`);
+  p.push(th.fx ? fxCard(x, y, w, h, sty, lead, th) : `<rect x="${n2(x + .5)}" y="${n2(y + .7)}" width="${w}" height="${h}" rx="3" fill="#000" opacity=".07"/><rect x="${n2(x)}" y="${n2(y)}" width="${w}" height="${h}" rx="3" fill="${sty[0]}" stroke="${lead ? th.acc : sty[1]}" stroke-width="${lead ? 1 : .55}"/>`);
   let px, py, tx0, ty, anchor, bh = wr.lines.length * lh + (yt ? .9 + G.yfs : 0);
   if (G.tb) { px = x + w / 2 - G.pd / 2; py = y + 2.5; anchor = 'middle'; tx0 = x + w / 2; ty = G.ph ? y + 2.5 + G.pd + 1.5 : y + (h - bh) / 2; }
   else { px = x + 2; py = y + (h - G.pd) / 2; anchor = 'start'; tx0 = G.ph ? x + 2 + G.pd + 2 : x + 3; ty = y + (h - bh) / 2; }
@@ -161,10 +219,10 @@ function drawTree(P, th, o, ctx) {
     const rect = G.tb ? [-P.pad, a, GUT + c1 + P.pad, b - a] : [a, -P.pad, b - a, GUT + c1 + P.pad];
     if (d % 2 === 0) out.push(`<rect x="${n2(rect[0])}" y="${n2(rect[1])}" width="${n2(rect[2])}" height="${n2(rect[3])}" fill="${th.band}"/>`);
     const lab = G.tb ? [GUT / 2, (a + b) / 2] : [(a + b) / 2, GUT / 2];
-    out.push(`<text x="${n2(lab[0])}" y="${n2(lab[1] + 1.2)}" text-anchor="middle" font-size="4.4" font-weight="700" fill="${th.soft}" opacity=".9" font-family="${th.hf}">${roman(d + 1)}</text>`);
+    out.push(`<text x="${n2(lab[0])}" y="${n2(lab[1] + 1.2)}" text-anchor="middle" font-size="4.4" font-weight="700" fill="${th.soft}" opacity=".9" font-family="${th.hf}">${th.fx ? String(d + 1).padStart(2, '0') : roman(d + 1)}</text>`);
   }
   // garis
-  const lines = [], rings = [];
+  const lines = [], rings = [], dots = new Map();
   for (const n of nodes) {
     const base = n.m + G.cm / 2;
     for (let i = 0; i + 1 < n.ms.length; i++) {          // ikatan pasangan
@@ -174,17 +232,23 @@ function drawTree(P, th, o, ctx) {
       rings.push(cer ? `<path d="M${L(base - 1, mid - .6)}L${L(base + 1, mid + .6)}" stroke="${th.soft}" stroke-width=".5"/>` : `<circle cx="${n2(p1[0])}" cy="${n2(p1[1])}" r="1.25"/><circle cx="${n2(p2[0])}" cy="${n2(p2[1])}" r="1.25"/>`);
     }
     if (n.kids.length) {
-      const bus = n.m + G.cm + G.lg / 2, pair = n.ms.length === 2;
+      const bus = n.m + G.cm + G.lg / 2, pair = n.ms.length === 2, solo = n.kids.length === 1;
       for (const k of n.kids) {
         let sm = n.m + G.cm, sc = n.cx;
         if (pair) sm = n.m + G.cm / 2 + 1.9;
-        else if (n.ms.length > 2 && k.u.pm) { const i = n.ms.indexOf(k.u.pm); if (i >= 0) sc = crossOf(n, i) + G.cc / 2; }
-        lines.push(`<path d="M${L(sm, sc)}L${L(bus, sc)}L${L(bus, k.cx)}L${L(k.m, k.cx)}"/>`);
+        else if (n.ms.length > 2 && k.u.pm) { const i = n.ms.indexOf(FAM.byId.get(k.u.pm.parent_id)); if (i >= 0) sc = crossOf(n, i) + G.cc / 2; }
+        // garis masuk ke kartu ANAK KANDUNG (bukan titik tengah pasangannya) agar sama dengan anak tunggal
+        const bi = k.u.pm ? k.ms.indexOf(k.u.pm) : -1, kc = bi >= 0 ? crossOf(k, bi) + G.cc / 2 : k.cx;
+        lines.push(`<path d="M${L(sm, sc)}L${L(bus, sc)}L${L(bus, kc)}L${L(k.m, kc)}"/>`);
+        if (solo && Math.abs(kc - sc) < .01) lines.push(`<path d="M${L(bus, sc - 2.6)}L${L(bus, sc + 2.6)}"/>`);   // anak tunggal pun tetap tampak bercabang (palang T)
+        const jp = pt(bus, sc), ep = pt(k.m, kc);
+        dots.set(n2(jp[0]) + ' ' + n2(jp[1]), [jp, 1]); dots.set(n2(ep[0]) + ' ' + n2(ep[1]), [ep, .62]);
       }
     }
     if (n.hid) { const c = G.tb ? [GUT + n.cx, n.m + G.cm + 3.4] : [n.m + G.cm + 6, GUT + n.cx]; out.push(`<g><rect x="${n2(c[0] - 4.2)}" y="${n2(c[1] - 1.9)}" width="8.4" height="3.8" rx="1.9" fill="${th.band}" stroke="${th.line}" stroke-width=".3"/><text x="${n2(c[0])}" y="${n2(c[1] + .9)}" text-anchor="middle" font-size="2.3" font-weight="700" fill="${th.soft}">+${n.hid}</text></g>`); }
   }
-  out.push(`<g fill="none" stroke="${th.line}" stroke-width=".6" stroke-linejoin="round">${lines.join('')}</g><g fill="none" stroke="${th.acc}" stroke-width=".45">${rings.join('')}</g>`);
+  out.push(lineGroup(th, lines.join('')) + `<g fill="none" stroke="${th.acc}" stroke-width=".45">${rings.join('')}</g>`);
+  out.push(`<g fill="${th.glow || th.acc}">${[...dots.values()].map(([q, r]) => `<circle cx="${n2(q[0])}" cy="${n2(q[1])}" r="${r}"/>`).join('')}</g>`);   // simpul percabangan
   // kartu
   const cards = [];
   for (const n of nodes) n.ms.forEach((m, i) => { const q = pt(n.m, crossOf(n, i)); cards.push(cardSvg(m, q[0], q[1], G, th, o, ctx)); });
@@ -211,13 +275,15 @@ function compose(o, withPhotos = true) {
   const ctx = { need: [], dia: P.G.pd * s }, tree = drawTree(PP, th, o, ctx);
   const cw = PP.Wd * s, ch = PP.Hd * s, ox = M.ax + (M.aw - cw) / 2 + P.pad * s, oy = M.ay + (M.ah - ch) / 2 + P.pad * s, body = [];
   body.push(`<defs><clipPath id="fhcp" clipPathUnits="objectBoundingBox"><circle cx=".5" cy=".5" r=".5"/></clipPath></defs><rect width="${W}" height="${H}" fill="${th.bg}"/>`);
-  if (o.frame) { const i = M.m * .4, j = i + u * .9, k = u * 1.1;
+  if (th.fx) body.push(fxBg(th, W, H, u));
+  if (o.frame && th.fx) body.push(fxFrame(th, W, H, M.m, u, o.fstyle));
+  else if (o.frame) { const i = M.m * .4, j = i + u * .9, k = u * 1.1;
     body.push(`<rect x="${n2(i)}" y="${n2(i)}" width="${n2(W - 2 * i)}" height="${n2(H - 2 * i)}" fill="none" stroke="${th.acc}" stroke-width="${n2(u * .28)}"/><rect x="${n2(j)}" y="${n2(j)}" width="${n2(W - 2 * j)}" height="${n2(H - 2 * j)}" fill="none" stroke="${th.line}" stroke-width="${n2(u * .12)}"/>`);
     for (const [cx, cy] of [[i, i], [W - i, i], [i, H - i], [W - i, H - i]]) body.push(`<path d="M${n2(cx)} ${n2(cy - k)}L${n2(cx + k)} ${n2(cy)}L${n2(cx)} ${n2(cy + k)}L${n2(cx - k)} ${n2(cy)}Z" fill="${th.bg}" stroke="${th.acc}" stroke-width="${n2(u * .2)}"/>`); }
   // kepala
   let y = M.m + u * 1.2; const cxm = W / 2;
   if (M.logo) { body.push(`<image href="${FH_BRAND.logo}" xlink:href="${FH_BRAND.logo}" x="${n2(cxm - M.logo / 2)}" y="${n2(y)}" width="${n2(M.logo)}" height="${n2(M.logo)}" preserveAspectRatio="xMidYMid meet"/>`); y += M.logo + 1.4 * u; }
-  body.push(`<text x="${n2(cxm)}" y="${n2(y + M.tFs * .85)}" text-anchor="middle" font-family="${th.hf}" font-size="${n2(M.tFs)}" font-weight="700" fill="${th.ink}"${th.up ? ` letter-spacing="${n2(M.tFs * .06)}"` : ''}>${esc(th.up ? title.toUpperCase() : title)}</text>`); y += M.tFs * 1.2 + .9 * u;
+  body.push(`<text x="${n2(cxm)}" y="${n2(y + M.tFs * .85)}" text-anchor="middle" font-family="${th.hf}" font-size="${n2(M.tFs)}" font-weight="700" fill="${th.grad ? 'url(#fhtt)' : th.ink}"${th.up ? ` letter-spacing="${n2(M.tFs * .06)}"` : ''}>${esc(th.up ? title.toUpperCase() : title)}</text>`); y += M.tFs * 1.2 + .9 * u;
   const dw = Math.min(W * .3, 34 * u); body.push(`<g stroke="${th.acc}" stroke-width="${n2(u * .16)}" fill="none"><path d="M${n2(cxm - dw / 2)} ${n2(y)}H${n2(cxm - u * 1.1)}M${n2(cxm + u * 1.1)} ${n2(y)}H${n2(cxm + dw / 2)}"/><path d="M${n2(cxm)} ${n2(y - u * .7)}l${n2(u * .7)} ${n2(u * .7)}l${n2(-u * .7)} ${n2(u * .7)}l${n2(-u * .7)} ${n2(-u * .7)}z" fill="${th.acc}"/></g>`); y += 1.5 * u;
   if (sub) body.push(`<text x="${n2(cxm)}" y="${n2(y + M.sFs * .85)}" text-anchor="middle" font-family="${th.bf}" font-size="${n2(M.sFs)}" fill="${th.soft}">${esc(sub)}</text>`);
   // pohon
@@ -318,6 +384,7 @@ function panel() {
     ${fld('Subjudul', `<input class="pr-in" data-o="subtitle" placeholder="${esc(LAST ? LAST.info.sub : '')}" value="${esc(O.subtitle)}" maxlength="140">`)}
     ${fld('Pesan / doa di bagian bawah', `<input class="pr-in" data-o="motto" placeholder="Mis. Silaturahmi memperpanjang umur dan melapangkan rezeki" value="${esc(O.motto)}" maxlength="120">`)}
     <div class="pr-grp">${tog('gender', 'Warna menurut jenis kelamin')}${tog('bands', 'Pita & nomor generasi')}${tog('frame', 'Bingkai berornamen')}${tog('legend', 'Keterangan simbol')}${tog('date', 'Tanggal cetak')}${window.FH_BRAND && FH_BRAND.logo ? tog('logo', 'Logo keluarga di judul') : ''}</div>
+    ${(TH[O.theme] || {}).fx && O.frame ? fld('Gaya bingkai', seg('fstyle', [['hud', 'Panel HUD'], ['neon', 'Garis Neon'], ['passe', 'Bingkai Foto']])) : ''}
     ${fld('Jarak antar kartu', seg('gap', [['rapat', 'Rapat'], ['normal', 'Normal'], ['lega', 'Lega']]))}`;
   const t = O.mode === 'tile' && LAST ? tilePlan(LAST.W, LAST.H, O) : null;
   return `${fld('Ukuran poster', `<select class="pr-in" data-o="paper">${Object.entries(PAPER).map(([k, v]) => `<option value="${k}" ${O.paper === k ? 'selected' : ''}>${v[0]} (${v[1]} × ${v[2]} mm)</option>`).join('')}</select>`)}
@@ -359,7 +426,7 @@ function schedule() { clearTimeout(timer); timer = setTimeout(render, 90); }
 function save() { try { const o = {}; PERSIST.forEach(k => o[k] = O[k]); localStorage.setItem(LSK, JSON.stringify(o)); } catch (e) { } }
 function setOpt(k, v) {
   O[k] = v; save();
-  if (['scope', 'depth', 'paper', 'orient', 'layout', 'mode', 'sheet', 'theme', 'photos', 'spouses', 'nameMode'].includes(k) || k === 'branch') { if (TAB !== 'gaya' || k === 'theme') { const keep = $$('prSide').querySelector('.pr-pbody').scrollTop; drawPanel(); $$('prSide').querySelector('.pr-pbody').scrollTop = keep; } }
+  if (['scope', 'depth', 'frame', 'fstyle', 'paper', 'orient', 'layout', 'mode', 'sheet', 'theme', 'photos', 'spouses', 'nameMode'].includes(k) || k === 'branch') { if (TAB !== 'gaya' || k === 'theme' || k === 'frame' || k === 'fstyle') { const keep = $$('prSide').querySelector('.pr-pbody').scrollTop; drawPanel(); $$('prSide').querySelector('.pr-pbody').scrollTop = keep; } }
   schedule();
 }
 function onInput(e) {
