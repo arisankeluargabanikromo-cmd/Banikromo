@@ -258,6 +258,15 @@ Tanpa perubahan database — cukup deploy ulang.
 - **Sinkron**: memuat ulang data halaman aktif dari server, sekaligus memeriksa sesi dan perubahan peran. Menampilkan waktu sinkron terakhir (kuning bila > 10 menit, merah bila gagal) dan titik status koneksi (hijau online / merah offline).
 
 
+## Cetak Silsilah bergaya futuristik (v3.19)
+Tanpa perubahan database. Studio Cetak (**Silsilah → 🖨 Cetak → ② Gaya → Tema**) kini punya tiga tema modern untuk dipajang di dinding ruang keluarga:
+- **Neon Futuristik** (bawaan baru) — latar biru-malam dengan gradasi cyan–ungu, grid halus, garis penghubung bercahaya, kartu kaca gelap bersudut HUD, judul gradien, nomor generasi `01 02 03`, bingkai sudut ala panel kendali.
+- **Aurora Gelap** — nuansa hijau-mint ke ungu, cocok untuk ruangan bercahaya hangat.
+- **Galeri Minimal** — putih keabu-abuan bersih dengan aksen indigo, cocok untuk dinding terang / gaya galeri.
+**Bingkai (tab ② Gaya → Gaya bingkai)** — tiga pilihan untuk tema futuristik: *Panel HUD* (sudut terpotong, aksen terang di sudut, skala penggaris, simpul di tengah sisi), *Garis Neon* (garis ganda membulat bersinar dengan simpul sudut), dan *Bingkai Foto* (pita tebal bersambung miter seperti bingkai lukisan). Gradien garisnya mengikuti warna tema.
+**Perbaikan garis cabang di poster** — (1) garis keturunan kini masuk ke kartu *anak kandung* (bukan ke titik tengah pasangannya), sehingga sama dengan anak yang belum menikah; (2) anak tunggal pun digambar dengan percabangan (simpul + palang T), tidak lagi berupa garis lurus polos; (3) setiap titik percabangan diberi simpul kecil di semua tema; (4) pada keluarga yang menikah lagi (unit >2 orang), garis kini berasal dari orang tua yang benar.
+Seluruh efek berupa **vektor murni** (gradien, pola, dan garis berlapis — tanpa filter blur), sehingga tetap tajam di SVG/PDF sampai ukuran A0 dan aman untuk percetakan. Tema lama (Klasik, Modern, Elegan Gelap, Hijau Alam, Hitam Putih) tetap tersedia; pilihan tema yang pernah disimpan pengguna tidak berubah.
+
 ## Cetak Silsilah — poster untuk ruang keluarga (v3.4)
 Tanpa perubahan database. Buka **Silsilah → 🖨 Cetak** (tersedia untuk semua pengguna) untuk membuka *Studio Cetak* dengan pratinjau langsung.
 
