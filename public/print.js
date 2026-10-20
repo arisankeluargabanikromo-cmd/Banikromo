@@ -32,6 +32,8 @@ let O = null, TAB = 'isi', ZOOM = 1, LAST = null, TOK = 0, BR = [], timer = 0;
 const PD = {};   // cache foto: kunci berkas → data-URL ('' = gagal)
 
 // ---------- Utilitas ----------
+const ribSvg = (x, y, s, th) => { const dk = (() => { const m = /^#([0-9a-f]{6})$/i.exec(th.bg || ''); if (!m) return false; const v = parseInt(m[1], 16); return (((v >> 16) & 255) * 299 + ((v >> 8) & 255) * 587 + (v & 255) * 114) / 1000 < 110; })(), p = 'M12 13.4C6.6 9.2 7.4 3 12 3s5.4 6.2 0 10.4L7.4 21M12 13.4L16.6 21';   // pita berkabung
+  return `<g transform="translate(${+x.toFixed(2)} ${+y.toFixed(2)}) scale(${+(s / 24).toFixed(3)})" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="${p}" stroke="${th.bg}" stroke-width="4.8"/><path d="${p}" stroke="${dk ? th.ink : '#1b1f2a'}" stroke-width="2.8"/></g>`; };
 const n2 = n => +Number(n).toFixed(2), roman = n => { const m = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]; let s = ''; for (const [v, r] of m) while (n >= v) { s += r; n -= v; } return s; };
 let _cx, _cxTried = false; const MC = new Map();
 function em(t, bold, fam) {    // lebar teks dalam satuan em (ukuran font 1)
@@ -207,7 +209,7 @@ function cardSvg(m, x, y, G, th, o, ctx) {
   }
   wr.lines.forEach((ln, i) => p.push(`<text x="${n2(tx0)}" y="${n2(ty + wr.fs * .85 + i * lh)}" text-anchor="${anchor}" font-size="${n2(wr.fs)}" font-weight="700" fill="${th.ink}">${esc(ln)}</text>`));
   if (yt) { const yy = G.tb && G.ph ? y + h - 2.4 : ty + wr.lines.length * lh + .9 + G.yfs * .85; p.push(`<text x="${n2(tx0)}" y="${n2(yy)}" text-anchor="${anchor}" font-size="${G.yfs}" fill="${th.soft}">${esc(yt)}</text>`); }
-  if (dead && o.dead) p.push(`<path d="M${n2(x + w - 3.4)} ${n2(y + 1.7)}v3.4M${n2(x + w - 4.6)} ${n2(y + 2.9)}h2.4" stroke="${th.soft}" stroke-width=".55" fill="none" stroke-linecap="round"/>`);
+  if (dead && o.dead) p.push(ribSvg(x + w - 5.6, y + 1, 4.6, th));
   return p.join('');
 }
 function drawTree(P, th, o, ctx) {
@@ -262,7 +264,7 @@ function legendItems(th, o, u) {
   if (o.gender) { it.push({ t: 'Laki-laki', d: (x, y) => `<rect x="${n2(x)}" y="${n2(y - ic * .5)}" width="${n2(ic)}" height="${n2(ic)}" rx="${n2(ic * .25)}" fill="${th.m[0]}" stroke="${th.m[1]}" stroke-width="${n2(u * .12)}"/>`, w: ic }); it.push({ t: 'Perempuan', d: (x, y) => `<rect x="${n2(x)}" y="${n2(y - ic * .5)}" width="${n2(ic)}" height="${n2(ic)}" rx="${n2(ic * .25)}" fill="${th.f[0]}" stroke="${th.f[1]}" stroke-width="${n2(u * .12)}"/>`, w: ic }); }
   it.push({ t: 'Menikah', d: (x, y) => `<g fill="none" stroke="${th.acc}" stroke-width="${n2(u * .14)}"><circle cx="${n2(x + ic * .36)}" cy="${n2(y)}" r="${n2(ic * .3)}"/><circle cx="${n2(x + ic * .64)}" cy="${n2(y)}" r="${n2(ic * .3)}"/></g>`, w: ic });
   it.push({ t: 'Cerai', d: (x, y) => `<path d="M${n2(x)} ${n2(y)}h${n2(ic)}" stroke="${th.line}" stroke-width="${n2(u * .16)}" stroke-dasharray="${n2(u * .35)} ${n2(u * .3)}"/>`, w: ic });
-  if (o.dead) it.push({ t: 'Almarhum/ah', d: (x, y) => `<path d="M${n2(x + ic / 2)} ${n2(y - ic * .5)}v${n2(ic)}M${n2(x + ic * .15)} ${n2(y - ic * .12)}h${n2(ic * .7)}" stroke="${th.soft}" stroke-width="${n2(u * .16)}" fill="none" stroke-linecap="round"/>`, w: ic });
+  if (o.dead) it.push({ t: 'Almarhum/ah', d: (x, y) => ribSvg(x, y - ic * .5, ic, th), w: ic });
   it.push({ t: 'Leluhur', d: (x, y) => `<rect x="${n2(x)}" y="${n2(y - ic * .5)}" width="${n2(ic)}" height="${n2(ic)}" rx="${n2(ic * .25)}" fill="none" stroke="${th.acc}" stroke-width="${n2(u * .24)}"/>`, w: ic });
   return it;
 }
@@ -377,7 +379,7 @@ function panel() {
   if (TAB === 'isi') return `${fld('Cakupan', seg('scope', [['all', 'Seluruh keluarga'], ['branch', 'Satu cabang']]))}
     ${O.scope === 'branch' ? fld('Cabang (ketik nama untuk mencari)', `<input class="pr-in" id="prBrIn" list="prBr" autocomplete="off" placeholder="Mis. Budi & Sri…" value="${esc(brLabel(O.branch))}"><datalist id="prBr">${BR.map(b => `<option value="${esc(b.l)}">`).join('')}</datalist>`) : ''}
     ${fld(`Tampilkan s/d generasi ke-<output id="prDo">${Math.min(O.depth, dMax)}</output> <small>(dari ${dMax})</small>`, `<input type="range" min="1" max="${dMax}" value="${Math.min(O.depth, dMax)}" data-o="depth">`)}
-    <div class="pr-grp">${tog('spouses', 'Sertakan pasangan & menantu', 'Matikan untuk garis keturunan darah saja')}${tog('dead', 'Tandai almarhum/ah', 'Salib kecil di sudut kartu')}${tog('photos', 'Tampilkan foto', hasPh ? 'Foto kecil bila kartu padat' : 'Belum ada foto — inisial akan ditampilkan')}${tog('years', 'Tahun lahir / wafat')}</div>
+    <div class="pr-grp">${tog('spouses', 'Sertakan pasangan & menantu', 'Matikan untuk garis keturunan darah saja')}${tog('dead', 'Tandai almarhum/ah', 'Pita berkabung hitam di sudut kartu')}${tog('photos', 'Tampilkan foto', hasPh ? 'Foto kecil bila kartu padat' : 'Belum ada foto — inisial akan ditampilkan')}${tog('years', 'Tahun lahir / wafat')}</div>
     ${fld('Nama pada kartu', seg('nameMode', [['full', 'Lengkap'], ['short', 'Singkat (nama depan)']]))}`;
   if (TAB === 'gaya') return `${fld('Tema', `<div class="pr-sws">${Object.entries(TH).map(([k, t]) => `<button type="button" class="pr-sw ${O.theme === k ? 'on' : ''}" data-o="theme" data-v="${k}" title="${t.n}"><i style="background:${t.bg};border-color:${t.line}"><b style="background:${t.m[1]}"></b><b style="background:${t.f[1]}"></b><b style="background:${t.acc}"></b></i><span>${t.n}</span></button>`).join('')}</div>`)}
     ${fld('Judul', `<input class="pr-in" data-o="title" placeholder="${esc(LAST ? LAST.info.title : '')}" value="${esc(O.title)}" maxlength="80">`)}

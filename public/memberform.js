@@ -69,7 +69,7 @@ async function openMemberForm(id, vals) {
   const paint = () => {                                          // header, ringkasan, kelengkapan — diperbarui setiap kali mengetik
     const name = val('name'), g = val('gender'), by = +val('birth_year') || null, dy = +val('death_year') || null, nowY = new Date().getFullYear();
     const age = by ? (dy || nowY) - by : null, ms = selTx('marital_status'), sp = val('spouse_id'), pa = val('parent_id'), ph = val('phone'), ad = val('address');
-    $('#mfName').textContent = (name || 'Anggota baru') + (dy ? ' †' : '');
+    $('#mfName').innerHTML = esc(name || 'Anggota baru') + (dy ? RIB : '');
     const av = $('#mfAv'); av.firstChild.nodeValue = ini(name || '?'); if (!(m && m.photo_path)) av.style.background = mfGrad(g);
     $('#mfCover').className = `fbp-cover cv-${gCls({ gender: g })}`;
     $('#mfSub').textContent = [g === 'L' ? '♂ Laki-laki' : g === 'P' ? '♀ Perempuan' : 'Jenis kelamin belum dipilih', dy ? `Wafat ${dy}` : age != null ? `${age} tahun` : '', val('relation')].filter(Boolean).join(' · ');

@@ -97,7 +97,17 @@ body.dark{--m:#7da0ff;--mt:#1b2747;--f:#ff86b8;--ft:#3a1e32;--xt:#222a3a;--tline
 body.dark .unit{box-shadow:0 8px 22px rgba(0,0,0,.35)}
 .pc{width:136px;height:78px;box-sizing:border-box;border-radius:15px;padding:10px;display:flex;gap:8px;align-items:flex-start;cursor:pointer;background:var(--xt);border:1.5px solid transparent;transition:border-color .15s,transform .15s}
 .pc.g-m{background:var(--mt)}.pc.g-f{background:var(--ft)}.pc:hover{border-color:var(--accent);transform:translateY(-1px)}
-.pc.dead{filter:saturate(.55);opacity:.88}.pc.dead b::before{content:"† "}
+.pc.dead{background:var(--xt)}.pc.dead.g-m,.pc.dead.g-f{background:var(--xt)}
+/* ===== Almarhum/ah: PITA BERKABUNG hitam (bukan salib) — 3 penanda: pita di depan nama, foto abu-abu, garis hitam di sisi kartu ===== */
+:root{--rib:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 13.4C6.6 9.2 7.4 3 12 3s5.4 6.2 0 10.4L7.4 21M12 13.4L16.6 21' stroke='%23fff' stroke-width='4.8'/%3E%3Cpath d='M12 13.4C6.6 9.2 7.4 3 12 3s5.4 6.2 0 10.4L7.4 21M12 13.4L16.6 21' stroke='%231b1f2a' stroke-width='2.8'/%3E%3C/g%3E%3C/svg%3E")}
+.rib{display:inline-block;width:1.15em;height:1.15em;margin:0 .22em;vertical-align:-.22em;flex:none;background:var(--rib) center/contain no-repeat}
+.pc.dead b::before,.ol-p.dead::before,.rchip.dead::before{content:"";display:inline-block;width:1.2em;height:1.2em;margin-right:.3em;vertical-align:-.24em;flex:none;background:var(--rib) center/contain no-repeat}
+.pc.dead b::before{width:1.45em;height:1.45em;margin:-.2em .25em 0 0;vertical-align:-.32em}
+.rchip.dead::before{width:13px;height:13px;margin-right:1px;align-self:center}
+.ol-p.dead::before{width:17px;height:17px;margin-right:0;align-self:center}
+.pc.dead .av,.rchip.dead .av,.ol-p.dead .av{filter:grayscale(1) contrast(.92)}
+.pc.dead::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:4px;border-radius:0 4px 4px 0;background:#1b1f2a}
+body.dark .pc.dead::before{background:#c7cee0}
 .av{position:relative;width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;background:var(--x)}
 .g-m .av{background:linear-gradient(135deg,#7ca0ff,#4b7bff)}.g-f .av{background:linear-gradient(135deg,#ff9cc7,#ec5f9a)}
 .av i{position:absolute;right:-5px;bottom:-5px;width:16px;height:16px;border-radius:50%;background:var(--panel);color:var(--x);font:700 11px/16px system-ui,sans-serif;text-align:center;font-style:normal;box-shadow:0 0 0 1px var(--line)}

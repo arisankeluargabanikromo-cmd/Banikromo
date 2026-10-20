@@ -130,3 +130,6 @@ async function doSignup() {
 }
 document.getElementById('signupBtn').onclick = () => SIGNUP ? doSignup() : setSignupMode(true);
 document.getElementById('backLogin').onclick = () => setSignupMode(false);
+
+// Penanda almarhum/ah: PITA BERKABUNG hitam (bukan salib). Gaya ikon: .rib di style.css
+const RIB = '<i class="rib" role="img" aria-label="Almarhum/ah" title="Almarhum/ah"></i>';

@@ -183,7 +183,7 @@ function openGuide() {
   <div class="gd">
   <h4>① Satu bingkai = satu keluarga</h4>
   ${row(`<div class="unit">${mem('Ahmad', 'm', '1950 · 76 th')}<div class="uj" title="Menikah">♥</div>${mem('Fitri', 'f', '1953 · 73 th')}</div>`, 'Suami &amp; istri dalam satu bingkai', 'Garis ke bawah menuju <b>anak-anak</b> mereka. Biru = laki-laki, merah muda = perempuan. Bila pernah menikah lagi, semua pasangan ada dalam satu bingkai.')}
-  ${row(`<div class="unit">${mem('Fajar', 'm', '1962 · 64 th')}<div class="uj x" title="Cerai">✕</div>${mem('Gita', 'f', '1964 · 62 th')}</div>`, '✕ = cerai, ♥ = menikah', 'Tanda <b>†</b> di depan nama dan kartu yang redup berarti <b>almarhum/ah</b>.')}
+  ${row(`<div class="unit">${mem('Fajar', 'm', '1962 · 64 th')}<div class="uj x" title="Cerai">✕</div>${mem('Gita', 'f', '1964 · 62 th')}</div>`, '✕ = cerai, ♥ = menikah', `Tanda pita hitam ${RIB} di depan nama, foto abu-abu, dan garis hitam di sisi kartu berarti <b>almarhum/ah</b>.`)}
   <h4>② Siapa yang masuk lewat pernikahan?</h4>
   ${row(`<div class="unit"><div class="pc g-m kn-pendiri"><span class="kt kt-pendiri">Leluhur</span><div class="av">DW<i>♂</i></div><div class="pi"><b>Darmo</b><span>1925–2005</span></div></div></div>`, 'Leluhur', 'Pendiri keluarga (generasi 1). Semua <b>keturunan asli</b> adalah anak-cucunya, lewat ayah maupun ibu.')}
   ${row(`<div class="unit"><div class="pc g-f kn-menantu"><span class="kt kt-menantu">Menantu</span><div class="av">FH<i>♀</i></div><div class="pi"><b>Fitri</b><span>1953 · 73 th</span></div><button class="orig" tabindex="-1">⌂</button></div></div>`, 'Menantu — garis putus-putus', 'Pasangan yang masuk keluarga lewat pernikahan. Tombol <b>⌂</b> membuka <b>keluarga asalnya</b>.')}

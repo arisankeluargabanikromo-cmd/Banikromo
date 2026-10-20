@@ -18,7 +18,7 @@ body.dark .kt-besan{color:#f2c27a}body.dark .kt-asli{color:#6fe3c3}
 .pc.kn-pendiri{box-shadow:0 0 0 2px var(--k-gold),0 6px 16px rgba(245,184,74,.3)}
 .pc.kn-menantu{border:1.5px dashed var(--k-men)}
 .pc.kn-besan{background:var(--k-besbg)!important;border-color:var(--k-besln)}
-.pc.kn-besan.dead,.pc.kn-menantu.dead{opacity:.85}
+
 .orig{position:absolute;right:-8px;bottom:-8px;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--k-besln);background:var(--k-besbg);color:#9a5a00;font-size:13px;line-height:1;cursor:pointer;display:grid;place-items:center;z-index:3;padding:0;box-shadow:0 2px 6px rgba(20,30,60,.18);transition:transform .15s}
 .orig:hover{transform:scale(1.15)}
 body.dark .orig{color:#f2c27a}
