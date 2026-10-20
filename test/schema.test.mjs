@@ -582,7 +582,7 @@ console.log('\n═══ L. Input iuran saat periode berganti (patch-020) ══
   const pay = (m, k, t = 1) => A(`select record_payment($1::bigint,$2::text,$3::smallint,'Tunai'::text) r`, [m, k, t]);
 
   await A(`select create_round('Tanpa tanggal') r`); await A(`select open_round(1::bigint)`);
-  await db.exec(`update arisan_rounds set opened_at='2026-03-28 10:00+07' where seq=1`);     // dibuka akhir Maret; hari ini jauh sesudahnya
+  await db.exec(`update arisan_rounds set opened_at='2026-03-28 10:00+07', ref_month=null where seq=1`);     // meniru DATA LAMA (sebelum patch-021, bulan belum tersimpan): dibuka akhir Maret; hari ini jauh sesudahnya
   check('bulan acuan putaran tanpa tanggal TETAP di bulan dibuka (bukan bulan kalender)', (await db.query(`select ref_month('P001') m`)).rows[0].m === '2026-03');
   await db.exec(`update fee_types set required_for_draw=true where id=2`);                   // Iuran Wajib jadi syarat kocok
   await pay(M.Budi, 'P001'); await pay(M.Siti, 'P001'); await pay(M.Budi, '2026-03', 2);
@@ -594,6 +594,44 @@ console.log('\n═══ L. Input iuran saat periode berganti (patch-020) ══
   { const gp = await one(`select get_payments('P002','2026-03') r`); check('bulan yang dipilih eksplisit tetap dihormati', gp.month === '2026-03' && gp.rows.find(x => x.name === 'Budi').paid['2']); }
   check('ref_month putaran tak dikenal jatuh ke bulan kalender', (await db.query(`select ref_month('P999') m, calendar_period() c`)).rows.every(x => x.m === x.c));
   check('ref_month putaran lama ber-kunci bulan memakai bulan kuncinya', await (async () => { await db.exec(`insert into arisan_rounds(seq,period,status,opened_at,opened_by,created_by,closed_at,closed_by) values(9,'2025-11','selesai',now(),'x','x',now(),'x')`); return (await db.query(`select ref_month('2025-11') m`)).rows[0].m === '2025-11'; })());
+}
+
+console.log('\n═══ M. Iuran Wajib tidak terbawa ke putaran baru (patch-021) ═══');
+{
+  const db = await freshDb([SCHEMA]);
+  const admin = await signup(db, 'admin@k.id', 'Admin');
+  await db.exec(`insert into members(name,joined) values('Budi',2020),('Siti',2020)`);
+  await db.exec(`update fee_types set start_period='2020-01', required_for_draw=true where id=2`);
+  const M = {}; for (const r of (await db.query(`select id,name from members`)).rows) M[r.name] = r.id;
+  const A = (sql, p) => as(db, admin, () => tryQ(db, sql, p));
+  const one = async (sql, p) => (await A(sql, p)).rows?.[0]?.r;
+  const pay = (m, k, t = 1) => A(`select record_payment($1::bigint,$2::text,$3::smallint,'Tunai'::text) r`, [m, k, t]);
+  const wajibLunas = gp => !!gp.rows.find(x => x.name === 'Budi').paid['2'];
+
+  const r1 = await one(`select create_round('Satu','2026-10-10'::date) r`); await A(`select open_round(${r1.id}::bigint)`);
+  await pay(M.Budi, 'P001'); await pay(M.Budi, '2026-10', 2);
+  check('putaran bertanggal: bulan acuan = bulan tanggalnya & tersimpan', r1.ref_month === '2026-10' && (await db.query(`select ref_month from arisan_rounds where seq=1`)).rows[0].ref_month === '2026-10');
+  check('putaran 1: Iuran Wajib Okt lunas (sebagaimana dicatat)', wajibLunas(await one(`select get_payments('P001') r`)));
+
+  const r2 = await one(`select create_round('Dua') r`);
+  check('putaran baru TANPA tanggal mendapat bulan SESUDAH putaran sebelumnya (bukan bulan yang sama)', r2.ref_month === '2026-11', r2.ref_month);
+  { const gp = await one(`select get_payments('P002') r`); check('Iuran Wajib putaran lama TIDAK tampil lunas di putaran baru', gp.month === '2026-11' && !wajibLunas(gp), gp.month); }
+  await A(`select open_round(${r2.id}::bigint,'tutup',true)`);
+  { const gp = await one(`select get_payments() r`); check('setelah dibuka & jadi putaran aktif: bulan tetap 2026-11, Wajib belum lunas', gp.period === 'P002' && gp.month === '2026-11' && !wajibLunas(gp)); }
+  { const e = (await one(`select draw_state() r`)).eligible; check('syarat kocok putaran baru butuh Iuran Wajib bulan barunya (Budi belum layak)', !e.some(x => x.name === 'Budi'), JSON.stringify(e.map(x => x.name))); }
+  await pay(M.Budi, '2026-11', 2);
+  check('setelah Budi bayar Wajib bulan baru: tampil lunas di putaran baru, putaran lama tetap lunas Okt', wajibLunas(await one(`select get_payments('P002') r`)) && wajibLunas(await one(`select get_payments('P001') r`)));
+
+  const r3 = await one(`select create_round('Tiga') r`); check('putaran tanpa tanggal berikutnya maju lagi (Desember)', r3.ref_month === '2026-12', r3.ref_month);
+  await A(`select update_round(${r3.id}::bigint,'Tiga baru'::text)`);
+  check('mengubah judul putaran tanpa tanggal TIDAK menggeser bulan acuan', (await db.query(`select ref_month('P003') m`)).rows[0].m === '2026-12');
+  await A(`select update_round(${r3.id}::bigint,'Tiga'::text,'2027-02-14'::date)`);
+  check('mengisi tanggal pelaksanaan memindahkan bulan acuan ke bulan tanggalnya', (await db.query(`select ref_month('P003') m`)).rows[0].m === '2027-02');
+  await A(`select update_round(${r3.id}::bigint,'Tiga'::text,null::date)`);
+  check('mengosongkan tanggal kembali ke aturan "sesudah putaran sebelumnya"', (await db.query(`select ref_month('P003') m`)).rows[0].m === '2026-12');
+  check('putaran yang dibatalkan tidak dihitung: berikutnya tetap sesudah putaran terakhir yang berlaku (Jan 2027)', await (async () => { const b = await one(`select create_round('Batal') r`); await A(`select cancel_round(${b.id}::bigint) r`); const n = await one(`select create_round('Setelah batal') r`); return n.ref_month === '2027-01'; })());
+  check('pembantu _next_ref_month tidak bisa dipanggil dari browser', !(await A(`select _next_ref_month()`)).ok);
+  check('daftar putaran untuk aplikasi memuat ref_month tiap putaran', (await one(`select get_payments() r`)).rounds.every(x => /^\d{4}-\d{2}$/.test(x.ref_month)));
 }
 
 process.exit(summary() ? 0 : 1);

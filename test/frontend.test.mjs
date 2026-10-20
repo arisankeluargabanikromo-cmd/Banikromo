@@ -16,6 +16,37 @@ for (const f of fs.readdirSync(PUB).filter(f => f.endsWith('.js'))) {
   try { new vm.Script(fs.readFileSync(path.join(PUB, f), 'utf8'), { filename: f }); } catch (e) { check('sintaks ' + f, false, e.message); }
 }
 check('semua skrip aplikasi valid secara sintaks', true);
+{
+  const btns = [...html.matchAll(/<button[^>]*onclick="showPage\('([a-z]+)'/g)].map(m => m[1]);
+  check('menu: setiap tombol menu menuju halaman (section) yang ada', btns.length >= 10 && btns.every(id => new RegExp(`<section id="${id}"`).test(html)), btns.join(','));
+  check('menu: tidak ada halaman ganda & semua halaman utama tercantum', new Set(btns).size === btns.length && ['dashboard', 'arisan', 'keuangan', 'laporan', 'anggota', 'silsilah', 'agenda', 'pengumuman', 'galeri', 'pengguna', 'pengaturan'].every(x => btns.includes(x)));
+  const titles = [...html.matchAll(/class="nav-title">([^<]+)</g)].map(m => m[1]);
+  check('menu: dikelompokkan menurut tugas (4 kelompok berjudul)', titles.length === 4 && /Arisan/.test(titles[0]) && titles[1] === 'Keluarga' && titles[2] === 'Kegiatan' && /Akun/.test(titles[3]), titles.join('|'));
+  check('menu: ikon SVG konsisten (tanpa glyph teks) & tombol Pengaturan khusus admin tetap tersembunyi awalnya', !/class="nav-icon">[^<]/.test(html) && /id="navSettings" style="display:none"/.test(html));
+  check('menu: stylesheet menu.css ada & dimuat', fs.existsSync(path.join(PUB, 'menu.css')) && html.includes('href="/menu.css"'));
+}
+{
+  const mem = fs.readFileSync(path.join(PUB, 'members.js'), 'utf8'), mf = fs.readFileSync(path.join(PUB, 'memberform.js'), 'utf8'), app = fs.readFileSync(path.join(PUB, 'app.js'), 'utf8');
+  check('form anggota: memberform.js dimuat SESUDAH profile.js & stylesheet-nya terpasang', html.indexOf('/memberform.js') > html.indexOf('/profile.js') && html.includes('href="/memberform.css"') && fs.existsSync(path.join(PUB, 'memberform.css')));
+  check('form anggota: Tambah & Ubah memakai tampilan profil (openMemberForm), bukan dialog generik', /await openMemberForm\(id,/.test(mem) && /await openMemberForm\(null,/.test(mem) && !/openForm\('Ubah Anggota'/.test(mem) && !/openForm\('Tambah Anggota'/.test(mem));
+  check('form anggota: memakai ulang saveMember & readForm (aturan simpan tidak diduplikasi)', /saveMember\(id, readForm\(form, fields\)\)/.test(mf));
+  check('form anggota: tutup dengan perubahan belum disimpan diminta konfirmasi (closeProfile + Esc)', /window\.mfGuard && !mfGuard\(\)/.test(app) && /function mfGuard\(/.test(mf) && /key === 'Escape' && MF/.test(mf));
+  check('form anggota: kolom wajib kosong di tab tersembunyi memindahkan tab (tidak gagal diam-diam)', /showTab\(bad\.closest\('\[data-pane\]'\)\.dataset\.pane\)/.test(mf));
+  check('form generik tetap utuh: openForm memakai fieldHtml bersama', /function fieldHtml\(/.test(app) && /fields\.map\(f => fieldHtml\(f, vals\[f\.k\]\)\)/.test(app));
+}
+{
+  const rd = f => fs.readFileSync(path.join(PUB, f), 'utf8'), idx = x => html.indexOf(x);
+  const ui = rd('ui.js'), css = rd('ui.css');
+  check('UI seragam: ui.css dimuat SESUDAH semua gaya halaman (finance, dashcards, settings, topbar, menu, memberform)', ['finance', 'dashcards', 'settings', 'topbar', 'menu', 'memberform'].every(n => idx(`/${n}.css`) > 0 && idx('/ui.css') > idx(`/${n}.css`)));
+  check('UI seragam: ui.js dimuat sebelum app.js (kit tersedia untuk semua halaman)', idx('/ui.js') > 0 && idx('/ui.js') < idx('/app.js'));
+  check('UI seragam: kit menyediakan kpi/pill/who/empty/head/seg/barChart', ['kpi', 'pill', 'who', 'empty', 'head', 'seg', 'barChart', 'searchBox'].every(k => new RegExp(`\\b${k}\\b`).test(ui.split('window.UI')[1] || '')));
+  const pages = { 'app.js': ['R.dashboard', 'R.agenda', 'R.pengumuman'], 'members.js': ['R.anggota'], 'extras.js': ['R.galeri'] };
+  check('UI seragam: Dashboard, Anggota, Agenda, Pengumuman, Dokumentasi memakai kartu KPI & kepala kartu dari kit', Object.entries(pages).every(([f, rs]) => rs.every(r => { const src = rd(f), i = src.indexOf(r + ' = async'); return i >= 0 && /UI\.kpi\(/.test(src.slice(i, i + 4500)) && /UI\.head\(/.test(src.slice(i, i + 4500)); })));
+  check('UI seragam: tak ada lagi kartu gaya lama (.stat bergelombang) di app.js', !/class=\"card stat\"/.test(rd('app.js')) && !/class=\"wave\"/.test(rd('app.js')));
+  check('UI seragam: tab Akun, Pengaturan, Keuangan bergaya sama (ikon SVG, bukan glyph teks)', /UI\.ic\(ic, 17\)/.test(rd('account.js')) && /UI\.ic\(ic, 17\)/.test(rd('settings.js')) && !/\['akun', '◉'/.test(rd('account.js')));
+  check('UI seragam: Laporan memakai kepala kartu & ikon kit', /UI\.head\('Pengaturan laporan'/.test(rd('report.js')) && /UI\.ic\('download'/.test(rd('report.js')));
+  check('UI seragam: gaya halaman lama diseragamkan (tabel, status, tab, toolbar)', ['.page .table:not(.fin-table)', '.page .status', '.st-tab.on', '.page .toolbar'].every(k => css.includes(k)));
+}
 check('index.html tidak memuat skrip dari CDN pihak ketiga', !/<script[^>]+src="https?:/.test(html));
 check('pustaka vendor dimuat dari domain sendiri', html.includes('/vendor/supabase-js-2.45.4.js') && fs.existsSync(path.join(PUB, 'vendor/supabase-js-2.45.4.js')));
 check('tidak ada pemuatan skrip CDN di kode (loadXlsx)', !/cdn\.jsdelivr/.test(fs.readFileSync(path.join(PUB, 'settings.js'), 'utf8')));
@@ -391,7 +422,7 @@ console.log('\n═══ 12. Iuran per putaran & per bulan (v3.16) ═══');
   check('tab Iuran: judul memuat putaran aktif dan bulan acuan', /Putaran 2/.test(box.textContent) && /Oktober 2026/.test(box.textContent), box.textContent.slice(0, 200));
   const sel = box.querySelector('select[aria-label="Putaran"]');
   check('ada pemilih putaran (bukan hanya pemilih bulan) dengan penanda (aktif)', !!sel && /\(aktif\)/.test(sel.textContent) && sel.options.length === 2);
-  check('ada pemilih bulan untuk iuran bulanan', !!box.querySelector('input[type=month]'));
+  check('tidak ada pemilih bulan; periode bulanan mengikuti acuan putaran & tampil di header kolom', !box.querySelector('input[type=month]') && /Periode: Oktober 2026/.test(box.querySelector('thead').textContent) && /Periode: Putaran 2/.test(box.querySelector('thead').textContent));
   check('anggota belum bayar punya tombol Catat; yang sudah, tidak', box.querySelectorAll('.btn-s.pay').length >= 1);
   t.ev("finPerR('P001')"); await wait(150);
   check('memilih putaran lain memuat ulang tanpa galat', t.errs.length === 0, t.errs.join('|'));
@@ -407,6 +438,71 @@ console.log('\n═══ 12. Iuran per putaran & per bulan (v3.16) ═══');
   plan.ev("showPage(\'arisan\')"); await wait(250);
   check('putaran masih rencana: ada catatan & Iuran Arisan tidak bisa dicatat', /masih rencana/.test(plan.$('#arisan').textContent) && !plan.$('#arisan').querySelector('.btn-s.pay[onclick*=",1)"]'));
   plan.w.close();
+}
+
+console.log('\n═══ 13. Halaman Keuangan: tampilan jelas & profesional ═══');
+{
+  const TYPES = [{ id: 1, code: 'arisan', name: 'Iuran Arisan', amount: 350000, fund: 'arisan', schedule: 'putaran', required_for_draw: true, active: true, start_period: '2026-01', sort: 1 },
+                 { id: 2, code: 'wajib', name: 'Iuran Wajib', amount: 50000, fund: 'kas', schedule: 'bulanan', required_for_draw: false, active: true, start_period: '2026-01', sort: 2 }];
+  const RND = [{ period: 'P002', seq: 2, title: null, status: 'aktif', held_on: '2026-10-20' }];
+  const gp = { period: 'P002', month: '2026-10', round: RND[0], rounds: RND, iuran: 350000, types: TYPES,
+    rows: [{ member_id: 1, name: 'Budi Santoso', relation: 'Anak', phone: '0811', paid: { 1: { pid: 5, amount: 350000, paid_at: '2026-10-01T00:00:00Z', receipt_no: 'KW-1', method: 'Tunai' }, 2: { pid: 6, amount: 50000, paid_at: '2026-10-01T00:00:00Z', receipt_no: 'KW-2', method: 'Tunai' } }, can_draw: true },
+           { member_id: 2, name: 'Siti Rahayu', relation: 'Anak', phone: '0812', paid: {}, can_draw: false }] };
+  const ARR = [{ member_id: 2, name: 'Siti Rahayu', phone: '0812', type_id: 2, type_name: 'Iuran Wajib', amount: 50000, schedule: 'bulanan', periods: ['2026-08', '2026-09'], n: 2, total: 100000 }];
+  const FD = { funds: [{ fund: 'arisan', saldo: 700000 }, { fund: 'kas', saldo: 1250000 }], pending: [{ winner: 'Dewi', period: 'P002', collected: 700000, disbursed: 0, amount: 700000 }], month: { masuk: 100000, keluar: 25000 }, arrears: { amount: 100000, members: 1 },
+    monthly: [{ m: '2026-09', masuk_arisan: 0, masuk_kas: 100000, keluar: 0 }, { m: '2026-10', masuk_arisan: 700000, masuk_kas: 100000, keluar: 25000 }],
+    types: [{ name: 'Iuran Arisan', fund: 'arisan', schedule: 'putaran', key: 'P002', amount: 350000, members: 2, paid: 1, realized: 350000, required: true }], round: RND[0], period: 'P002', rounds: RND };
+  const LED = { opening: 1000000, total: 2, truncated: false, rows: [{ id: 1, date: '2026-10-02', description: 'Donasi', category: 'Donasi / Sumbangan', fund: 'kas', type: 'masuk', amount: 100000, bal: 1100000, receipt_no: null, payment_id: null },
+    { id: 2, date: '2026-10-03', description: 'Konsumsi', category: 'Konsumsi & Acara', fund: 'kas', type: 'keluar', amount: 25000, bal: 1075000, receipt_no: null, payment_id: null }] };
+  const CFG = { period: 'P002', round: RND[0], rounds: RND, month: '2026-10', ref_month: '2026-10', types: TYPES, meta: { org: 'Arisan', treasurer: '', chair: '' } };
+  const DASH = { members: 2, paid: 1, saldo: 0, masuk: 0, keluar: 0, cashflow: [], activity: [], recent: [], period: 'P002', month: '2026-10', next: null, funds: { arisan: 0, kas: 0 }, types: [] };
+  const MAP = { fee_config: CFG, get_payments: gp, iuran_arrears: ARR, finance_dashboard: FD, finance_ledger: LED, dashboard: DASH };
+  const t = await boot({ from: PROFILE('admin', true), rpc: fn => ({ data: MAP[fn] === undefined ? null : MAP[fn], error: null }) });
+  t.ev("showPage('keuangan')"); await wait(250);
+  const kb = () => t.$('#keuangan');
+  check('Ringkasan: 4 tab berperan tablist & tab aktif ditandai', kb().querySelectorAll('.fin-tabs [role=tab]').length === 4 && kb().querySelectorAll('.fin-tabs [aria-selected=true]').length === 1);
+  check('Ringkasan: 4 kartu ringkasan berikon SVG (tanpa glyph teks)', kb().querySelectorAll('.fin-kpis .kpi').length === 4 && kb().querySelectorAll('.fin-kpis .kpi-ic svg').length === 4 && !/[◆◎▣]/.test(kb().textContent));
+  check('Ringkasan: total saldo = Dana Arisan + Kas Wajib (Rp 1.950.000)', /1\.950\.000/.test(kb().querySelector('.k-total').textContent));
+  check('Ringkasan: grafik arus kas punya sumbu, garis bantu & label aksesibel', !!kb().querySelector('svg.fin-chart[aria-label]') && kb().querySelectorAll('svg.fin-chart line').length === 5 && /Total masuk/.test(kb().textContent) && /Selisih/.test(kb().textContent));
+  check('Ringkasan: dana menunggu dicairkan menampilkan pemenang & tombol Cairkan', /Dewi/.test(kb().querySelector('.fin-pend').textContent) && /Cairkan/.test(kb().querySelector('.fin-pend').textContent));
+  check('Ringkasan: progres iuran memakai class .pct (tidak bentrok dengan kartu silsilah)', !!kb().querySelector('.fin-prog .pct') && !kb().querySelector('.fin-prog .pc'));
+
+  t.ev("finTab('iuran')"); await wait(250);
+  check('Iuran: status memakai pill (Lunas/Belum) & tombol Catat tetap ada', kb().querySelectorAll('.pill.ok').length >= 1 && kb().querySelectorAll('.btn-s.pay').length >= 1);
+  check('Iuran: filter menampilkan jumlah anggota per status', [...kb().querySelectorAll('.fin-bar .seg button em')].map(e => e.textContent).join(',') === '2,1,1');
+  check('Iuran: tiap anggota punya avatar inisial & ada keterangan jumlah baris', kb().querySelectorAll('.fin-table .fav').length === 2 && /Menampilkan 2 dari 2 anggota/.test(kb().textContent));
+  t.ev("finFlt('belum')"); await wait(80);
+  check('Iuran: filter "Belum lunas" hanya menyisakan yang belum lunas', kb().querySelectorAll('.fin-table tbody tr').length === 1 && /Siti/.test(kb().querySelector('.fin-table tbody').textContent));
+
+  t.ev("finTab('bukukas')"); await wait(250);
+  check('Buku Kas: kartu saldo awal/penerimaan/pengeluaran/saldo akhir', kb().querySelectorAll('.fin-kpis .kpi').length === 4 && /1\.075\.000/.test(kb().querySelector('.k-total').textContent));
+  check('Buku Kas: baris total periode & tanda + / − pada nominal', /Total periode \(2 transaksi\)/.test(kb().querySelector('tfoot').textContent) && /\+100\.000/.test(kb().textContent) && /−25\.000/.test(kb().textContent));
+  t.ev("finLgQ('konsumsi')"); await wait(400);
+  check('Buku Kas: saat mencari, saldo berjalan disembunyikan disertai penjelasan', /Saldo berjalan disembunyikan/.test(kb().textContent));
+
+  t.ev("finTab('tunggakan')"); await wait(250);
+  check('Tunggakan: ringkasan, rincian periode, dan tombol Lunasi/Ingatkan', kb().querySelectorAll('.fin-kpis .kpi').length >= 3 && kb().querySelectorAll('.chip.s').length === 2 && /Ingatkan/.test(kb().textContent) && /Lunasi/.test(kb().textContent));
+  check('semua tab Keuangan dirender tanpa galat', t.errs.length === 0, t.errs.join('|'));
+  t.w.close();
+
+  for (const [lbl, p1, warn] of [['bulan sama', '2026-10', true], ['bulan berbeda', '2026-09', false]]) {
+    const R2 = [{ period: 'P002', seq: 2, title: null, status: 'aktif', held_on: null, ref_month: '2026-10' }, { period: 'P001', seq: 1, title: null, status: 'selesai', held_on: '2026-09-10', ref_month: p1 }];
+    MAP.get_payments = { ...gp, rounds: R2, round: R2[0], month: '2026-10' }; MAP.fee_config = { ...CFG, rounds: R2, round: R2[0] };
+    const s = await boot({ from: PROFILE('admin', true), rpc: fn => ({ data: MAP[fn] === undefined ? null : MAP[fn], error: null }) });
+    s.ev("showPage('keuangan')"); await wait(200); s.ev("finTab('iuran')"); await wait(250);
+    const txt = s.$('#keuangan').textContent;
+    check(`Iuran: Iuran Wajib ${lbl} dengan putaran lain → ${warn ? 'peringatan tampil' : 'tanpa peringatan'}`, warn ? /juga dipakai oleh Putaran 1/.test(txt) : !/juga dipakai oleh/.test(txt));
+    s.w.close();
+  }
+  MAP.get_payments = gp; MAP.fee_config = CFG;
+
+  MAP.iuran_arrears = []; MAP.finance_dashboard = { ...FD, pending: [], arrears: { amount: 0, members: 0 }, monthly: [] }; MAP.finance_ledger = { opening: 0, rows: [], total: 0, truncated: false };
+  const e = await boot({ from: PROFILE('admin', true), rpc: fn => ({ data: MAP[fn] === undefined ? null : MAP[fn], error: null }) });
+  e.ev("showPage('keuangan')"); await wait(250);
+  check('keadaan kosong: grafik & tunggakan menampilkan pesan ramah (bukan tabel kosong)', /Belum ada transaksi/.test(e.$('#keuangan').textContent));
+  e.ev("finTab('tunggakan')"); await wait(250); check('keadaan kosong: "Tidak ada tunggakan" tampil', /Tidak ada tunggakan/.test(e.$('#keuangan').textContent));
+  e.ev("finTab('bukukas')"); await wait(250); check('keadaan kosong: Buku Kas tanpa transaksi tidak error', /Belum ada transaksi/.test(e.$('#keuangan').textContent) && e.errs.length === 0, e.errs.join('|'));
+  e.w.close();
 }
 
 process.exit(summary() ? 0 : 1);
