@@ -7,7 +7,7 @@
    ========================================================================== */
 
 /* ---- elemen yang hanya dipakai di mobile: sembunyi di desktop ---- */
-.bnav,.msheet,.msheet-bg,.m-back,.qa,.m-greet{display:none}
+.bnav,.msheet,.msheet-bg,.m-back,.qa,.m-greet,.m-brand{display:none}
 
 @media(max-width:760px){
 :root{
@@ -41,11 +41,13 @@ button,a,.alb,.pthumb,[onclick],select,summary,label.primary{touch-action:manipu
 body.m-scrolled .topbar{border-bottom-color:var(--line);box-shadow:0 4px 18px rgba(20,30,60,.06)}
 .topbar .breadcrumb{display:flex!important;align-items:center;flex:1;min-width:0;font-size:0;color:var(--text)}
 .topbar .breadcrumb b{font-size:20px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* di Beranda: logo + nama aplikasi */
-body[data-page=dashboard] .topbar .breadcrumb::before{content:"FH";display:inline-grid;place-items:center;width:34px;height:34px;margin-right:10px;border-radius:11px;flex:none;
-  background:linear-gradient(135deg,#8d7cff,#43d8bd);color:#fff;font-size:13px;font-weight:800;letter-spacing:.02em}
-body[data-page=dashboard] .topbar .breadcrumb b{font-size:0}
-body[data-page=dashboard] .topbar .breadcrumb b::after{content:"FamilyHub";font-size:19px;font-weight:800}
+/* di Beranda: logo + nama aplikasi (disalin dari identitas yang diatur admin; lihat mobile.js) */
+.m-brand{display:none;align-items:center;gap:10px;flex:1;min-width:0}
+.m-brand .logo-mark{width:36px;height:36px;border-radius:12px;font-size:13px;flex:none;color:#fff;letter-spacing:.02em}
+.m-brand .logo-mark.has-logo{color:transparent}
+.m-brand strong{font-size:19px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body[data-page=dashboard] .m-brand{display:flex}
+body[data-page=dashboard] .topbar .breadcrumb{display:none!important}
 /* di halaman turunan: tombol kembali */
 .m-back{display:none;width:40px;height:40px;margin:0 2px 0 -8px;border-radius:50%;background:transparent;color:var(--text);place-items:center;flex:none}
 .m-back svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}

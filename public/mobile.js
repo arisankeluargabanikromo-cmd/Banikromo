@@ -38,6 +38,20 @@ function paintThemeColor() {
   m.content = dark ? '#0b0f1b' : '#f4f7fb';
 }
 
+// ---------- Identitas (nama + logo) di app bar: disalin dari sidebar agar mengikuti Pengaturan → Identitas ----------
+function syncBrand() {
+  const m = $1('.m-brand'), sm = $1('.sidebar .logo-mark'), sn = $1('.sidebar .logo strong'); if (!m || !sm) return;
+  const mk = m.querySelector('.logo-mark'); mk.className = sm.className + ' m-mark'; mk.innerHTML = sm.innerHTML;
+  m.querySelector('strong').textContent = sn ? sn.textContent : '';
+}
+function mountBrand() {
+  const tb = $1('.topbar'); if (!tb || $1('.m-brand')) return;
+  const d = document.createElement('div'); d.className = 'm-brand'; d.innerHTML = '<div class="logo-mark"></div><strong></strong>';
+  const bc = tb.querySelector('.breadcrumb'); tb.insertBefore(d, bc || tb.firstChild);
+  const lg = $1('.sidebar .logo'); syncBrand();
+  if (lg) new MutationObserver(syncBrand).observe(lg, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class'] });
+}
+
 // ---------- Tombol kembali di app bar ----------
 function mountBack() {
   const tb = $1('.topbar'); if (!tb || $1('#mBack')) return;
@@ -67,7 +81,7 @@ function buildSheet() {
       <button class="ms-row" type="button" data-act="sync">${svg(IC.sync, 21)}Sinkronkan data</button>
       <button class="ms-row out" type="button" data-act="out">${svg(IC.out, 21)}Keluar</button>
     </div>
-    <p class="ms-ver">FamilyHub — Arisan &amp; Family Network</p>`;
+    <p class="ms-ver">${e((window.FH_BRAND && FH_BRAND.name) || 'FamilyHub')}</p>`;
   return true;
 }
 function openSheet() {
@@ -154,7 +168,7 @@ let sc = 0; addEventListener('scroll', () => { if (sc) return; sc = requestAnima
 
 let raf = 0; const refresh = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; syncNav(); enhanceTables(); }); };
 function init() {
-  mountBack(); wireSheet(); paintThemeColor(); syncNav();
+  mountBrand(); mountBack(); wireSheet(); paintThemeColor(); syncNav();
   const main = $1('.main'); if (main) new MutationObserver(refresh).observe(main, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
   new MutationObserver(paintThemeColor).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   const dot = $1('#notifDot'), bi = $1('#bnav [data-p=menu] i');
