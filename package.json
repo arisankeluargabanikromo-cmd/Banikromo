@@ -1,16 +1,7 @@
 {
-  "name": "familyhub",
-  "version": "3.19.0",
+  "name": "sekolahhub",
+  "version": "2.24.0",
   "private": true,
-  "scripts": {
-    "dev": "npx serve -s public",
-    "build": "node scripts/gen-config.js && node scripts/gen-routes.js",
-    "test": "node tests/drift.test.mjs && node tests/schema.test.mjs && node tests/frontend.test.mjs",
-    "test:sql": "node tests/drift.test.mjs && node tests/schema.test.mjs",
-    "build:sql": "node scripts/build-schema.mjs"
-  },
-  "devDependencies": {
-    "@electric-sql/pglite": "^0.5.9",
-    "jsdom": "^30.1.2"
-  }
+  "description": "Aplikasi grup sekolah dan tabungan siswa (Supabase + Vercel)",
+  "scripts": { "build": "node scripts/gen-config.js", "dev": "npx serve public", "test": "node tests_node/data_test.js && node tests_node/import_test.js public/js && node tests_node/saldo_test.js public/js && node tests_node/privasi_test.js public/js && node tests_node/enrich_test.js public/js && node tests_node/scan_test.js public/js && node tests_node/kuitansi_test.js public/js && node tests_node/kuitansi_bank_test.js public/js && node tests_node/akses_test.js public/js" }
 }
