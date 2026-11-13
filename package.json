@@ -1,7 +1,0 @@
-{
-  "name": "sekolahhub",
-  "version": "2.24.0",
-  "private": true,
-  "description": "Aplikasi grup sekolah dan tabungan siswa (Supabase + Vercel)",
-  "scripts": { "build": "node scripts/gen-config.js", "dev": "npx serve public", "test": "node tests_node/data_test.js && node tests_node/import_test.js public/js && node tests_node/saldo_test.js public/js && node tests_node/privasi_test.js public/js && node tests_node/enrich_test.js public/js && node tests_node/scan_test.js public/js && node tests_node/kuitansi_test.js public/js && node tests_node/kuitansi_bank_test.js public/js && node tests_node/akses_test.js public/js" }
-}
